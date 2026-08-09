@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Hory Bory — plánování HB26 (prototyp v3)</title>
+<title>Hory Bory — plánování HB26 (veřejná ukázka)</title>
 <style>
 :root{
   --hneda:#4B2914; --tmava:#3F372A; --khaki:#9D9951; --zelena:#4D582C;
@@ -69,7 +69,7 @@ button.tl.cerv{color:var(--vinova);border-color:#E4C6CA}
 .obal-tab{overflow-x:auto;border:1px solid var(--linka);border-radius:12px;background:var(--bila)}
 
 /* ---- paleta part ---- */
-.rozvrh{display:grid;grid-template-columns:224px 1fr;gap:18px;align-items:start}
+.rozvrh{display:grid;grid-template-columns:260px 1fr;gap:18px;align-items:start}
 aside{position:sticky;top:104px;background:var(--bila);border:1px solid var(--linka);
   border-radius:12px;padding:13px}
 aside h3{margin:0 0 3px;font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--olive)}
@@ -81,6 +81,8 @@ aside p{margin:0 0 10px;font-size:11.5px;color:var(--pisek)}
 .chip:active{cursor:grabbing}
 .chip.cizi{border:1.5px dashed #fff}
 .chip .pocet{background:rgba(255,255,255,.28);border-radius:10px;padding:0 5px;font-size:10.5px}
+.chip .jmeno{font-weight:600;font-size:11.5px;opacity:.92;max-width:88px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
 .chip.zvyrazneno{outline:2.5px solid var(--hneda);outline-offset:1.5px}
 .detail{margin-top:13px;font-size:11.5px;color:var(--pisek);border-top:1px solid var(--linka);padding-top:9px}
 .detail b{color:var(--tmava)}
@@ -99,7 +101,7 @@ td.etapa .cislo{font-weight:800;color:var(--hneda)}
 td.etapa .misto{font-size:12px;color:var(--pisek);display:block}
 td.km{text-align:center;font-size:11.5px;color:var(--pisek);padding:0 6px;white-space:nowrap}
 td.km b{color:var(--olive);font-size:12.5px}
-.bunka{padding:5px 6px;min-width:112px;height:46px;vertical-align:middle}
+.bunka{padding:5px 6px;min-width:132px;height:46px;vertical-align:middle}
 .slot{min-height:34px;border:1.5px dashed var(--linka);border-radius:8px;display:flex;
   align-items:center;justify-content:center;font-size:11.5px;color:#C9BFB0;transition:.12s;
   flex-direction:column;gap:1px;padding:2px}
@@ -139,8 +141,25 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   white-space:nowrap;vertical-align:middle}
 .odznak.stary{background:#F9EBEC;color:#8E2833;border-color:#E4C1C6}
 .odznak.novy {background:#EDF2E3;color:#41521F;border-color:#CBDAB0}
+.odznak.otazka{background:#FBF0DE;color:#8A5A12;border-color:#EDD6AB;font-size:11px;padding:0 6px}
 .odznak.vslotu{background:rgba(255,255,255,.88)}
 .tab td.odzn{width:52px;text-align:center;padding:0 4px}
+.matice td.pravo{padding:0}
+.matice select{width:100%;border:0;background:transparent;font:700 12.5px Nunito,sans-serif;
+  padding:8px;text-align:center;text-align-last:center;cursor:pointer}
+.matice tr.zap select{color:#41521F;background:#EDF2E3}
+.matice tr.cti select{color:#7a6a3f;background:#F7F3E6}
+.matice tr.nic select{color:#8E2833;background:#F9EBEC}
+.matice td.pravo.zap{background:#EDF2E3}
+.matice td.pravo.cti{background:#F7F3E6}
+.matice td.pravo.nic{background:#F9EBEC}
+.uroven{display:inline-block;font:800 11px Nunito,sans-serif;padding:2px 9px;border-radius:12px;
+  background:var(--zelena);color:#fff}
+.nahledLista{background:#4B2914;color:#fff;padding:8px 22px;font-size:12.5px;display:none;
+  align-items:center;gap:12px;flex-wrap:wrap}
+.nahledLista.videt{display:flex}
+.nahledLista b{color:var(--khaki)}
+.zamceno{opacity:.62}
 </style>
 </head>
 <body>
@@ -149,32 +168,37 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   <div class="hlava">
     <h1>Hory Bory — plánování</h1>
     <span class="rok" id="odznakRok">HB26</span>
-    <span class="pozn">Prototyp v3 · veřejná verze bez osobních údajů · data jen v paměti prohlížeče</span>
+    <span class="pozn">Veřejná ukázka bez osobních údajů · data jen v paměti prohlížeče</span>
   </div>
   <nav id="nav"></nav>
 </header>
+
+<div class="nahledLista" id="nahledLista">
+  <span>Prohlížíte web jako <b id="nahledNazev"></b></span>
+  <span id="nahledPopis" style="opacity:.8"></span>
+  <button class="tl" style="margin-left:auto" title="Vypne náhled cizí úrovně a vrátí plný přístup." onclick="zapniNahled('')">Zpět na plný přístup</button>
+</div>
 
 <main>
   <div class="varovani" style="background:#F5F1E7;border-color:#E2D6BF;color:#6b5a3e">
     <b>Značky u řádků.</b> Červená <span class="odznak stary">HB25</span> znamená hodnotu jen
     překopírovanou z minulého ročníku, kterou pro letošek nikdo neprošel. Zelená
     <span class="odznak novy">HB26</span> je hodnota platná pro aktuální ročník. Jakmile řádek
-    upravíte, značka se překlopí z červené na zelenou.
+    upravíte, značka se překlopí z červené na zelenou. Žlutý <span class="odznak otazka">?</span>
+    obě přebíjí a znamená, že řádek je ve stavu „nepotvrzeno".
   </div>
 
   <div class="varovani">
-    <b>Veřejná verze bez osobních údajů.</b> Členové part, jejich telefony a e-maily,
-    kontakty na ubytovatele a platební poznámky v této verzi nejsou — na veřejném webu
-    být nesmí. Kdo je potřebuje, klikne na <b>Načíst ze souboru</b> a vybere
-    <b>hb_planovani_HB26_data.json</b> z disku. Nic se nikam neodesílá, data zůstávají
-    jen ve vašem prohlížeči.
+    <b>Veřejná verze bez osobních údajů.</b> Telefony, e-maily, čísla účtů, adresy
+    a kontakty na ubytovny tady nejsou a nikdy tu být nesmí — tahle stránka je
+    veřejně čitelná. Plná verze s kontakty běží jen jako soubor na počítači.
   </div>
 
   <!-- 1. PLÁN ÚKOLŮ -->
   <section class="sekce" id="s-ukoly">
     <div class="nastroje">
       <button class="tl hlavni" title="Přepíše celý plán ročníku vzorem z HB25 (232 úkolů). Co máte rozpracované, se ztratí." onclick="kopirujVse()">Kopírovat celý HB25</button>
-      <button class="tl" title="Smaže všechny úkoly aktuálního ročníku. Vzor HB25 zůstává, vrátíte ho tlačítkem Kopírovat celý HB25." onclick="vycisti()">Vyprázdnit plán</button>
+      <button class="tl" title="Smaže všechny úkoly aktuálního ročníku. Chráněné heslem správce. Vzor HB25 zůstává, vrátíte ho tlačítkem Kopírovat celý HB25." onclick="vycisti()">Vyprázdnit plán</button>
       <button class="tl" title="Zvýrazní v mřížce políčka vybrané party a ostatní ztlumí. Dalším kliknutím zvýraznění vypnete." onclick="prepniZvyrazneni()">Zvýraznit vybranou partu</button>
       <button class="tl" title="Stáhne celý plán jako soubor JSON do složky Stažené. Nikam se nic neodesílá." onclick="ulozSoubor()">Uložit do souboru</button>
       <button class="tl" title="Načte plán ze souboru JSON a přepíše jím to, co je teď na obrazovce." onclick="document.getElementById('nacti').click()">Načíst ze souboru</button>
@@ -334,7 +358,117 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
       </div>
     </div>
   </section>
+
+
+  <!-- 9. TRIČKA -->
+  <section class="sekce" id="s-tricka">
+    <div class="karta">
+      <h2>Vstupy ročníku</h2>
+      <div class="telo">
+        <p class="popisek">Odhad pole se počítá z počtu zaplacených týmů, ne z rozepsaných
+          soupisek — ty bývají v půlce srpna vyplněné sotva z třetiny.</p>
+        <div id="vstupyTricka" style="display:flex;gap:14px;flex-wrap:wrap"></div>
+        <p class="popisek" id="souhrnTricka" style="margin:12px 0 0;font-size:13.5px;color:var(--tmava)"></p>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Potřeba, sklad a doobjednávka</h2>
+      <div class="telo">
+        <p class="popisek">Bílé sloupce se počítají samy, editovat jde odhad podílu,
+          pomocníky, sklad a finální počet k objednání.</p>
+        <div class="obal-tab"><table class="tab" id="tabTricka"></table></div>
+        <p class="popisek" id="varovaniTricka" style="margin-top:10px"></p>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Objednávky po vlnách — tabulka objednavky</h2>
+      <div class="telo">
+        <div class="obal-tab"><table class="tab" id="tabObjednavky"></table></div>
+        <button class="tl" style="margin-top:10px" title="Přidá další vlnu objednávky triček." onclick="pridej('objednavka')">+ Přidat vlnu</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. PŘÍSTUPY -->
+  <section class="sekce" id="s-pristupy">
+    <div class="karta">
+      <h2>Úrovně přístupu — tabulka urovne_pristupu</h2>
+      <div class="telo">
+        <p class="popisek">Tři úrovně, se kterými web počítá. Kód se používá v databázi,
+          název a popis vidí lidé. Úroveň jde přejmenovat, přidat i odebrat.</p>
+        <div class="obal-tab"><table class="tab" id="tabUrovne"></table></div>
+        <button class="tl" style="margin-top:10px" title="Přidá další úroveň přístupu. Práva u ní začínají na „žádné"." onclick="pridej('uroven')">+ Přidat úroveň</button>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Co která úroveň smí — tabulka pristupy_oblasti</h2>
+      <div class="telo">
+        <p class="popisek">Zápis znamená vidět i měnit, čtení jen vidět, žádné vůbec nezobrazit.
+          Řádek „Telefony, e-maily, čísla účtů" se chová zvlášť — schová citlivé sloupce
+          i tomu, kdo jinak Členy part vidí.</p>
+        <div class="obal-tab"><table class="tab matice" id="tabMatice"></table></div>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Uživatelé — tabulka uzivatele</h2>
+      <div class="telo">
+        <p class="popisek">Kdo se na web dostane a s jakou úrovní. Přihlašuje se e-mailem,
+          heslo ani jeho obnovu prototyp neřeší.</p>
+        <div class="obal-tab"><table class="tab" id="tabUzivatele"></table></div>
+        <button class="tl" style="margin-top:10px" title="Přidá řádek pro dalšího člověka, který se má na web dostat." onclick="pridej('uzivatel')">+ Přidat uživatele</button>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Heslo pro nevratné akce</h2>
+      <div class="telo">
+        <p class="popisek">Heslem je chráněné tlačítko <b>Vyprázdnit plán</b>. Platí heslo
+          uživatele s nejvyšší úrovní, tedy s nejmenším pořadím. V souboru se ukládá jen
+          otisk hesla, ne heslo samo.</p>
+        <div class="varovani" style="background:#F9EBEC;border-color:#E4C1C6;color:#7a2a33">
+          <b>Není to skutečné zabezpečení.</b> Web na GitHub Pages je statická stránka bez
+          serveru — kdo si zobrazí zdrojový kód, otisk hesla uvidí a kontrolu umí obejít.
+          Chrání to před omylem, ne před někým, kdo se snaží.
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div style="flex:1;min-width:220px">
+            <label class="popisek" style="display:block;margin-bottom:3px">Nové heslo</label>
+            <input type="password" id="noveHeslo" autocomplete="off"
+              style="width:100%;padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit">
+          </div>
+          <button class="tl hlavni" title="Spočítá otisk hesla a uloží ho k uživateli s nejvyšší úrovní." onclick="nastavHeslo()">Nastavit heslo</button>
+        </div>
+        <p class="popisek" id="stavHesla" style="margin-top:10px"></p>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Vyzkoušet</h2>
+      <div class="telo">
+        <p class="popisek">Zapne pohled očima zvolené úrovně — záložky bez práva zmizí,
+          v těch jen ke čtení nejde nic přepsat.</p>
+        <select id="volbaNahledu" onchange="zapniNahled(this.value)"
+          style="padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit;min-width:240px"></select>
+      </div>
+    </div>
+  </section>
 </main>
+
+<div class="editor" id="zamek">
+  <h4>Vyprázdnit plán</h4>
+  <div class="kdeco" id="zamekKdo"></div>
+  <label>Heslo</label>
+  <input type="password" id="zamekHeslo" autocomplete="off">
+  <div class="kdeco" id="zamekChyba" style="color:var(--vinova);margin:6px 0 0;display:none">Špatné heslo.</div>
+  <div class="paticka">
+    <button class="tl cerv" style="flex:1" title="Nenávratně smaže všechny úkoly aktuálního ročníku." onclick="potvrdZamek()">Vyprázdnit</button>
+    <button class="tl" title="Zavře okno a nic nesmaže." onclick="zavriZamek()">Zrušit</button>
+  </div>
+</div>
 
 <div class="editor" id="editor">
   <h4 id="edNadpis">Úkol</h4>
@@ -344,7 +478,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   <label>Kdy (sloupec kdy_text)</label>
   <input type="text" id="edKdy" placeholder="např. so 8:00 - 10:00">
   <label>Stav</label>
-  <select id="edStav"><option>plán</option><option>potvrzeno</option><option>hotovo</option><option>zrušeno</option></select>
+  <select id="edStav"><option>plán</option><option>nepotvrzeno</option><option>zrušeno</option></select>
   <label>Popis</label>
   <textarea id="edPopis" rows="2"></textarea>
   <div class="paticka">
@@ -362,2960 +496,195 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
    ============================================================ */
 
 const D = {
- "nastaveni": {
-  "aktivni_rok": "HB26",
-  "datum_zavodu": ""
- },
- "tymy": [
-  {
-   "kod": "G1",
-   "nazev": "",
-   "poradi": 1,
-   "doprava": "osobní auto",
-   "barva": "#3F6B8A",
-   "poznamka": ""
-  },
-  {
-   "kod": "G2",
-   "nazev": "",
-   "poradi": 2,
-   "doprava": "osobní auto",
-   "barva": "#C9A227",
-   "poznamka": ""
-  },
-  {
-   "kod": "G3",
-   "nazev": "",
-   "poradi": 3,
-   "doprava": "osobní auto",
-   "barva": "#B4533A",
-   "poznamka": ""
-  },
-  {
-   "kod": "G4",
-   "nazev": "Dolní Lomná — místní",
-   "poradi": 4,
-   "doprava": "",
-   "barva": "#B07C3F",
-   "poznamka": "v prototypu v1 chyběla"
-  },
-  {
-   "kod": "G5",
-   "nazev": "",
-   "poradi": 5,
-   "doprava": "osobní auto",
-   "barva": "#C97B2C",
-   "poznamka": ""
-  },
-  {
-   "kod": "G6",
-   "nazev": "",
-   "poradi": 6,
-   "doprava": "osobní auto",
-   "barva": "#4E9BA6",
-   "poznamka": ""
-  },
-  {
-   "kod": "G7",
-   "nazev": "",
-   "poradi": 7,
-   "doprava": "osobní auto",
-   "barva": "#5E8C3A",
-   "poznamka": ""
-  },
-  {
-   "kod": "G8",
-   "nazev": "",
-   "poradi": 8,
-   "doprava": "osobní auto",
-   "barva": "#8A6FA8",
-   "poznamka": ""
-  },
-  {
-   "kod": "IT",
-   "nazev": "IT podpora",
-   "poradi": 9,
-   "doprava": "",
-   "barva": "#46586B",
-   "poznamka": ""
-  },
-  {
-   "kod": "G0A",
-   "nazev": "Vedení, dodávka A",
-   "poradi": 10,
-   "doprava": "dodávka",
-   "barva": "#7B3F17",
-   "poznamka": ""
-  },
-  {
-   "kod": "G0B",
-   "nazev": "Vedení, dodávka B",
-   "poradi": 11,
-   "doprava": "dodávka",
-   "barva": "#9A5A22",
-   "poznamka": ""
-  },
-  {
-   "kod": "G10",
-   "nazev": "",
-   "poradi": 12,
-   "doprava": "osobní auto",
-   "barva": "#7A6A55",
-   "poznamka": ""
-  },
-  {
-   "kod": "G11",
-   "nazev": "",
-   "poradi": 13,
-   "doprava": "osobní auto",
-   "barva": "#A63D4E",
-   "poznamka": ""
-  },
-  {
-   "kod": "G12",
-   "nazev": "",
-   "poradi": 14,
-   "doprava": "osobní auto",
-   "barva": "#8E9A3C",
-   "poznamka": ""
-  },
-  {
-   "kod": "G13",
-   "nazev": "",
-   "poradi": 15,
-   "doprava": "dodávka",
-   "barva": "#5B4A8C",
-   "poznamka": ""
-  },
-  {
-   "kod": "G14",
-   "nazev": "",
-   "poradi": 16,
-   "doprava": "dodávka",
-   "barva": "#D08C3A",
-   "poznamka": ""
-  },
-  {
-   "kod": "G15",
-   "nazev": "",
-   "poradi": 17,
-   "doprava": "osobní auto",
-   "barva": "#6E8FB5",
-   "poznamka": ""
-  },
-  {
-   "kod": "G16",
-   "nazev": "",
-   "poradi": 18,
-   "doprava": "osobní auto",
-   "barva": "#4B7A5E",
-   "poznamka": ""
-  },
-  {
-   "kod": "G17",
-   "nazev": "",
-   "poradi": 19,
-   "doprava": "osobní auto",
-   "barva": "#A8794F",
-   "poznamka": ""
-  },
-  {
-   "kod": "G18",
-   "nazev": "",
-   "poradi": 20,
-   "doprava": "veřejná",
-   "barva": "#3E7C6B",
-   "poznamka": ""
-  },
-  {
-   "kod": "FOTO",
-   "nazev": "Fotografové",
-   "poradi": 21,
-   "doprava": "",
-   "barva": "#8C4E6B",
-   "poznamka": ""
-  },
-  {
-   "kod": "ZVUK",
-   "nazev": "Zvuk a moderace",
-   "poradi": 22,
-   "doprava": "dodávka",
-   "barva": "#5A5A6E",
-   "poznamka": ""
-  },
-  {
-   "kod": "VIDEO",
-   "nazev": "Video",
-   "poradi": 23,
-   "doprava": "",
-   "barva": "#6B5B8C",
-   "poznamka": ""
-  },
-  {
-   "kod": "GASTRO",
-   "nazev": "Občerstvení",
-   "poradi": 24,
-   "doprava": "",
-   "barva": "#A2733C",
-   "poznamka": ""
-  },
-  {
-   "kod": "ZDRAV",
-   "nazev": "Zdravotní dohled",
-   "poradi": 25,
-   "doprava": "",
-   "barva": "#8C3A3A",
-   "poznamka": "ZZS Zlín, dodavatel — bez jmen v tabulce"
-  },
-  {
-   "kod": "domácí",
-   "nazev": "Místní pořadatelé",
-   "poradi": 26,
-   "doprava": "",
-   "barva": "#96907F",
-   "poznamka": "místní grupy na předávkách, vedou se bez jmen"
-  }
- ],
- "clenove": [],
- "predavky": [
-  {
-   "cislo": 1,
-   "nazev": "Dolní Lomná",
-   "lat": 49.55545,
-   "lon": 18.7335361,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 9.2,
-   "min": 14
-  },
-  {
-   "cislo": 2,
-   "nazev": "Horní Lomná",
-   "lat": 49.5296144,
-   "lon": 18.6379006,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 63.2,
-   "min": 69
-  },
-  {
-   "cislo": 3,
-   "nazev": "Morávka",
-   "lat": 49.5612047,
-   "lon": 18.5505747,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 6.7,
-   "min": 25
-  },
-  {
-   "cislo": 4,
-   "nazev": "Visalaje",
-   "lat": 49.5177819,
-   "lon": 18.5284303,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 49.1,
-   "min": 63
-  },
-  {
-   "cislo": 5,
-   "nazev": "Staré Hamry",
-   "lat": 49.4859372,
-   "lon": 18.4776239,
-   "typ": "Interně HB",
-   "pozn": "",
-   "gpx": "",
-   "km": 9,
-   "min": 16
-  },
-  {
-   "cislo": 6,
-   "nazev": "Bílá",
-   "lat": 49.4430025,
-   "lon": 18.4581692,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 12,
-   "min": 12
-  },
-  {
-   "cislo": 7,
-   "nazev": "Bumbálka",
-   "lat": 49.3990919,
-   "lon": 18.4110378,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 13.9,
-   "min": 17
-  },
-  {
-   "cislo": 8,
-   "nazev": "Světlá",
-   "lat": 49.3479767,
-   "lon": 18.3689822,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 3.9,
-   "min": 7
-  },
-  {
-   "cislo": 9,
-   "nazev": "Kasárne",
-   "lat": 49.3271775,
-   "lon": 18.38168,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 34.2,
-   "min": 52
-  },
-  {
-   "cislo": 10,
-   "nazev": "Kohútka",
-   "lat": 49.2550597,
-   "lon": 18.2187267,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 26.7,
-   "min": 39
-  },
-  {
-   "cislo": 11,
-   "nazev": "Huslenky",
-   "lat": 49.2764436,
-   "lon": 18.1477394,
-   "typ": "Interně HB",
-   "pozn": "",
-   "gpx": "",
-   "km": 29.4,
-   "min": 39
-  },
-  {
-   "cislo": 12,
-   "nazev": "Pulčín",
-   "lat": 49.2199331,
-   "lon": 18.0768194,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 11.3,
-   "min": 18
-  },
-  {
-   "cislo": 13,
-   "nazev": "Študlov",
-   "lat": 49.158535,
-   "lon": 18.0861778,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 16.4,
-   "min": 20
-  },
-  {
-   "cislo": 14,
-   "nazev": "Návojná",
-   "lat": 49.1080494,
-   "lon": 18.0479172,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 10.3,
-   "min": 14
-  },
-  {
-   "cislo": 15,
-   "nazev": "Popov",
-   "lat": 49.0824411,
-   "lon": 17.9709131,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 6.6,
-   "min": 8
-  },
-  {
-   "cislo": 16,
-   "nazev": "Rokytnice",
-   "lat": 49.0667764,
-   "lon": 17.9162406,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 9.5,
-   "min": 11
-  },
-  {
-   "cislo": 17,
-   "nazev": "Bojkovice",
-   "lat": 49.0384564,
-   "lon": 17.8171467,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 10.8,
-   "min": 14
-  },
-  {
-   "cislo": 18,
-   "nazev": "Starý Hrozenkov",
-   "lat": 48.9706333,
-   "lon": 17.8612167,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 9.3,
-   "min": 10
-  },
-  {
-   "cislo": 19,
-   "nazev": "Mikulčin vrch",
-   "lat": 48.9498192,
-   "lon": 17.8014039,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 16.5,
-   "min": 24
-  },
-  {
-   "cislo": 20,
-   "nazev": "Strání",
-   "lat": 48.9137661,
-   "lon": 17.6617256,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 20.4,
-   "min": 20
-  },
-  {
-   "cislo": 21,
-   "nazev": "Nová Lhota",
-   "lat": 48.8608856,
-   "lon": 17.5936308,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 10.5,
-   "min": 15
-  },
-  {
-   "cislo": 22,
-   "nazev": "Velká nad Veličkou",
-   "lat": 48.8801433,
-   "lon": 17.5147478,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 20.9,
-   "min": 30
-  },
-  {
-   "cislo": 23,
-   "nazev": "Lučina, koupaliště",
-   "lat": 48.8611175,
-   "lon": 17.3922178,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 14.7,
-   "min": 19
-  },
-  {
-   "cislo": 24,
-   "nazev": "Sudoměřice",
-   "lat": 48.8643533,
-   "lon": 17.2559186,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 14.7,
-   "min": 19
-  },
-  {
-   "cislo": 25,
-   "nazev": "Hodonín",
-   "lat": 48.8437192,
-   "lon": 17.1200578,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 17.4,
-   "min": 21
-  },
-  {
-   "cislo": 26,
-   "nazev": "Týnec",
-   "lat": 48.7735797,
-   "lon": 17.0116775,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 7.8,
-   "min": 12
-  },
-  {
-   "cislo": 27,
-   "nazev": "Lanžhot",
-   "lat": 48.7235136,
-   "lon": 16.9723267,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 7.4,
-   "min": 11
-  },
-  {
-   "cislo": 28,
-   "nazev": "Břeclav",
-   "lat": 48.7428022,
-   "lon": 16.8968669,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 10.1,
-   "min": 16
-  },
-  {
-   "cislo": 29,
-   "nazev": "Valtice",
-   "lat": 48.7466506,
-   "lon": 16.7923433,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 8.9,
-   "min": 13
-  },
-  {
-   "cislo": 30,
-   "nazev": "Hlohovec",
-   "lat": 48.7795208,
-   "lon": 16.7576239,
-   "typ": "Local",
-   "pozn": "",
-   "gpx": "",
-   "km": 20.5,
-   "min": 26
-  },
-  {
-   "cislo": 31,
-   "nazev": "Mikulov",
-   "lat": 48.8130847,
-   "lon": 16.6393036,
-   "typ": "",
-   "pozn": "",
-   "gpx": "",
-   "km": null,
-   "min": null
-  }
- ],
- "nocMista": [
-  {
-   "kod": "JABLUNKOV",
-   "nazev": "Sport resort Jablunkov",
-   "adresa": "Jablunkov 298",
-   "mapa_url": "https://mapy.com/s/gavarerato",
-   "kapacita": 16,
-   "pokoje": "16 lůžek, z toho dvoulůžák pro fotografa",
-   "kontakt": "",
-   "telefon": "",
-   "cena": "",
-   "platba": "",
-   "rezervace": "",
-   "poznamka": "Pátek, na startu. Je nás 11 z 16 lůžek."
-  },
-  {
-   "kod": "HBECVA",
-   "nazev": "Kemp u přehrady Horní Bečva",
-   "adresa": "Horní Bečva",
-   "mapa_url": "",
-   "kapacita": 16,
-   "pokoje": "16 osob",
-   "kontakt": "",
-   "telefon": "",
-   "cena": "",
-   "platba": "",
-   "rezervace": "",
-   "poznamka": "Pátek, pro traséry."
-  },
-  {
-   "kod": "PULCIN",
-   "nazev": "Penzion Pulčínské skály",
-   "adresa": "Pulčín 22",
-   "mapa_url": "https://mapy.com/s/nacetumuse",
-   "kapacita": 9,
-   "pokoje": "9 lidí ve 3 pokojích",
-   "kontakt": "",
-   "telefon": "",
-   "cena": "",
-   "platba": "",
-   "rezervace": "",
-   "poznamka": "Sobota. 7. 2026. Lze přiobjednat snídaně za 6 €."
-  },
-  {
-   "kod": "NLHOTA",
-   "nazev": "Ubytovna Nová Lhota č.p. 1",
-   "adresa": "Nová Lhota 1",
-   "mapa_url": "http://bit.ly/N_Lhota_ubytovna",
-   "kapacita": 28,
-   "pokoje": "1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka",
-   "kontakt": "",
-   "telefon": "",
-   "cena": "",
-   "platba": "",
-   "rezervace": "",
-   "poznamka": "Sobota. Klíče vyzvedne první posádka v hospodě. Bude nás 18 z 28 lůžek."
-  },
-  {
-   "kod": "DANAJ",
-   "nazev": "Chatová osada Danaj Lučina",
-   "adresa": "Lučina",
-   "mapa_url": "https://mapy.com/s/jovunerope",
-   "kapacita": 10,
-   "pokoje": "2× chatka po 5 lůžkách",
-   "kontakt": "",
-   "telefon": "",
-   "cena": "",
-   "platba": "",
-   "rezervace": "",
-   "poznamka": "Sobota."
-  }
- ],
- "nocLide": [],
- "ukoly": [
-  {
-   "parta": "G0A",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "pá 10:00",
-   "popis": "odjezd z Brna pátek 10",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "S",
-   "kod": "S",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "Práce na startu",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ2",
-   "cislo": 2,
-   "kdy_text": "so 6:30",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ4",
-   "cislo": 4,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ6",
-   "cislo": 6,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ7",
-   "cislo": 7,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ8",
-   "cislo": 8,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ9",
-   "cislo": 9,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ10",
-   "cislo": 10,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ11",
-   "cislo": 11,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ12",
-   "cislo": 12,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ13",
-   "cislo": 13,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ14",
-   "cislo": 14,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ15",
-   "cislo": 15,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ16",
-   "cislo": 16,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ17",
-   "cislo": 17,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ18",
-   "cislo": 18,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ19",
-   "cislo": 19,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ20",
-   "cislo": 20,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ21",
-   "cislo": 21,
-   "kdy_text": "ne 3:00",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ25",
-   "cislo": 25,
-   "kdy_text": "ne 7:00",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ26",
-   "cislo": 26,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ27",
-   "cislo": 27,
-   "kdy_text": "",
-   "popis": "Zahájení předávky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "pá 13:00",
-   "popis": "Odjezd z Brna",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "T",
-   "kod": "T2",
-   "cislo": 2,
-   "kdy_text": "pá 16-19",
-   "popis": "Trasování E2  Horní Lomná v protisměru z Morávky\nprojet autem posledních 5km, vysadit Ň. - asi lepší zančit pešky\nV. poslednícj 5km označit cestou zpět bez Ň.\ndodržte to prosím takhle, ať časově vychází s rukama na startu",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "pá 16-17",
-   "popis": "V. přejezd na start - práce tam",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "S",
-   "kod": "S",
-   "cislo": null,
-   "kdy_text": "pá 19-22",
-   "popis": "Práce na startu,prezence týmů",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "N",
-   "kod": "N0B/p",
-   "cislo": null,
-   "kdy_text": "pá-so 7:00",
-   "popis": "Ubytovna Gorol, Jablunkov 908",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so 7:00 - ne 22:00",
-   "popis": "Pohyb po trati poblíž čela závodu,  pohotovost na záskok za kohokoliv.",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "PZ",
-   "kod": "PZ3",
-   "cislo": 3,
-   "kdy_text": "so 8:10",
-   "popis": "Zahájení předávky P3 Morávka",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "PZ",
-   "kod": "PZ5",
-   "cislo": 5,
-   "kdy_text": "so 9.30",
-   "popis": "Zahájení předávky P5 Staré Hamry Grúň",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "So 9:00 - 22:00",
-   "popis": "Pohybovat se do hodiny od dodávky K.",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "N",
-   "kod": "N0/s",
-   "cislo": null,
-   "kdy_text": "23 - 02:30",
-   "popis": "nocleh so 21_Nová Lhota nebo dle libosti",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "PZ",
-   "kod": "PZ22",
-   "cislo": 22,
-   "kdy_text": "ne 3:15",
-   "popis": "Zahájení předávky P22_Velká_nad_Veličkou - zkušení místní",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "PZ",
-   "kod": "PZ23",
-   "cislo": 23,
-   "kdy_text": "ne 4:00",
-   "popis": "Zahájení předávky P23_Lučina - Jirka Gajdoš- běžec, už předávku dělal",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "PZ",
-   "kod": "PZ24",
-   "cislo": 24,
-   "kdy_text": "ne 5:15",
-   "popis": "Zahájení předávky P24_Sudoměřice - M. - zkušení místní",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "ne 8 - 8:30",
-   "popis": "Přejezd do ATC Pasohlávky, převzetí pivních setů 35 ks stolů 70 lavic, kontakt na místě —",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "ne 9:30",
-   "popis": "Vyložení pivních setů Mikulov",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "C",
-   "kod": "C",
-   "cislo": null,
-   "kdy_text": "ne 10-19",
-   "popis": "pomoc v cíli",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0B",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "ne cca 19 hod",
-   "popis": "Složit sety v amfiteátru",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G1",
-   "typ": "N",
-   "kod": "N1/p",
-   "cislo": null,
-   "kdy_text": "pá - so 7:00",
-   "popis": "nocleh Prostřední Bečva 15, máme celou chatu, 12 lůžek",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G1",
-   "typ": "T",
-   "kod": "T7",
-   "cislo": 7,
-   "kdy_text": "so 8:00 - 10:00",
-   "popis": "Trasování etapy 07_Bumbálka -",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G1",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so 10:00 - 11:00",
-   "popis": "Přejezd na 11_Huslenky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G1",
-   "typ": "T",
-   "kod": "T11",
-   "cislo": 11,
-   "kdy_text": "so 11:00 - 13:30",
-   "popis": "Trasování etapy 11_Huslenky - konec v Pulčíně už je našipkováno",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G1",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so 13:30 - 15:00",
-   "popis": "Přejezd na 15_Popov- doporučuju oběd Čertovy skály https://mapy.cz/s/guhutugake",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G1",
-   "typ": "T",
-   "kod": "T20",
-   "cislo": 20,
-   "kdy_text": "so 15:00-16.30",
-   "popis": "Trasování etapy 20_ Strání, našipkován konec",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G1",
-   "typ": "N",
-   "kod": "N1/s",
-   "cislo": null,
-   "kdy_text": "ne 8:00",
-   "popis": "nocleh so 21_Nová Lhota 1, fara",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G1",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "neděle",
-   "popis": "přejezd na 09_Kasárna",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G1",
-   "typ": "U",
-   "kod": "U9",
-   "cislo": 9,
-   "kdy_text": "neděle",
-   "popis": "úklid etapy 09_Kasárna",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G1",
-   "typ": "U",
-   "kod": "U10",
-   "cislo": 10,
-   "kdy_text": "neděle",
-   "popis": "úklid etapy 10_Kohůtka",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G1",
-   "typ": "U",
-   "kod": "U11",
-   "cislo": 11,
-   "kdy_text": "neděle",
-   "popis": "úklid etapy 11_Huslenky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G1",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "ne 16:00 - 18:00",
-   "popis": "přejezd do cíle v Mikulově dobrovolně, po 17 hod už se pomalu balí",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G2",
-   "typ": "S",
-   "kod": "S",
-   "cislo": null,
-   "kdy_text": "pá 14-22",
-   "popis": "Práce na startu (H.),příprava startovních tašek, prezence týmů",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G2",
-   "typ": "N",
-   "kod": "N2/p",
-   "cislo": null,
-   "kdy_text": "pá-so 5:00",
-   "popis": "nocleh u startu, Ubytovna Gorol\nJablunkov 908, spí tam všichni na startu - 16 lůžek",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G2",
-   "typ": "S",
-   "kod": "S",
-   "cislo": null,
-   "kdy_text": "so 5:30 - 11:30",
-   "popis": "Práce na startu, prezence týmů",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G2",
-   "typ": "PK",
-   "kod": "PK3",
-   "cislo": 3,
-   "kdy_text": "",
-   "popis": "Ukončení předávky 03 Morávka, poděkování, odvoz banneru a flagu, kontakt B. —",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G2",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so 12:45 - 15 30",
-   "popis": "Přejezd ze startu na 23_Lučina",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G2",
-   "typ": "T",
-   "kod": "T23",
-   "cislo": 23,
-   "kdy_text": "so 15:30 - 18:00",
-   "popis": "Trasování etapa 23_Lučina, našipkováno jen po Radějov",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G2",
-   "typ": "N",
-   "kod": "N2/s",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "nocleh so 21_Nová Lhota",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G2",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "ne 7:30 - 9:00",
-   "popis": "přejezd 21 Nová Lhota . Mikulov",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G2",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "ne 9: 30 -?",
-   "popis": "pomoc v cíli, stavba brány, banneru, stánů, pohotovost pro výjezd  pro cokoli",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G3",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "pá odpoledne",
-   "popis": "Odjezd z Brna",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G3",
-   "typ": "N",
-   "kod": "N3/p",
-   "cislo": null,
-   "kdy_text": "pá-so 8:00",
-   "popis": "nocleh u startu, Ubytovna Gorol\nJablunkov 908, spí tam všichni na startu - 16 lůžek",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G3",
-   "typ": "S",
-   "kod": "S",
-   "cislo": null,
-   "kdy_text": "so 7:30 - 08:30",
-   "popis": "pomoc na startu - přivést brunch  pro všechny",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G3",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so 12:30-14:00",
-   "popis": "Přejez ze startu do 11 Huslenky - 1:30 přes SK",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G3",
-   "typ": "P",
-   "kod": "P11",
-   "cislo": 11,
-   "kdy_text": "so 14:45 - 19:30",
-   "popis": "Předávka 11_Huslenky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G3",
-   "typ": "PK",
-   "kod": "PK11",
-   "cislo": 11,
-   "kdy_text": "ne 19:30",
-   "popis": "Ukončení předávky 11_Huslenky",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G3",
-   "typ": "N",
-   "kod": "N3/s",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "nocleh Vizovice, Lázeňská 1116, Cheetah Holiday Club, platí se na místě cca 11 000 Kč",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G3",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "Neděle 7:30 - 8:00",
-   "popis": "Přejezd Vizovice - Bojkovice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G3",
-   "typ": "U",
-   "kod": "U17",
-   "cislo": 17,
-   "kdy_text": "neděle 8:00 - 9:30",
-   "popis": "úklid trasy 17 Bojkovice - většina autem, cca 3 km kolo",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G3",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "9:30 - 10:30",
-   "popis": "Přejezd St. Hrozenkov - Sudoměřice, nabrat Frantu",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G3",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "10:30 - 11:30",
-   "popis": "Přejezd  Sudoměřice - Mikulov",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G4",
-   "typ": "T",
-   "kod": "T1",
-   "cislo": 1,
-   "kdy_text": "pátek odpoledne",
-   "popis": "Trasování Etapy 01",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G4",
-   "typ": "U",
-   "kod": "U1",
-   "cislo": 1,
-   "kdy_text": "sobota/neděle",
-   "popis": "Úklid etapy 1",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G4",
-   "typ": "U",
-   "kod": "U2",
-   "cislo": 2,
-   "kdy_text": "sobota/neděle",
-   "popis": "Úklid etapy 2",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G5",
-   "typ": "N",
-   "kod": "N5/p",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "nocleh Prostřední Bečva 15, máme celou chatu, 12 lůžek",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G5",
-   "typ": "T",
-   "kod": "T8",
-   "cislo": 8,
-   "kdy_text": "so 9:00 - 11:00",
-   "popis": "Trasování etapa 8_Světlá",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G5",
-   "typ": "T",
-   "kod": "T9",
-   "cislo": 9,
-   "kdy_text": "so 10:00 - 13:00",
-   "popis": "Trasování etapa 9_Kasárně",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G5",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so 13:00 - 14:00",
-   "popis": "Přejezd 10_Kohútka - 19 Mikulčin vrch",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G5",
-   "typ": "T",
-   "kod": "T19",
-   "cislo": 19,
-   "kdy_text": "so 14:00 - 16:30",
-   "popis": "Trasování etapy 19_Mikulčin vrch - letos jsem nestihnul napíchat klacky na pole\nVemte něco s sebou tyče a palici. A zahradnický nůžky nebo mačetu. \nZarostlý místa, ty stejný.",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G5",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so 16:30 - 17:00",
-   "popis": "Přejezd 20_Strání - 21 Nová Lhota",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G5",
-   "typ": "N",
-   "kod": "N5s",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "nocleh so 21_Nová Lhota",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G5",
-   "typ": "PK",
-   "kod": "PK21",
-   "cislo": 21,
-   "kdy_text": "",
-   "popis": "Ukončení předávky 21 Nová Lhota - odvést věci- stojan",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G5",
-   "typ": "U",
-   "kod": "U18",
-   "cislo": 18,
-   "kdy_text": "",
-   "popis": "Úklid etapy 18",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G5",
-   "typ": "U",
-   "kod": "U19",
-   "cislo": 19,
-   "kdy_text": "neděle dopoledne",
-   "popis": "Úklid etapy 19",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G5",
-   "typ": "U",
-   "kod": "U20",
-   "cislo": 20,
-   "kdy_text": "neděle",
-   "popis": "Úklid etapy 20",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G5",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "neděle odpoledne",
-   "popis": "přejezd do cíle v Mikulově dobrovolně, po 17 hod už se pomalu balí",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so 8:30",
-   "popis": "Odjezd z Brna",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "T",
-   "kod": "T10",
-   "cislo": 10,
-   "kdy_text": "so 11:30 - 13:00",
-   "popis": "Trasování etapa 10_Kohútka",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so 13:00 - 13:30",
-   "popis": "Přejezd z 11_Kohútka do 12_Pulčín",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "T",
-   "kod": "T12",
-   "cislo": 12,
-   "kdy_text": "so 13:30 - 15:30",
-   "popis": "Trasování 12 Pulčín, je našipkováno",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so 15:30 - 17:30",
-   "popis": "Přejezd z 13_Študlov a do 15_Popov",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "T",
-   "kod": "T15",
-   "cislo": 15,
-   "kdy_text": "so 17:30 - 19:00",
-   "popis": "Trasování 15_dá se celý autem a je našipkováno",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "N",
-   "kod": "N6s",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "nocleh Vizovice, Lázeňská 1116, Cheetah Holiday Club, platí se na místě cca 11 000 Kč",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "PK",
-   "kod": "PK24",
-   "cislo": 24,
-   "kdy_text": "neděle 10:00",
-   "popis": "Ukončení předávky 24 Sudoměřice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "PK",
-   "kod": "PK25",
-   "cislo": 25,
-   "kdy_text": "neděle 11:30",
-   "popis": "Ukončení předávky 25 Hodonín",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "PK",
-   "kod": "PK26",
-   "cislo": 26,
-   "kdy_text": "neděle 12:30",
-   "popis": "Ukončení předávky 26 Týnec",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "PK",
-   "kod": "PK27",
-   "cislo": 27,
-   "kdy_text": "neděle 13:00",
-   "popis": "Ukončení předávky 27 Lanžhot",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "U",
-   "kod": "U27",
-   "cislo": 27,
-   "kdy_text": "",
-   "popis": "Úklid trasy 27 Lanžhot",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "PK",
-   "kod": "PK28",
-   "cislo": 28,
-   "kdy_text": "neděle 14:00",
-   "popis": "Ukončení předávky 28 Břeclav",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "U",
-   "kod": "U28",
-   "cislo": 28,
-   "kdy_text": "",
-   "popis": "Úklid trasy 28 Břeclav",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "PK",
-   "kod": "PK29",
-   "cislo": 29,
-   "kdy_text": "neděle 15:15",
-   "popis": "Ukončení předávky 29 Valtice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "U",
-   "kod": "U29",
-   "cislo": 29,
-   "kdy_text": "",
-   "popis": "Úklid trasy 29 Valtice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G6",
-   "typ": "PK",
-   "kod": "PK30",
-   "cislo": 30,
-   "kdy_text": "neděle 16:30",
-   "popis": "Ukončení předávky 30 Hlohovec",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G7",
-   "typ": "N",
-   "kod": "N5/p",
-   "cislo": null,
-   "kdy_text": "pá - so 8:00",
-   "popis": "nocleh Prostřední Bečva 15, máme celou chatu, 12 lůžek",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G7",
-   "typ": "T",
-   "kod": "T6",
-   "cislo": 6,
-   "kdy_text": "so 8:30 - 09:30",
-   "popis": "Trasování etapa 6_Bílá,  lepší dělat z kopce v protisměru!! ŠIPKY KŘÍDOVÝM SPREJEM - kvůli Lesy ČR",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G7",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so 09:30 - 11:00",
-   "popis": "Přejezd ze 6_Bílá do 13_Študlov",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G7",
-   "typ": "T",
-   "kod": "T13",
-   "cislo": 13,
-   "kdy_text": "so 11:00 - 13:30",
-   "popis": "Trasování etapy 13_Študlov",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G7",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so 13:30 - 16:30",
-   "popis": "Přejezd ze 14_Návojná do 24_Sudoměřice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G7",
-   "typ": "T",
-   "kod": "T24",
-   "cislo": 24,
-   "kdy_text": "so 16:30 - 19:00",
-   "popis": "Trasování 24_Sudoměřice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G7",
-   "typ": "N",
-   "kod": "N7s",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "nocleh so 21_Nová Lhota",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G7",
-   "typ": "U",
-   "kod": "U21",
-   "cislo": 21,
-   "kdy_text": "neděle",
-   "popis": "Úklid trasy 21 Nová Lhota",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G7",
-   "typ": "U",
-   "kod": "U22",
-   "cislo": 22,
-   "kdy_text": "neděle",
-   "popis": "Úklid trasy 22 Velká nad Veličkou",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G7",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "neděle odpoledne",
-   "popis": "Přejezd do cíle  dobrovolný, odevzdání materiálu",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G8",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "pá 17:00",
-   "popis": "Odjezd z Brna",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G8",
-   "typ": "T",
-   "kod": "T30",
-   "cislo": 30,
-   "kdy_text": "sobota",
-   "popis": "Trasování etapa 30_Hlohovec",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G8",
-   "typ": "T",
-   "kod": "T29",
-   "cislo": 29,
-   "kdy_text": "sobota",
-   "popis": "Trasování etapa 29_Valtice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G8",
-   "typ": "T",
-   "kod": "T28",
-   "cislo": 28,
-   "kdy_text": "sobota",
-   "popis": "Trasování etapa 28_Břeclav",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G8",
-   "typ": "N",
-   "kod": "N8/s",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "Chatová osad Danaj Lučina, kontakt  —",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G8",
-   "typ": "PK",
-   "kod": "PK23",
-   "cislo": 23,
-   "kdy_text": "ne 8:30",
-   "popis": "Ukončení předávky 23 Lučina, kdyby hrozila kolize se stihnutím zahájení 29 Valtice, tak ráno zavolejte\nnebo to odvezte nenápadně, aby to nebylo trapný ;-)",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G8",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "ne 8:30 - 9:30",
-   "popis": "Přejezd 23 Lučina do 29 Valtice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G8",
-   "typ": "PZ",
-   "kod": "PZ29",
-   "cislo": 29,
-   "kdy_text": "ne 10:00",
-   "popis": "Zahájení předávky 29 Valtice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G8",
-   "typ": "PZ",
-   "kod": "PZ30",
-   "cislo": 30,
-   "kdy_text": "ne 11:00",
-   "popis": "Zahájení předávky 30 Hlohovec",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G8",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "ne odpoledne",
-   "popis": "rekreace v okolí Hlohovce nebo v cíli a pohotovost pomoct poblíž",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G10",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so",
-   "popis": "Odjezd z Brna v sobotu",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G10",
-   "typ": "T",
-   "kod": "T27",
-   "cislo": 27,
-   "kdy_text": "sobota",
-   "popis": "Trasování T27 Lanžhot",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G10",
-   "typ": "T",
-   "kod": "T26",
-   "cislo": 26,
-   "kdy_text": "sobota",
-   "popis": "Trasování T26 Týnec",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G10",
-   "typ": "T",
-   "kod": "T25",
-   "cislo": 25,
-   "kdy_text": "sobota",
-   "popis": "Trasování T25 Hodonín",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G10",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "přejezd na předávku 23 Lučina",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G10",
-   "typ": "N",
-   "kod": "N10/s",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "nocleh Chatová osad Danaj Lučina s Frantou v chatce",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G10",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "přejezd Z 23 Lučina na 24 Sudoměřice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G10",
-   "typ": "U",
-   "kod": "U24",
-   "cislo": 24,
-   "kdy_text": "lze od cca 10 hod neděle",
-   "popis": "Úklid etapy 24 Sudoměřice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G10",
-   "typ": "U",
-   "kod": "U25",
-   "cislo": 25,
-   "kdy_text": "lze od cca 11:30 hod neděle",
-   "popis": "Úklid etapy 25 Hodonín",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G10",
-   "typ": "U",
-   "kod": "U26",
-   "cislo": 26,
-   "kdy_text": "",
-   "popis": "Úklid etapy 26 týnec",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G11",
-   "typ": "T",
-   "kod": "T16",
-   "cislo": 16,
-   "kdy_text": "sobota za světla",
-   "popis": "Trasování etapa 16_Rokytnice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G11",
-   "typ": "T",
-   "kod": "T17",
-   "cislo": 17,
-   "kdy_text": "sobota za světla",
-   "popis": "Trasování etapy 17_Bojkovice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G12",
-   "typ": "T",
-   "kod": "T14",
-   "cislo": 14,
-   "kdy_text": "13:00 - 15:00",
-   "popis": "Trasování etapa 14_Návojná (šipky v lese - jen křídovým sprejem!!!) silnice jsou hotový",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G12",
-   "typ": "PK",
-   "kod": "PK15",
-   "cislo": 15,
-   "kdy_text": "so 0:00",
-   "popis": "Ukončení předávky 15",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G12",
-   "typ": "PK",
-   "kod": "PK16",
-   "cislo": 16,
-   "kdy_text": "",
-   "popis": "Ukončení předávky 16",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G12",
-   "typ": "PK",
-   "kod": "PK17",
-   "cislo": 17,
-   "kdy_text": "",
-   "popis": "Ukončení předávky 17",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G12",
-   "typ": "PK",
-   "kod": "PK18",
-   "cislo": 18,
-   "kdy_text": "",
-   "popis": "Ukončení předávky 18",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G12",
-   "typ": "PK",
-   "kod": "PK19",
-   "cislo": 19,
-   "kdy_text": "",
-   "popis": "Ukončení předávky 19",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G12",
-   "typ": "PK",
-   "kod": "PK20",
-   "cislo": 20,
-   "kdy_text": "cca ne 5:00",
-   "popis": "Ukončení předávky 20",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "Přjezd z 20 Strání do 21 Nová Lhota 1 - fara, opřít posbíraný materiál venku o dům nebo dát do chodby",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "pá",
-   "popis": "Odjezd z Brna",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "T",
-   "kod": "T5",
-   "cislo": 5,
-   "kdy_text": "pátek večer",
-   "popis": "Trasování etapy 05 Staré Hamry",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "N",
-   "kod": "N13/p",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "nocleh Prostřední Bečva 15, máme celou chatu, 12 lůžek",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "P",
-   "kod": "P5",
-   "cislo": 5,
-   "kdy_text": "so 9-15",
-   "popis": "Předávka 05_Staré Hamry",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "PK",
-   "kod": "PK05",
-   "cislo": 5,
-   "kdy_text": "so 15:00",
-   "popis": "Ukončení předávky 05_Staré Hamry, odvoz banneru a flagu",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "U",
-   "kod": "U5",
-   "cislo": 5,
-   "kdy_text": "",
-   "popis": "Úklid trasy 05 Staré Hamry",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "PK",
-   "kod": "PK06",
-   "cislo": 6,
-   "kdy_text": "so 15:45",
-   "popis": "Ukončení předávky 06_Bílá, odvoz banneru a flagu",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "PK",
-   "kod": "PK07",
-   "cislo": 7,
-   "kdy_text": "so 16:15",
-   "popis": "Ukončení předávky 07_Bumbálka, odvoz banneru a flagu",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "U",
-   "kod": "U7",
-   "cislo": 7,
-   "kdy_text": "so 17:30 - 19:00",
-   "popis": "Úklid trasy 07 Bumbálka,  možná lepší pěšky? viz H. loni",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "PK",
-   "kod": "PK08",
-   "cislo": 8,
-   "kdy_text": "so 17:00",
-   "popis": "Ukončení předávky 08_Světlá, odvoz banneru a flagu",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "U",
-   "kod": "U8",
-   "cislo": 8,
-   "kdy_text": "so 17:45 - 19",
-   "popis": "Úklid trasy 8 Světlá lepší dělat z kopce v protisměru!!",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "N",
-   "kod": "N13/s",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "nocleh Vizovice, Lázeňská 1116, Cheetah Holiday Club",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "PK",
-   "kod": "PK12",
-   "cislo": 12,
-   "kdy_text": "neděle",
-   "popis": "Ukončení předávky 12 Pulčín - odvést věci",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "U",
-   "kod": "U12",
-   "cislo": 12,
-   "kdy_text": "neděle",
-   "popis": "Úklid trasy 12 Pulčn",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "PK",
-   "kod": "PK13",
-   "cislo": 13,
-   "kdy_text": "neděle",
-   "popis": "Ukončení předávky 13 Študlov - odvést věci",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "U",
-   "kod": "U13",
-   "cislo": 13,
-   "kdy_text": "neděle",
-   "popis": "Úklid trasy 13 Študlov",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "PK",
-   "kod": "PK14",
-   "cislo": 14,
-   "kdy_text": "neděle",
-   "popis": "Ukončení předávky 14 Návojná - odvést věci",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G13",
-   "typ": "U",
-   "kod": "U14",
-   "cislo": 14,
-   "kdy_text": "neděle",
-   "popis": "Úklid trasy 14 Návojná",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G14",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "pátek po 13 hod",
-   "popis": "Přebrat klíče Ubytovna Gorol\nJablunkov 908, zavolat — a u tenisové haly přebrat klíče",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G14",
-   "typ": "S",
-   "kod": "S",
-   "cislo": null,
-   "kdy_text": "pá ?-22",
-   "popis": "Práce na startu,příprava startovních tašek, prezence týmů, pustit muziku",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G14",
-   "typ": "S",
-   "kod": "S",
-   "cislo": null,
-   "kdy_text": "05:30 -11:40",
-   "popis": "Moderace startu",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G14",
-   "typ": "PK",
-   "kod": "PK02",
-   "cislo": 2,
-   "kdy_text": "so 12:30",
-   "popis": "Ukončení předávky 02 Horní Lomná",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G14",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so 12:30 - 13:30",
-   "popis": "Přejezd z 02 na 04",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G14",
-   "typ": "PK",
-   "kod": "PK04",
-   "cislo": 4,
-   "kdy_text": "so 14:00",
-   "popis": "Ukončení předávky 04 Visalaje",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G14",
-   "typ": "U",
-   "kod": "U6",
-   "cislo": 6,
-   "kdy_text": "so 16:00 - 16:45",
-   "popis": "Úklid trasy 06 Bílá,  lepší dělat z kopce v protisměru z Bumbálky!!",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G14",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "cca 17:00",
-   "popis": "Přebrání objemných věcí od G13 - Helenka na 07 nebo 08",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G14",
-   "typ": "PK",
-   "kod": "PK09",
-   "cislo": 9,
-   "kdy_text": "so 17:15",
-   "popis": "Ukončení předávky 09 Kasárna",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G14",
-   "typ": "PK",
-   "kod": "PK10",
-   "cislo": 10,
-   "kdy_text": "so 18:15",
-   "popis": "Ukončení předávky 10 Kohútka",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G14",
-   "typ": "N",
-   "kod": "N14/s",
-   "cislo": null,
-   "kdy_text": "ne 7:30",
-   "popis": "nocleh so 21_Nová Lhota",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G14",
-   "typ": "PK",
-   "kod": "PK22",
-   "cislo": 22,
-   "kdy_text": "ne 8:30",
-   "popis": "Ukončení předávky 22 Velké nad Veličkou",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G0A",
-   "typ": "PZ",
-   "kod": "PZ28",
-   "cislo": 28,
-   "kdy_text": "ne 9:45",
-   "popis": "Zahájení předávky P28 Břeclav",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G14",
-   "typ": "C",
-   "kod": "C",
-   "cislo": null,
-   "kdy_text": "ne 10-?",
-   "popis": "Pomoc v cíli",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G15",
-   "typ": "T",
-   "kod": "T3",
-   "cislo": 3,
-   "kdy_text": "pátek večer",
-   "popis": "Trasování etapy 03 Morávka",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G15",
-   "typ": "T",
-   "kod": "T4",
-   "cislo": 4,
-   "kdy_text": "pátek večer",
-   "popis": "Trasování etapy 04 Visalaje",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G16",
-   "typ": "T",
-   "kod": "T18",
-   "cislo": 18,
-   "kdy_text": "sobota",
-   "popis": "Trasování etapy 18 Starý Hrozenkov",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G17",
-   "typ": "N",
-   "kod": "N17/s",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "nocleh Vizovice, Lázeňská 1116, Cheetah Holiday Club",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G17",
-   "typ": "U",
-   "kod": "U15",
-   "cislo": 15,
-   "kdy_text": "",
-   "popis": "Úklid etapa 15 Popov",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G17",
-   "typ": "U",
-   "kod": "U16",
-   "cislo": 16,
-   "kdy_text": "",
-   "popis": "Úklid etapa 16 Rokytnice",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G18",
-   "typ": "T",
-   "kod": "T21",
-   "cislo": 21,
-   "kdy_text": "sobota",
-   "popis": "Trasování etapy 21 Nová Lhota",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G18",
-   "typ": "T",
-   "kod": "T22",
-   "cislo": 22,
-   "kdy_text": "sobota",
-   "popis": "Trasování etapy 22 Velká nad Veličkou",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G18",
-   "typ": "N",
-   "kod": "N18/s",
-   "cislo": null,
-   "kdy_text": "vstát v 7:00",
-   "popis": "Chatová osad Danaj Lučina, vstávat na budík, snídaně na předávce, vyrazit nejpozději v 7:30",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G18",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "10:30 - 11:30",
-   "popis": "Přejezd z 24 Sumoměřice do cíle Mikulov s Pepkou",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "G18",
-   "typ": "C",
-   "kod": "C",
-   "cislo": null,
-   "kdy_text": "11:30 - 17:30",
-   "popis": "Hlášení týmů v cíli",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "ZVUK",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "ne 09:00",
-   "popis": "Příjez Mikulov, cca v 9:hod, kouknout večer na průběh",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "ZVUK",
-   "typ": "C",
-   "kod": "C",
-   "cislo": null,
-   "kdy_text": "so 13 - 19",
-   "popis": "Moderace,posílat lidi se vyfotit před reklamní banner, posílat ke stánku s trikama, Zapisovat na šmírák\na hned úhledně do formuláře předávka",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "ZVUK",
-   "typ": "C",
-   "kod": "C",
-   "cislo": null,
-   "kdy_text": "ne 11:00-18:00",
-   "popis": "H. měření v cíli a obsazení lidí u vysílačky- primárně  F. a T., \nNež přijedou, sehnat si někoho z týmu v cíli",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "FOTO",
-   "typ": "N",
-   "kod": "NF/p",
-   "cislo": null,
-   "kdy_text": "pá - so 5:00",
-   "popis": "vlastní",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "FOTO",
-   "typ": "S",
-   "kod": "S",
-   "cislo": null,
-   "kdy_text": "5:45 - cca 8",
-   "popis": "Foto na startu",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "FOTO",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "so",
-   "popis": "lokace dle doporučení",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "FOTO",
-   "typ": "N",
-   "kod": "NS",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "Vlastní",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "FOTO",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "ne",
-   "popis": "lokace dle doporučení",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "FOTO",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "cca 11:30",
-   "popis": "Příjezd do cíle , hlídat si čas prvního týmu v cíli",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "FOTO",
-   "typ": "C",
-   "kod": "C",
-   "cislo": null,
-   "kdy_text": "ne 12-19",
-   "popis": "Focení všech dobíhajících a všech týmů na pódiu - T. M.",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "GASTRO",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "neděle 10-19",
-   "popis": "První běžci v cíli kolem 12 hod, první lidi v 10?",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "GASTRO",
-   "typ": "A",
-   "kod": "A",
-   "cislo": null,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "ZDRAV",
-   "typ": "S",
-   "kod": "ZDRAV",
-   "cislo": null,
-   "kdy_text": "so 19 – ne 06",
-   "popis": "Zdravotní dohled ZZS Zlín, dispečer — L. Z.",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "IT",
-   "typ": "S",
-   "kod": "IT",
-   "cislo": null,
-   "kdy_text": "so 08–22, ne 08–18",
-   "popis": "IT podpora, J. H.",
-   "stav": "plán",
-   "zdroj": "podrobný"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P2",
-   "cislo": 2,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P3",
-   "cislo": 3,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "G15",
-   "typ": "U",
-   "kod": "U3",
-   "cislo": 3,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "G15",
-   "typ": "P",
-   "kod": "P4",
-   "cislo": 4,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "G15",
-   "typ": "U",
-   "kod": "U4",
-   "cislo": 4,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P6",
-   "cislo": 6,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P7",
-   "cislo": 7,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P8",
-   "cislo": 8,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P9",
-   "cislo": 9,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P10",
-   "cislo": 10,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P12",
-   "cislo": 12,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P13",
-   "cislo": 13,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P14",
-   "cislo": 14,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P15",
-   "cislo": 15,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P16",
-   "cislo": 16,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P17",
-   "cislo": 17,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P18",
-   "cislo": 18,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P19",
-   "cislo": 19,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P20",
-   "cislo": 20,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P21",
-   "cislo": 21,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P22",
-   "cislo": 22,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P23",
-   "cislo": 23,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P24",
-   "cislo": 24,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P25",
-   "cislo": 25,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P26",
-   "cislo": 26,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P27",
-   "cislo": 27,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P28",
-   "cislo": 28,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P29",
-   "cislo": 29,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "domácí",
-   "typ": "P",
-   "kod": "P30",
-   "cislo": 30,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "G0B",
-   "typ": "U",
-   "kod": "U30",
-   "cislo": 30,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  },
-  {
-   "parta": "ZVUK",
-   "typ": "P",
-   "kod": "P31",
-   "cislo": 31,
-   "kdy_text": "",
-   "popis": "",
-   "stav": "plán",
-   "zdroj": "hrubý"
-  }
- ]
-};;
+  nastaveni: { aktivni_rok: "HB26", datum_zavodu: "" },
+
+  // tymy_org (HB25) + barva a doprava pro potřeby prototypu
+  tymy: [
+    {kod:"G1",  nazev:"",                    poradi:1,  doprava:"osobní auto", barva:"#3F6B8A", poznamka:""},
+    {kod:"G2",  nazev:"",                    poradi:2,  doprava:"osobní auto", barva:"#C9A227", poznamka:""},
+    {kod:"G3",  nazev:"",                    poradi:3,  doprava:"osobní auto", barva:"#B4533A", poznamka:""},
+    {kod:"G4",  nazev:"Dolní Lomná — místní",poradi:4,  doprava:"",            barva:"#B07C3F", poznamka:"v prototypu v1 chyběla"},
+    {kod:"G5",  nazev:"",                    poradi:5,  doprava:"osobní auto", barva:"#C97B2C", poznamka:""},
+    {kod:"G6",  nazev:"",                    poradi:6,  doprava:"osobní auto", barva:"#4E9BA6", poznamka:""},
+    {kod:"G7",  nazev:"",                    poradi:7,  doprava:"osobní auto", barva:"#5E8C3A", poznamka:""},
+    {kod:"G8",  nazev:"",                    poradi:8,  doprava:"osobní auto", barva:"#8A6FA8", poznamka:""},
+    {kod:"IT",  nazev:"IT podpora",          poradi:9,  doprava:"",            barva:"#46586B", poznamka:""},
+    {kod:"G0A", nazev:"Vedení, dodávka A",   poradi:10, doprava:"dodávka",     barva:"#7B3F17", poznamka:""},
+    {kod:"G0B", nazev:"Vedení, dodávka B",   poradi:11, doprava:"dodávka",     barva:"#9A5A22", poznamka:""},
+    {kod:"G10", nazev:"",                    poradi:12, doprava:"osobní auto", barva:"#7A6A55", poznamka:""},
+    {kod:"G11", nazev:"",                    poradi:13, doprava:"osobní auto", barva:"#A63D4E", poznamka:""},
+    {kod:"G12", nazev:"",                    poradi:14, doprava:"osobní auto", barva:"#8E9A3C", poznamka:""},
+    {kod:"G13", nazev:"",                    poradi:15, doprava:"dodávka",     barva:"#5B4A8C", poznamka:""},
+    {kod:"G14", nazev:"",                    poradi:16, doprava:"dodávka",     barva:"#D08C3A", poznamka:""},
+    {kod:"G15", nazev:"",                    poradi:17, doprava:"osobní auto", barva:"#6E8FB5", poznamka:""},
+    {kod:"G16", nazev:"",                    poradi:18, doprava:"osobní auto", barva:"#4B7A5E", poznamka:""},
+    {kod:"G17", nazev:"",                    poradi:19, doprava:"osobní auto", barva:"#A8794F", poznamka:""},
+    {kod:"G18", nazev:"",                    poradi:20, doprava:"veřejná",     barva:"#3E7C6B", poznamka:""},
+    {kod:"FOTO",  nazev:"Fotografové",       poradi:21, doprava:"",            barva:"#8C4E6B", poznamka:""},
+    {kod:"ZVUK",  nazev:"Zvuk a moderace",   poradi:22, doprava:"dodávka",     barva:"#5A5A6E", poznamka:""},
+    {kod:"VIDEO", nazev:"Video",             poradi:23, doprava:"",            barva:"#6B5B8C", poznamka:""},
+    {kod:"GASTRO",nazev:"Občerstvení",       poradi:24, doprava:"",            barva:"#A2733C", poznamka:""},
+    {kod:"ZDRAV", nazev:"Zdravotní dohled",
+                                             poradi:25, doprava:"",            barva:"#8C3A3A", poznamka:"ZZS Zlín, dodavatel — bez jmen v tabulce"},
+    {kod:"domácí",nazev:"Místní pořadatelé",
+                                             poradi:26, doprava:"",            barva:"#96907F", poznamka:"místní grupy na předávkách, vedou se bez jmen"}
+  ],
+
+  // clenove_tymu (HB25)
+  clenove: [
+    {kod_tymu:"G0A",jmeno:"Keksa",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G0A",jmeno:"Pospec",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G0B",jmeno:"Ňufa",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G0B",jmeno:"Véna",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G1",jmeno:"Martin Běhal",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G1",jmeno:"Jarda Riedl",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G1",jmeno:"Jan Riedl",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G2",jmeno:"Youzza",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G2",jmeno:"Hanka",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G3",jmeno:"Pepička",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G3",jmeno:"Eva Němcová",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G4",jmeno:"Beata Kluzová",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G5",jmeno:"Olda Kos",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G5",jmeno:"Škodik",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G5",jmeno:"Fana",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G6",jmeno:"Spud Horys",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G6",jmeno:"Zdenda",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G6",jmeno:"Milan",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G7",jmeno:"Skejťák",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G7",jmeno:"Luigi",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G7",jmeno:"Morlor",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G8",jmeno:"Zuza",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G8",jmeno:"Monika",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G8",jmeno:"Žábák",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G10",jmeno:"Martin Hynek",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G10",jmeno:"Oliver Hynek",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G10",jmeno:"Albert Hynek",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G11",jmeno:"Libor Křižka (SDH Bojkovice)",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G12",jmeno:"Jiří Pinďák (SDH Popov)",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G13",jmeno:"Beri",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G13",jmeno:"Helena",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G13",jmeno:"Kuba Vemola",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G14",jmeno:"Přema Štěpánek",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G14",jmeno:"Prokop Štěpánek",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G14",jmeno:"Jarča",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G15",jmeno:"Adam Stýskal (Krásná)",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G16",jmeno:"SDH St. Hrozenkov",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G17",jmeno:"Martin Vybíral",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G17",jmeno:"Dáša Fuchsová",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G18",jmeno:"Franta Dvořák",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"G18",jmeno:"Tadeáš Doležel",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"FOTO",jmeno:"Michal Fajt",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"FOTO",jmeno:"Tomáš Mego",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"ZVUK",jmeno:"Jerza",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"ZVUK",jmeno:"Hofa",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"VIDEO",jmeno:"Dušan Lužný",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"VIDEO",jmeno:"Štěpán Glombek",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"GASTRO",jmeno:"Rado Drahoš",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""},
+    {kod_tymu:"IT",jmeno:"Jan Hermann",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""}
+  ],
+
+  // predavky HB26 (31 míst) + km/min na následující předávku z tabulky vzdalenosti
+  predavky: [
+    {cislo:1, nazev:"Dolní Lomná",       lat:49.5554500, lon:18.7335361, typ:"Local",      pozn:"", gpx:"", km:9.2, min:14},
+    {cislo:2, nazev:"Horní Lomná",       lat:49.5296144, lon:18.6379006, typ:"Local",      pozn:"", gpx:"", km:63.2, min:69},
+    {cislo:3, nazev:"Morávka",           lat:49.5612047, lon:18.5505747, typ:"Local",      pozn:"", gpx:"", km:6.7, min:25},
+    {cislo:4, nazev:"Visalaje",          lat:49.5177819, lon:18.5284303, typ:"Local",      pozn:"", gpx:"", km:49.1, min:63},
+    {cislo:5, nazev:"Staré Hamry",       lat:49.4859372, lon:18.4776239, typ:"Interně HB", pozn:"", gpx:"", km:9.0, min:16},
+    {cislo:6, nazev:"Bílá",              lat:49.4430025, lon:18.4581692, typ:"Local",      pozn:"", gpx:"", km:12.0, min:12},
+    {cislo:7, nazev:"Bumbálka",          lat:49.3990919, lon:18.4110378, typ:"Local",      pozn:"", gpx:"", km:13.9, min:17},
+    {cislo:8, nazev:"Světlá",            lat:49.3479767, lon:18.3689822, typ:"Local",      pozn:"", gpx:"", km:3.9, min:7},
+    {cislo:9, nazev:"Kasárne",           lat:49.3271775, lon:18.3816800, typ:"Local",      pozn:"", gpx:"", km:34.2, min:52},
+    {cislo:10,nazev:"Kohútka",           lat:49.2550597, lon:18.2187267, typ:"Local",      pozn:"", gpx:"", km:26.7, min:39},
+    {cislo:11,nazev:"Huslenky",          lat:49.2764436, lon:18.1477394, typ:"Interně HB", pozn:"", gpx:"", km:29.4, min:39},
+    {cislo:12,nazev:"Pulčín",            lat:49.2199331, lon:18.0768194, typ:"Local",      pozn:"", gpx:"", km:11.3, min:18},
+    {cislo:13,nazev:"Študlov",           lat:49.1585350, lon:18.0861778, typ:"Local",      pozn:"", gpx:"", km:16.4, min:20},
+    {cislo:14,nazev:"Návojná",           lat:49.1080494, lon:18.0479172, typ:"Local",      pozn:"", gpx:"", km:10.3, min:14},
+    {cislo:15,nazev:"Popov",             lat:49.0824411, lon:17.9709131, typ:"Local",      pozn:"", gpx:"", km:6.6, min:8},
+    {cislo:16,nazev:"Rokytnice",         lat:49.0667764, lon:17.9162406, typ:"Local",      pozn:"", gpx:"", km:9.5, min:11},
+    {cislo:17,nazev:"Bojkovice",         lat:49.0384564, lon:17.8171467, typ:"Local",      pozn:"", gpx:"", km:10.8, min:14},
+    {cislo:18,nazev:"Starý Hrozenkov",   lat:48.9706333, lon:17.8612167, typ:"Local",      pozn:"", gpx:"", km:9.3, min:10},
+    {cislo:19,nazev:"Mikulčin vrch",     lat:48.9498192, lon:17.8014039, typ:"Local",      pozn:"", gpx:"", km:16.5, min:24},
+    {cislo:20,nazev:"Strání",            lat:48.9137661, lon:17.6617256, typ:"Local",      pozn:"", gpx:"", km:20.4, min:20},
+    {cislo:21,nazev:"Nová Lhota",        lat:48.8608856, lon:17.5936308, typ:"Local",      pozn:"", gpx:"", km:10.5, min:15},
+    {cislo:22,nazev:"Velká nad Veličkou",lat:48.8801433, lon:17.5147478, typ:"Local",      pozn:"", gpx:"", km:20.9, min:30},
+    {cislo:23,nazev:"Lučina, koupaliště",lat:48.8611175, lon:17.3922178, typ:"Local",      pozn:"", gpx:"", km:14.7, min:19},
+    {cislo:24,nazev:"Sudoměřice",        lat:48.8643533, lon:17.2559186, typ:"Local",      pozn:"", gpx:"", km:14.7, min:19},
+    {cislo:25,nazev:"Hodonín",           lat:48.8437192, lon:17.1200578, typ:"Local",      pozn:"", gpx:"", km:17.4, min:21},
+    {cislo:26,nazev:"Týnec",             lat:48.7735797, lon:17.0116775, typ:"Local",      pozn:"", gpx:"", km:7.8, min:12},
+    {cislo:27,nazev:"Lanžhot",           lat:48.7235136, lon:16.9723267, typ:"Local",      pozn:"", gpx:"", km:7.4, min:11},
+    {cislo:28,nazev:"Břeclav",           lat:48.7428022, lon:16.8968669, typ:"Local",      pozn:"", gpx:"", km:10.1, min:16},
+    {cislo:29,nazev:"Valtice",           lat:48.7466506, lon:16.7923433, typ:"Local",      pozn:"", gpx:"", km:8.9, min:13},
+    {cislo:30,nazev:"Hlohovec",          lat:48.7795208, lon:16.7576239, typ:"Local",      pozn:"", gpx:"", km:20.5, min:26},
+    {cislo:31,nazev:"Mikulov",           lat:48.8130847, lon:16.6393036, typ:"",           pozn:"", gpx:"", km:null, min:null}
+  ],
+
+  // noclehy_adresy HB26
+  nocMista: [
+    {kod:"JABLUNKOV",nazev:"Sport resort Jablunkov",adresa:"",mapa_url:"",kapacita:16,pokoje:"16 lůžek, z toho dvoulůžák pro fotografa",kontakt:"",telefon:"",cena:"",platba:"zaplaceno",rezervace:"",poznamka:""},
+    {kod:"HBECVA",nazev:"Kemp u přehrady Horní Bečva",adresa:"",mapa_url:"",kapacita:16,pokoje:"16 osob",kontakt:"",telefon:"",cena:"",platba:"zaplaceno",rezervace:"",poznamka:""},
+    {kod:"PULCIN",nazev:"Penzion Pulčínské skály",adresa:"",mapa_url:"",kapacita:9,pokoje:"9 lidí ve 3 pokojích",kontakt:"",telefon:"",cena:"",platba:"zaplaceno",rezervace:"",poznamka:""},
+    {kod:"NLHOTA",nazev:"Ubytovna Nová Lhota č.p. 1",adresa:"",mapa_url:"",kapacita:28,pokoje:"1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka",kontakt:"",telefon:"",cena:"",platba:"",rezervace:"",poznamka:""},
+    {kod:"DANAJ",nazev:"Chatová osada Danaj Lučina",adresa:"",mapa_url:"",kapacita:10,pokoje:"2× chatka po 5 lůžkách",kontakt:"",telefon:"",cena:"",platba:"",rezervace:"",poznamka:""}
+  ],
+
+  nocLide: [],
+
+  // --- trička (podle HB_znalosti_tricka.md, 9. 8. 2026) ---
+  tricka: {
+    model_damsky:"Malfini RESIST R02", model_pansky:"Malfini VIPER 143",
+    barva:"bílá", velikost_loga:"A4", barva_loga:"", dodavatel:"BARTUNKOVA s.r.o.",
+    tymy_zaplaceno:83, tymy_ocekavano:7, koeficient:9.7, rezerva_pct:5
+  },
+  velikosti: [
+    // rada, kod, poradi, podíly z minulých ročníků, odhad pro letošek, pomocníci, sklad, objednat
+    {rada:"dámská", kod:"S",    poradi:1,  hb24:14.0, hb25:14.8, hb26:16.1, odhad:14.9, pomocnici:6,  sklad:100, objednat:45},
+    {rada:"dámská", kod:"M",    poradi:2,  hb24:13.8, hb25:12.3, hb26:11.5, odhad:12.4, pomocnici:10, sklad:100, objednat:25},
+    {rada:"dámská", kod:"L",    poradi:3,  hb24:3.9,  hb25:1.5,  hb26:2.8,  odhad:3.0,  pomocnici:9,  sklad:0,   objednat:40},
+    {rada:"dámská", kod:"XL",   poradi:4,  hb24:0.8,  hb25:0.4,  hb26:0.0,  odhad:0.3,  pomocnici:1,  sklad:0,   objednat:5},
+    {rada:"dámská", kod:"XXL",  poradi:5,  hb24:0.1,  hb25:0.0,  hb26:0.0,  odhad:0.0,  pomocnici:0,  sklad:0,   objednat:0},
+    {rada:"pánská", kod:"S",    poradi:6,  hb24:4.9,  hb25:6.2,  hb26:4.8,  odhad:6.0,  pomocnici:2,  sklad:0,   objednat:60},
+    {rada:"pánská", kod:"M",    poradi:7,  hb24:28.1, hb25:30.1, hb26:26.2, odhad:26.4, pomocnici:19, sklad:250, objednat:15},
+    {rada:"pánská", kod:"L",    poradi:8,  hb24:28.0, hb25:27.4, hb26:29.0, odhad:29.8, pomocnici:36, sklad:250, objednat:60},
+    {rada:"pánská", kod:"XL",   poradi:9,  hb24:5.3,  hb25:6.5,  hb26:7.9,  odhad:6.0,  pomocnici:22, sklad:50,  objednat:30},
+    {rada:"pánská", kod:"XXL",  poradi:10, hb24:1.2,  hb25:0.9,  hb26:1.7,  odhad:1.3,  pomocnici:15, sklad:0,   objednat:30},
+    {rada:"pánská", kod:"XXXL", poradi:11, hb24:0.0,  hb25:0.0,  hb26:0.0,  odhad:0.0,  pomocnici:1,  sklad:0,   objednat:3},
+    {rada:"pánská", kod:"4XL",  poradi:12, hb24:0.0,  hb25:0.0,  hb26:0.0,  odhad:0.0,  pomocnici:0,  sklad:0,   objednat:2}
+  ],
+  objednavky: [
+    {rok:"HB24", vlna:1, datum:"2024-08-05", pocet:592,  castka:"76 942 Kč",  poznamka:""},
+    {rok:"HB24", vlna:2, datum:"",           pocet:269,  castka:"61 309 Kč",  poznamka:""},
+    {rok:"HB24", vlna:3, datum:"",           pocet:140,  castka:"6 501 Kč",   poznamka:""},
+    {rok:"HB25", vlna:1, datum:"2025-07-03", pocet:305,  castka:"59 901 Kč",  poznamka:""},
+    {rok:"HB25", vlna:2, datum:"2025-08-11", pocet:405,  castka:"104 486 Kč", poznamka:"včetně 9 mikin CAPE a 9 merino RISE pro organizátory"},
+    {rok:"HB25", vlna:3, datum:"2025-08-11", pocet:303,  castka:"64 298 Kč",  poznamka:""},
+    {rok:"HB26", vlna:1, datum:"",           pocet:750,  castka:"",           poznamka:"už na skladě"},
+    {rok:"HB26", vlna:2, datum:"",           pocet:315,  castka:"",           poznamka:"plán podle přehledu níž"}
+  ],
+
+  // --- přístupy k webu ---
+  urovne: [
+    {kod:"SPRAVCE", nazev:"Správce",       popis:"Vidí a mění všechno včetně přístupů a kontaktů.", poradi:1},
+    {kod:"VEDOUCI", nazev:"Vedoucí party", popis:"Vidí celý plán, mění úkoly a noclehy, kontakty jen čte.", poradi:2},
+    {kod:"HOST",    nazev:"Host",          popis:"Jen si čte plán a předávky, kontakty nevidí vůbec.", poradi:3}
+  ],
+  prava: {
+    "SPRAVCE": {tricka:"zápis", ukoly:"zápis", tymy_org:"zápis", clenove_tymu:"zápis", kontakty:"zápis",
+                predavky:"zápis", nastaveni:"zápis", noclehy_adresy:"zápis", noclehy_lide:"zápis", pristupy:"zápis"},
+    "VEDOUCI": {tricka:"čtení", ukoly:"zápis", tymy_org:"čtení", clenove_tymu:"čtení", kontakty:"čtení",
+                predavky:"čtení", nastaveni:"čtení", noclehy_adresy:"čtení", noclehy_lide:"zápis", pristupy:"žádné"},
+    "HOST":    {ukoly:"čtení", tymy_org:"čtení", clenove_tymu:"žádné", kontakty:"žádné",
+                predavky:"čtení", nastaveni:"žádné", noclehy_adresy:"žádné", noclehy_lide:"žádné", pristupy:"žádné"}
+  },
+  uzivatele: [
+    {email:"", jmeno:"Keksa", uroven:"SPRAVCE", kod_tymu:"G0A", aktivni:"ano", heslo_hash:"b9c229404570d56f1011e5e73f5bd5e39a420f1481c5ea636b25689bdda50314", poznamka:""}
+  ],
+
+  // ukoly — jeden seznam pro všechny typy, přesně jak to má tabulka ukoly v databázi.
+  // Vzor HB25 vytažený z Google tabulky „HB2025 public", listy „HB25 plán podrobný"
+  // (201 úkolů včetně časů a popisů) a „HB25 plán hrubý" (31 úkolů navíc, hlavně
+  // obsluha předávek místními). Celkem 234 úkolů.
+  ukoly: [{"parta":"G0A","typ":"A","kod":"A","cislo":null,"kdy_text":"pá 10:00","popis":"odjezd z Brna pátek 10","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"S","kod":"S","cislo":null,"kdy_text":"","popis":"Práce na startu","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ2","cislo":2,"kdy_text":"so 6:30","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ4","cislo":4,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ6","cislo":6,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ7","cislo":7,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ8","cislo":8,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ9","cislo":9,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ10","cislo":10,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ11","cislo":11,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ12","cislo":12,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ13","cislo":13,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ14","cislo":14,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ15","cislo":15,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ16","cislo":16,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ17","cislo":17,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ18","cislo":18,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ19","cislo":19,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ20","cislo":20,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ21","cislo":21,"kdy_text":"ne 3:00","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ25","cislo":25,"kdy_text":"ne 7:00","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ26","cislo":26,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ27","cislo":27,"kdy_text":"","popis":"Zahájení předávky","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"A","kod":"A","cislo":null,"kdy_text":"pá 13:00","popis":"Odjezd z Brna","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"T","kod":"T2","cislo":2,"kdy_text":"pá 16-19","popis":"Trasování E2  Horní Lomná v protisměru z Morávky\nprojet autem posledních 5km, vysadit Ňufu - asi lepší zančit pešky\nVéna poslednícj 5km označit cestou zpět bez Ňufy\ndodržte to prosím takhle, ať časově vychází s rukama na startu","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"A","kod":"A","cislo":null,"kdy_text":"pá 16-17","popis":"Véna přejezd na start - práce tam","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"S","kod":"S","cislo":null,"kdy_text":"pá 19-22","popis":"Práce na startu,prezence týmů","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"N","kod":"N0B/p","cislo":null,"kdy_text":"pá-so 7:00","popis":"Ubytovna Gorol, Jablunkov 908","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"A","kod":"A","cislo":null,"kdy_text":"so 7:00 - ne 22:00","popis":"Pohyb po trati poblíž čela závodu,  pohotovost na záskok za kohokoliv.","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"PZ","kod":"PZ3","cislo":3,"kdy_text":"so 8:10","popis":"Zahájení předávky P3 Morávka","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"PZ","kod":"PZ5","cislo":5,"kdy_text":"so 9.30","popis":"Zahájení předávky P5 Staré Hamry Grúň","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"A","kod":"A","cislo":null,"kdy_text":"So 9:00 - 22:00","popis":"Pohybovat se do hodiny od dodávky Keksa","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"N","kod":"N0/s","cislo":null,"kdy_text":"23 - 02:30","popis":"nocleh so 21_Nová Lhota nebo dle libosti","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"PZ","kod":"PZ22","cislo":22,"kdy_text":"ne 3:15","popis":"Zahájení předávky P22_Velká_nad_Veličkou - zkušení místní","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"PZ","kod":"PZ23","cislo":23,"kdy_text":"ne 4:00","popis":"Zahájení předávky P23_Lučina - Jirka Gajdoš- běžec, už předávku dělal","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"PZ","kod":"PZ24","cislo":24,"kdy_text":"ne 5:15","popis":"Zahájení předávky P24_Sudoměřice - Milan - zkušení místní","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"A","kod":"A","cislo":null,"kdy_text":"ne 8 - 8:30","popis":"Přejezd do ATC Pasohlávky, převzetí pivních setů 35 ks stolů 70 lavic, kontakt na místě [telefon jen v plné verzi]","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"A","kod":"A","cislo":null,"kdy_text":"ne 9:30","popis":"Vyložení pivních setů Mikulov","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"C","kod":"C","cislo":null,"kdy_text":"ne 10-19","popis":"pomoc v cíli","stav":"plán","zdroj":"podrobný"},{"parta":"G0B","typ":"A","kod":"A","cislo":null,"kdy_text":"ne cca 19 hod","popis":"Složit sety v amfiteátru","stav":"plán","zdroj":"podrobný"},{"parta":"G1","typ":"N","kod":"N1/p","cislo":null,"kdy_text":"pá - so 7:00","popis":"nocleh Prostřední Bečva 15, máme celou chatu, 12 lůžek","stav":"plán","zdroj":"podrobný"},{"parta":"G1","typ":"T","kod":"T7","cislo":7,"kdy_text":"so 8:00 - 10:00","popis":"Trasování etapy 07_Bumbálka -","stav":"plán","zdroj":"podrobný"},{"parta":"G1","typ":"A","kod":"A","cislo":null,"kdy_text":"so 10:00 - 11:00","popis":"Přejezd na 11_Huslenky","stav":"plán","zdroj":"podrobný"},{"parta":"G1","typ":"T","kod":"T11","cislo":11,"kdy_text":"so 11:00 - 13:30","popis":"Trasování etapy 11_Huslenky - konec v Pulčíně už je našipkováno","stav":"plán","zdroj":"podrobný"},{"parta":"G1","typ":"A","kod":"A","cislo":null,"kdy_text":"so 13:30 - 15:00","popis":"Přejezd na 15_Popov- doporučuju oběd Čertovy skály https://mapy.cz/s/guhutugake","stav":"plán","zdroj":"podrobný"},{"parta":"G1","typ":"T","kod":"T20","cislo":20,"kdy_text":"so 15:00-16.30","popis":"Trasování etapy 20_ Strání, našipkován konec","stav":"plán","zdroj":"podrobný"},{"parta":"G1","typ":"N","kod":"N1/s","cislo":null,"kdy_text":"ne 8:00","popis":"nocleh so 21_Nová Lhota 1, fara","stav":"plán","zdroj":"podrobný"},{"parta":"G1","typ":"A","kod":"A","cislo":null,"kdy_text":"neděle","popis":"přejezd na 09_Kasárna","stav":"plán","zdroj":"podrobný"},{"parta":"G1","typ":"U","kod":"U9","cislo":9,"kdy_text":"neděle","popis":"úklid etapy 09_Kasárna","stav":"plán","zdroj":"podrobný"},{"parta":"G1","typ":"U","kod":"U10","cislo":10,"kdy_text":"neděle","popis":"úklid etapy 10_Kohůtka","stav":"plán","zdroj":"podrobný"},{"parta":"G1","typ":"U","kod":"U11","cislo":11,"kdy_text":"neděle","popis":"úklid etapy 11_Huslenky","stav":"plán","zdroj":"podrobný"},{"parta":"G1","typ":"A","kod":"A","cislo":null,"kdy_text":"ne 16:00 - 18:00","popis":"přejezd do cíle v Mikulově dobrovolně, po 17 hod už se pomalu balí","stav":"plán","zdroj":"podrobný"},{"parta":"G2","typ":"S","kod":"S","cislo":null,"kdy_text":"pá 14-22","popis":"Práce na startu (Hanka),příprava startovních tašek, prezence týmů","stav":"plán","zdroj":"podrobný"},{"parta":"G2","typ":"N","kod":"N2/p","cislo":null,"kdy_text":"pá-so 5:00","popis":"nocleh u startu, Ubytovna Gorol\nJablunkov 908, spí tam všichni na startu - 16 lůžek","stav":"plán","zdroj":"podrobný"},{"parta":"G2","typ":"S","kod":"S","cislo":null,"kdy_text":"so 5:30 - 11:30","popis":"Práce na startu, prezence týmů","stav":"plán","zdroj":"podrobný"},{"parta":"G2","typ":"PK","kod":"PK3","cislo":3,"kdy_text":"","popis":"Ukončení předávky 03 Morávka, poděkování, odvoz banneru a flagu, kontakt Bohm [telefon jen v plné verzi]","stav":"plán","zdroj":"podrobný"},{"parta":"G2","typ":"A","kod":"A","cislo":null,"kdy_text":"so 12:45 - 15 30","popis":"Přejezd ze startu na 23_Lučina","stav":"plán","zdroj":"podrobný"},{"parta":"G2","typ":"T","kod":"T23","cislo":23,"kdy_text":"so 15:30 - 18:00","popis":"Trasování etapa 23_Lučina, našipkováno jen po Radějov","stav":"plán","zdroj":"podrobný"},{"parta":"G2","typ":"N","kod":"N2/s","cislo":null,"kdy_text":"","popis":"nocleh so 21_Nová Lhota","stav":"plán","zdroj":"podrobný"},{"parta":"G2","typ":"A","kod":"A","cislo":null,"kdy_text":"ne 7:30 - 9:00","popis":"přejezd 21 Nová Lhota . Mikulov","stav":"plán","zdroj":"podrobný"},{"parta":"G2","typ":"A","kod":"A","cislo":null,"kdy_text":"ne 9: 30 -?","popis":"pomoc v cíli, stavba brány, banneru, stánů, pohotovost pro výjezd  pro cokoli","stav":"plán","zdroj":"podrobný"},{"parta":"G3","typ":"A","kod":"A","cislo":null,"kdy_text":"pá odpoledne","popis":"Odjezd z Brna","stav":"plán","zdroj":"podrobný"},{"parta":"G3","typ":"N","kod":"N3/p","cislo":null,"kdy_text":"pá-so 8:00","popis":"nocleh u startu, Ubytovna Gorol\nJablunkov 908, spí tam všichni na startu - 16 lůžek","stav":"plán","zdroj":"podrobný"},{"parta":"G3","typ":"S","kod":"S","cislo":null,"kdy_text":"so 7:30 - 08:30","popis":"pomoc na startu - přivést brunch  pro všechny","stav":"plán","zdroj":"podrobný"},{"parta":"G3","typ":"A","kod":"A","cislo":null,"kdy_text":"so 12:30-14:00","popis":"Přejez ze startu do 11 Huslenky - 1:30 přes SK","stav":"plán","zdroj":"podrobný"},{"parta":"G3","typ":"P","kod":"P11","cislo":11,"kdy_text":"so 14:45 - 19:30","popis":"Předávka 11_Huslenky","stav":"plán","zdroj":"podrobný"},{"parta":"G3","typ":"PK","kod":"PK11","cislo":11,"kdy_text":"ne 19:30","popis":"Ukončení předávky 11_Huslenky","stav":"plán","zdroj":"podrobný"},{"parta":"G3","typ":"N","kod":"N3/s","cislo":null,"kdy_text":"","popis":"nocleh Vizovice, Lázeňská 1116, Cheetah Holiday Club, platí se na místě cca 11 000 Kč","stav":"plán","zdroj":"podrobný"},{"parta":"G3","typ":"A","kod":"A","cislo":null,"kdy_text":"Neděle 7:30 - 8:00","popis":"Přejezd Vizovice - Bojkovice","stav":"plán","zdroj":"podrobný"},{"parta":"G3","typ":"U","kod":"U17","cislo":17,"kdy_text":"neděle 8:00 - 9:30","popis":"úklid trasy 17 Bojkovice - většina autem, cca 3 km kolo","stav":"plán","zdroj":"podrobný"},{"parta":"G3","typ":"A","kod":"A","cislo":null,"kdy_text":"9:30 - 10:30","popis":"Přejezd St. Hrozenkov - Sudoměřice, nabrat Frantu","stav":"plán","zdroj":"podrobný"},{"parta":"G3","typ":"A","kod":"A","cislo":null,"kdy_text":"10:30 - 11:30","popis":"Přejezd  Sudoměřice - Mikulov","stav":"plán","zdroj":"podrobný"},{"parta":"G4","typ":"T","kod":"T1","cislo":1,"kdy_text":"pátek odpoledne","popis":"Trasování Etapy 01","stav":"plán","zdroj":"podrobný"},{"parta":"G4","typ":"U","kod":"U1","cislo":1,"kdy_text":"sobota/neděle","popis":"Úklid etapy 1","stav":"plán","zdroj":"podrobný"},{"parta":"G4","typ":"U","kod":"U2","cislo":2,"kdy_text":"sobota/neděle","popis":"Úklid etapy 2","stav":"plán","zdroj":"podrobný"},{"parta":"G5","typ":"N","kod":"N5/p","cislo":null,"kdy_text":"","popis":"nocleh Prostřední Bečva 15, máme celou chatu, 12 lůžek","stav":"plán","zdroj":"podrobný"},{"parta":"G5","typ":"T","kod":"T8","cislo":8,"kdy_text":"so 9:00 - 11:00","popis":"Trasování etapa 8_Světlá","stav":"plán","zdroj":"podrobný"},{"parta":"G5","typ":"T","kod":"T9","cislo":9,"kdy_text":"so 10:00 - 13:00","popis":"Trasování etapa 9_Kasárně","stav":"plán","zdroj":"podrobný"},{"parta":"G5","typ":"A","kod":"A","cislo":null,"kdy_text":"so 13:00 - 14:00","popis":"Přejezd 10_Kohútka - 19 Mikulčin vrch","stav":"plán","zdroj":"podrobný"},{"parta":"G5","typ":"T","kod":"T19","cislo":19,"kdy_text":"so 14:00 - 16:30","popis":"Trasování etapy 19_Mikulčin vrch - letos jsem nestihnul napíchat klacky na pole\nVemte něco s sebou tyče a palici. A zahradnický nůžky nebo mačetu. \nZarostlý místa, ty stejný.","stav":"plán","zdroj":"podrobný"},{"parta":"G5","typ":"A","kod":"A","cislo":null,"kdy_text":"so 16:30 - 17:00","popis":"Přejezd 20_Strání - 21 Nová Lhota","stav":"plán","zdroj":"podrobný"},{"parta":"G5","typ":"N","kod":"N5s","cislo":null,"kdy_text":"","popis":"nocleh so 21_Nová Lhota","stav":"plán","zdroj":"podrobný"},{"parta":"G5","typ":"PK","kod":"PK21","cislo":21,"kdy_text":"","popis":"Ukončení předávky 21 Nová Lhota - odvést věci- stojan","stav":"plán","zdroj":"podrobný"},{"parta":"G5","typ":"U","kod":"U18","cislo":18,"kdy_text":"","popis":"Úklid etapy 18","stav":"plán","zdroj":"podrobný"},{"parta":"G5","typ":"U","kod":"U19","cislo":19,"kdy_text":"neděle dopoledne","popis":"Úklid etapy 19","stav":"plán","zdroj":"podrobný"},{"parta":"G5","typ":"U","kod":"U20","cislo":20,"kdy_text":"neděle","popis":"Úklid etapy 20","stav":"plán","zdroj":"podrobný"},{"parta":"G5","typ":"A","kod":"A","cislo":null,"kdy_text":"neděle odpoledne","popis":"přejezd do cíle v Mikulově dobrovolně, po 17 hod už se pomalu balí","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"A","kod":"A","cislo":null,"kdy_text":"so 8:30","popis":"Odjezd z Brna","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"T","kod":"T10","cislo":10,"kdy_text":"so 11:30 - 13:00","popis":"Trasování etapa 10_Kohútka","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"A","kod":"A","cislo":null,"kdy_text":"so 13:00 - 13:30","popis":"Přejezd z 11_Kohútka do 12_Pulčín","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"T","kod":"T12","cislo":12,"kdy_text":"so 13:30 - 15:30","popis":"Trasování 12 Pulčín, je našipkováno","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"A","kod":"A","cislo":null,"kdy_text":"so 15:30 - 17:30","popis":"Přejezd z 13_Študlov a do 15_Popov","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"T","kod":"T15","cislo":15,"kdy_text":"so 17:30 - 19:00","popis":"Trasování 15_dá se celý autem a je našipkováno","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"N","kod":"N6s","cislo":null,"kdy_text":"","popis":"nocleh Vizovice, Lázeňská 1116, Cheetah Holiday Club, platí se na místě cca 11 000 Kč","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"PK","kod":"PK24","cislo":24,"kdy_text":"neděle 10:00","popis":"Ukončení předávky 24 Sudoměřice","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"PK","kod":"PK25","cislo":25,"kdy_text":"neděle 11:30","popis":"Ukončení předávky 25 Hodonín","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"PK","kod":"PK26","cislo":26,"kdy_text":"neděle 12:30","popis":"Ukončení předávky 26 Týnec","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"PK","kod":"PK27","cislo":27,"kdy_text":"neděle 13:00","popis":"Ukončení předávky 27 Lanžhot","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"U","kod":"U27","cislo":27,"kdy_text":"","popis":"Úklid trasy 27 Lanžhot","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"PK","kod":"PK28","cislo":28,"kdy_text":"neděle 14:00","popis":"Ukončení předávky 28 Břeclav","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"U","kod":"U28","cislo":28,"kdy_text":"","popis":"Úklid trasy 28 Břeclav","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"PK","kod":"PK29","cislo":29,"kdy_text":"neděle 15:15","popis":"Ukončení předávky 29 Valtice","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"U","kod":"U29","cislo":29,"kdy_text":"","popis":"Úklid trasy 29 Valtice","stav":"plán","zdroj":"podrobný"},{"parta":"G6","typ":"PK","kod":"PK30","cislo":30,"kdy_text":"neděle 16:30","popis":"Ukončení předávky 30 Hlohovec","stav":"plán","zdroj":"podrobný"},{"parta":"G7","typ":"N","kod":"N5/p","cislo":null,"kdy_text":"pá - so 8:00","popis":"nocleh Prostřední Bečva 15, máme celou chatu, 12 lůžek","stav":"plán","zdroj":"podrobný"},{"parta":"G7","typ":"T","kod":"T6","cislo":6,"kdy_text":"so 8:30 - 09:30","popis":"Trasování etapa 6_Bílá,  lepší dělat z kopce v protisměru!! ŠIPKY KŘÍDOVÝM SPREJEM - kvůli Lesy ČR","stav":"plán","zdroj":"podrobný"},{"parta":"G7","typ":"A","kod":"A","cislo":null,"kdy_text":"so 09:30 - 11:00","popis":"Přejezd ze 6_Bílá do 13_Študlov","stav":"plán","zdroj":"podrobný"},{"parta":"G7","typ":"T","kod":"T13","cislo":13,"kdy_text":"so 11:00 - 13:30","popis":"Trasování etapy 13_Študlov","stav":"plán","zdroj":"podrobný"},{"parta":"G7","typ":"A","kod":"A","cislo":null,"kdy_text":"so 13:30 - 16:30","popis":"Přejezd ze 14_Návojná do 24_Sudoměřice","stav":"plán","zdroj":"podrobný"},{"parta":"G7","typ":"T","kod":"T24","cislo":24,"kdy_text":"so 16:30 - 19:00","popis":"Trasování 24_Sudoměřice","stav":"plán","zdroj":"podrobný"},{"parta":"G7","typ":"N","kod":"N7s","cislo":null,"kdy_text":"","popis":"nocleh so 21_Nová Lhota","stav":"plán","zdroj":"podrobný"},{"parta":"G7","typ":"U","kod":"U21","cislo":21,"kdy_text":"neděle","popis":"Úklid trasy 21 Nová Lhota","stav":"plán","zdroj":"podrobný"},{"parta":"G7","typ":"U","kod":"U22","cislo":22,"kdy_text":"neděle","popis":"Úklid trasy 22 Velká nad Veličkou","stav":"plán","zdroj":"podrobný"},{"parta":"G7","typ":"A","kod":"A","cislo":null,"kdy_text":"neděle odpoledne","popis":"Přejezd do cíle  dobrovolný, odevzdání materiálu","stav":"plán","zdroj":"podrobný"},{"parta":"G8","typ":"A","kod":"A","cislo":null,"kdy_text":"pá 17:00","popis":"Odjezd z Brna","stav":"plán","zdroj":"podrobný"},{"parta":"G8","typ":"T","kod":"T30","cislo":30,"kdy_text":"sobota","popis":"Trasování etapa 30_Hlohovec","stav":"plán","zdroj":"podrobný"},{"parta":"G8","typ":"T","kod":"T29","cislo":29,"kdy_text":"sobota","popis":"Trasování etapa 29_Valtice","stav":"plán","zdroj":"podrobný"},{"parta":"G8","typ":"T","kod":"T28","cislo":28,"kdy_text":"sobota","popis":"Trasování etapa 28_Břeclav","stav":"plán","zdroj":"podrobný"},{"parta":"G8","typ":"N","kod":"N8/s","cislo":null,"kdy_text":"","popis":"Chatová osad Danaj Lučina, kontakt  [telefon jen v plné verzi]","stav":"plán","zdroj":"podrobný"},{"parta":"G8","typ":"PK","kod":"PK23","cislo":23,"kdy_text":"ne 8:30","popis":"Ukončení předávky 23 Lučina, kdyby hrozila kolize se stihnutím zahájení 29 Valtice, tak ráno zavolejte\nnebo to odvezte nenápadně, aby to nebylo trapný ;-)","stav":"plán","zdroj":"podrobný"},{"parta":"G8","typ":"A","kod":"A","cislo":null,"kdy_text":"ne 8:30 - 9:30","popis":"Přejezd 23 Lučina do 29 Valtice","stav":"plán","zdroj":"podrobný"},{"parta":"G8","typ":"PZ","kod":"PZ29","cislo":29,"kdy_text":"ne 10:00","popis":"Zahájení předávky 29 Valtice","stav":"plán","zdroj":"podrobný"},{"parta":"G8","typ":"PZ","kod":"PZ30","cislo":30,"kdy_text":"ne 11:00","popis":"Zahájení předávky 30 Hlohovec","stav":"plán","zdroj":"podrobný"},{"parta":"G8","typ":"A","kod":"A","cislo":null,"kdy_text":"ne odpoledne","popis":"rekreace v okolí Hlohovce nebo v cíli a pohotovost pomoct poblíž","stav":"plán","zdroj":"podrobný"},{"parta":"G10","typ":"A","kod":"A","cislo":null,"kdy_text":"so","popis":"Odjezd z Brna v sobotu","stav":"plán","zdroj":"podrobný"},{"parta":"G10","typ":"T","kod":"T27","cislo":27,"kdy_text":"sobota","popis":"Trasování T27 Lanžhot","stav":"plán","zdroj":"podrobný"},{"parta":"G10","typ":"T","kod":"T26","cislo":26,"kdy_text":"sobota","popis":"Trasování T26 Týnec","stav":"plán","zdroj":"podrobný"},{"parta":"G10","typ":"T","kod":"T25","cislo":25,"kdy_text":"sobota","popis":"Trasování T25 Hodonín","stav":"plán","zdroj":"podrobný"},{"parta":"G10","typ":"A","kod":"A","cislo":null,"kdy_text":"","popis":"přejezd na předávku 23 Lučina","stav":"plán","zdroj":"podrobný"},{"parta":"G10","typ":"N","kod":"N10/s","cislo":null,"kdy_text":"","popis":"nocleh Chatová osad Danaj Lučina s Frantou v chatce","stav":"plán","zdroj":"podrobný"},{"parta":"G10","typ":"A","kod":"A","cislo":null,"kdy_text":"","popis":"přejezd Z 23 Lučina na 24 Sudoměřice","stav":"plán","zdroj":"podrobný"},{"parta":"G10","typ":"U","kod":"U24","cislo":24,"kdy_text":"lze od cca 10 hod neděle","popis":"Úklid etapy 24 Sudoměřice","stav":"plán","zdroj":"podrobný"},{"parta":"G10","typ":"U","kod":"U25","cislo":25,"kdy_text":"lze od cca 11:30 hod neděle","popis":"Úklid etapy 25 Hodonín","stav":"plán","zdroj":"podrobný"},{"parta":"G10","typ":"U","kod":"U26","cislo":26,"kdy_text":"","popis":"Úklid etapy 26 týnec","stav":"plán","zdroj":"podrobný"},{"parta":"G11","typ":"T","kod":"T16","cislo":16,"kdy_text":"sobota za světla","popis":"Trasování etapa 16_Rokytnice","stav":"plán","zdroj":"podrobný"},{"parta":"G11","typ":"T","kod":"T17","cislo":17,"kdy_text":"sobota za světla","popis":"Trasování etapy 17_Bojkovice","stav":"plán","zdroj":"podrobný"},{"parta":"G12","typ":"T","kod":"T14","cislo":14,"kdy_text":"13:00 - 15:00","popis":"Trasování etapa 14_Návojná (šipky v lese - jen křídovým sprejem!!!) silnice jsou hotový","stav":"plán","zdroj":"podrobný"},{"parta":"G12","typ":"PK","kod":"PK15","cislo":15,"kdy_text":"so 0:00","popis":"Ukončení předávky 15","stav":"plán","zdroj":"podrobný"},{"parta":"G12","typ":"PK","kod":"PK16","cislo":16,"kdy_text":"","popis":"Ukončení předávky 16","stav":"plán","zdroj":"podrobný"},{"parta":"G12","typ":"PK","kod":"PK17","cislo":17,"kdy_text":"","popis":"Ukončení předávky 17","stav":"plán","zdroj":"podrobný"},{"parta":"G12","typ":"PK","kod":"PK18","cislo":18,"kdy_text":"","popis":"Ukončení předávky 18","stav":"plán","zdroj":"podrobný"},{"parta":"G12","typ":"PK","kod":"PK19","cislo":19,"kdy_text":"","popis":"Ukončení předávky 19","stav":"plán","zdroj":"podrobný"},{"parta":"G12","typ":"PK","kod":"PK20","cislo":20,"kdy_text":"cca ne 5:00","popis":"Ukončení předávky 20","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"A","kod":"A","cislo":null,"kdy_text":"","popis":"Přjezd z 20 Strání do 21 Nová Lhota 1 - fara, opřít posbíraný materiál venku o dům nebo dát do chodby","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"A","kod":"A","cislo":null,"kdy_text":"pá","popis":"Odjezd z Brna","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"T","kod":"T5","cislo":5,"kdy_text":"pátek večer","popis":"Trasování etapy 05 Staré Hamry","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"N","kod":"N13/p","cislo":null,"kdy_text":"","popis":"nocleh Prostřední Bečva 15, máme celou chatu, 12 lůžek","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"P","kod":"P5","cislo":5,"kdy_text":"so 9-15","popis":"Předávka 05_Staré Hamry","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"PK","kod":"PK05","cislo":5,"kdy_text":"so 15:00","popis":"Ukončení předávky 05_Staré Hamry, odvoz banneru a flagu","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"U","kod":"U5","cislo":5,"kdy_text":"","popis":"Úklid trasy 05 Staré Hamry","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"PK","kod":"PK06","cislo":6,"kdy_text":"so 15:45","popis":"Ukončení předávky 06_Bílá, odvoz banneru a flagu","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"PK","kod":"PK07","cislo":7,"kdy_text":"so 16:15","popis":"Ukončení předávky 07_Bumbálka, odvoz banneru a flagu","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"U","kod":"U7","cislo":7,"kdy_text":"so 17:30 - 19:00","popis":"Úklid trasy 07 Bumbálka,  možná lepší pěšky? viz Helena loni","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"PK","kod":"PK08","cislo":8,"kdy_text":"so 17:00","popis":"Ukončení předávky 08_Světlá, odvoz banneru a flagu","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"U","kod":"U8","cislo":8,"kdy_text":"so 17:45 - 19","popis":"Úklid trasy 8 Světlá lepší dělat z kopce v protisměru!!","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"N","kod":"N13/s","cislo":null,"kdy_text":"","popis":"nocleh Vizovice, Lázeňská 1116, Cheetah Holiday Club","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"PK","kod":"PK12","cislo":12,"kdy_text":"neděle","popis":"Ukončení předávky 12 Pulčín - odvést věci","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"U","kod":"U12","cislo":12,"kdy_text":"neděle","popis":"Úklid trasy 12 Pulčn","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"PK","kod":"PK13","cislo":13,"kdy_text":"neděle","popis":"Ukončení předávky 13 Študlov - odvést věci","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"U","kod":"U13","cislo":13,"kdy_text":"neděle","popis":"Úklid trasy 13 Študlov","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"PK","kod":"PK14","cislo":14,"kdy_text":"neděle","popis":"Ukončení předávky 14 Návojná - odvést věci","stav":"plán","zdroj":"podrobný"},{"parta":"G13","typ":"U","kod":"U14","cislo":14,"kdy_text":"neděle","popis":"Úklid trasy 14 Návojná","stav":"plán","zdroj":"podrobný"},{"parta":"G14","typ":"A","kod":"A","cislo":null,"kdy_text":"pátek po 13 hod","popis":"Přebrat klíče Ubytovna Gorol\nJablunkov 908, zavolat [telefon jen v plné verzi] a u tenisové haly přebrat klíče","stav":"plán","zdroj":"podrobný"},{"parta":"G14","typ":"S","kod":"S","cislo":null,"kdy_text":"pá ?-22","popis":"Práce na startu,příprava startovních tašek, prezence týmů, pustit muziku","stav":"plán","zdroj":"podrobný"},{"parta":"G14","typ":"S","kod":"S","cislo":null,"kdy_text":"05:30 -11:40","popis":"Moderace startu","stav":"plán","zdroj":"podrobný"},{"parta":"G14","typ":"PK","kod":"PK02","cislo":2,"kdy_text":"so 12:30","popis":"Ukončení předávky 02 Horní Lomná","stav":"plán","zdroj":"podrobný"},{"parta":"G14","typ":"A","kod":"A","cislo":null,"kdy_text":"so 12:30 - 13:30","popis":"Přejezd z 02 na 04","stav":"plán","zdroj":"podrobný"},{"parta":"G14","typ":"PK","kod":"PK04","cislo":4,"kdy_text":"so 14:00","popis":"Ukončení předávky 04 Visalaje","stav":"plán","zdroj":"podrobný"},{"parta":"G14","typ":"U","kod":"U6","cislo":6,"kdy_text":"so 16:00 - 16:45","popis":"Úklid trasy 06 Bílá,  lepší dělat z kopce v protisměru z Bumbálky!!","stav":"plán","zdroj":"podrobný"},{"parta":"G14","typ":"A","kod":"A","cislo":null,"kdy_text":"cca 17:00","popis":"Přebrání objemných věcí od G13 - Helenka na 07 nebo 08","stav":"plán","zdroj":"podrobný"},{"parta":"G14","typ":"PK","kod":"PK09","cislo":9,"kdy_text":"so 17:15","popis":"Ukončení předávky 09 Kasárna","stav":"plán","zdroj":"podrobný"},{"parta":"G14","typ":"PK","kod":"PK10","cislo":10,"kdy_text":"so 18:15","popis":"Ukončení předávky 10 Kohútka","stav":"plán","zdroj":"podrobný"},{"parta":"G14","typ":"N","kod":"N14/s","cislo":null,"kdy_text":"ne 7:30","popis":"nocleh so 21_Nová Lhota","stav":"plán","zdroj":"podrobný"},{"parta":"G14","typ":"PK","kod":"PK22","cislo":22,"kdy_text":"ne 8:30","popis":"Ukončení předávky 22 Velké nad Veličkou","stav":"plán","zdroj":"podrobný"},{"parta":"G0A","typ":"PZ","kod":"PZ28","cislo":28,"kdy_text":"ne 9:45","popis":"Zahájení předávky P28 Břeclav","stav":"plán","zdroj":"podrobný"},{"parta":"G14","typ":"C","kod":"C","cislo":null,"kdy_text":"ne 10-?","popis":"Pomoc v cíli","stav":"plán","zdroj":"podrobný"},{"parta":"G15","typ":"T","kod":"T3","cislo":3,"kdy_text":"pátek večer","popis":"Trasování etapy 03 Morávka","stav":"plán","zdroj":"podrobný"},{"parta":"G15","typ":"T","kod":"T4","cislo":4,"kdy_text":"pátek večer","popis":"Trasování etapy 04 Visalaje","stav":"plán","zdroj":"podrobný"},{"parta":"G16","typ":"T","kod":"T18","cislo":18,"kdy_text":"sobota","popis":"Trasování etapy 18 Starý Hrozenkov","stav":"plán","zdroj":"podrobný"},{"parta":"G17","typ":"N","kod":"N17/s","cislo":null,"kdy_text":"","popis":"nocleh Vizovice, Lázeňská 1116, Cheetah Holiday Club","stav":"plán","zdroj":"podrobný"},{"parta":"G17","typ":"U","kod":"U15","cislo":15,"kdy_text":"","popis":"Úklid etapa 15 Popov","stav":"plán","zdroj":"podrobný"},{"parta":"G17","typ":"U","kod":"U16","cislo":16,"kdy_text":"","popis":"Úklid etapa 16 Rokytnice","stav":"plán","zdroj":"podrobný"},{"parta":"G18","typ":"T","kod":"T21","cislo":21,"kdy_text":"sobota","popis":"Trasování etapy 21 Nová Lhota","stav":"plán","zdroj":"podrobný"},{"parta":"G18","typ":"T","kod":"T22","cislo":22,"kdy_text":"sobota","popis":"Trasování etapy 22 Velká nad Veličkou","stav":"plán","zdroj":"podrobný"},{"parta":"G18","typ":"N","kod":"N18/s","cislo":null,"kdy_text":"vstát v 7:00","popis":"Chatová osad Danaj Lučina, vstávat na budík, snídaně na předávce, vyrazit nejpozději v 7:30","stav":"plán","zdroj":"podrobný"},{"parta":"G18","typ":"A","kod":"A","cislo":null,"kdy_text":"10:30 - 11:30","popis":"Přejezd z 24 Sumoměřice do cíle Mikulov s Pepkou","stav":"plán","zdroj":"podrobný"},{"parta":"G18","typ":"C","kod":"C","cislo":null,"kdy_text":"11:30 - 17:30","popis":"Hlášení týmů v cíli","stav":"plán","zdroj":"podrobný"},{"parta":"ZVUK","typ":"A","kod":"A","cislo":null,"kdy_text":"ne 09:00","popis":"Příjez Mikulov, cca v 9:hod, kouknout večer na průběh","stav":"plán","zdroj":"podrobný"},{"parta":"ZVUK","typ":"C","kod":"C","cislo":null,"kdy_text":"so 13 - 19","popis":"Moderace,posílat lidi se vyfotit před reklamní banner, posílat ke stánku s trikama, Zapisovat na šmírák\na hned úhledně do formuláře předávka","stav":"plán","zdroj":"podrobný"},{"parta":"ZVUK","typ":"C","kod":"C","cislo":null,"kdy_text":"ne 11:00-18:00","popis":"Hofa měření v cíli a obsazení lidí u vysílačky- primárně  Franta a Tadeaš, \nNež přijedou, sehnat si někoho z týmu v cíli","stav":"plán","zdroj":"podrobný"},{"parta":"FOTO","typ":"N","kod":"NF/p","cislo":null,"kdy_text":"pá - so 5:00","popis":"vlastní","stav":"plán","zdroj":"podrobný"},{"parta":"FOTO","typ":"S","kod":"S","cislo":null,"kdy_text":"5:45 - cca 8","popis":"Foto na startu","stav":"plán","zdroj":"podrobný"},{"parta":"FOTO","typ":"A","kod":"A","cislo":null,"kdy_text":"so","popis":"lokace dle doporučení","stav":"plán","zdroj":"podrobný"},{"parta":"FOTO","typ":"N","kod":"NS","cislo":null,"kdy_text":"","popis":"Vlastní","stav":"plán","zdroj":"podrobný"},{"parta":"FOTO","typ":"A","kod":"A","cislo":null,"kdy_text":"ne","popis":"lokace dle doporučení","stav":"plán","zdroj":"podrobný"},{"parta":"FOTO","typ":"A","kod":"A","cislo":null,"kdy_text":"cca 11:30","popis":"Příjezd do cíle , hlídat si čas prvního týmu v cíli","stav":"plán","zdroj":"podrobný"},{"parta":"FOTO","typ":"C","kod":"C","cislo":null,"kdy_text":"ne 12-19","popis":"Focení všech dobíhajících a všech týmů na pódiu - Tomáš Mego","stav":"plán","zdroj":"podrobný"},{"parta":"GASTRO","typ":"A","kod":"A","cislo":null,"kdy_text":"neděle 10-19","popis":"První běžci v cíli kolem 12 hod, první lidi v 10?","stav":"plán","zdroj":"podrobný"},{"parta":"GASTRO","typ":"A","kod":"A","cislo":null,"kdy_text":"","popis":"","stav":"plán","zdroj":"podrobný"},{"parta":"ZDRAV","typ":"S","kod":"ZDRAV","cislo":null,"kdy_text":"so 19 – ne 06","popis":"Zdravotní dohled ZZS Zlín, dispečer [telefon jen v plné verzi] Libor Zajonc","stav":"plán","zdroj":"podrobný"},{"parta":"IT","typ":"S","kod":"IT","cislo":null,"kdy_text":"so 08–22, ne 08–18","popis":"IT podpora, Jan Hermann","stav":"plán","zdroj":"podrobný"},{"parta":"domácí","typ":"P","kod":"P2","cislo":2,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P3","cislo":3,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"G15","typ":"U","kod":"U3","cislo":3,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"G15","typ":"P","kod":"P4","cislo":4,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"G15","typ":"U","kod":"U4","cislo":4,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P6","cislo":6,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P7","cislo":7,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P8","cislo":8,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P9","cislo":9,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P10","cislo":10,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P12","cislo":12,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P13","cislo":13,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P14","cislo":14,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P15","cislo":15,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P16","cislo":16,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P17","cislo":17,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P18","cislo":18,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P19","cislo":19,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P20","cislo":20,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P21","cislo":21,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P22","cislo":22,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P23","cislo":23,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P24","cislo":24,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P25","cislo":25,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P26","cislo":26,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P27","cislo":27,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P28","cislo":28,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P29","cislo":29,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"domácí","typ":"P","kod":"P30","cislo":30,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"G0B","typ":"U","kod":"U30","cislo":30,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"},{"parta":"ZVUK","typ":"P","kod":"P31","cislo":31,"kdy_text":"","popis":"","stav":"plán","zdroj":"hrubý"}]
+};
 
 const ROLE  = ["T","U","P","PZ","PK"];
 const NAZVY = ["trasování","úklid fáborků","obsluha předávky","zahájení předávky","ukončení předávky"];
@@ -3323,11 +692,28 @@ const TYPY  = ["T","U","P","PZ","PK","N","A","S","C"];
 const NAZVY_TYPU = {T:"trasování etapy",U:"úklid fáborků",P:"obsluha předávky",
   PZ:"zahájení předávky",PK:"ukončení předávky",N:"nocleh",A:"přejezd",
   S:"práce na startu",C:"práce v cíli"};
-const STAVY = ["plán","potvrzeno","hotovo","zrušeno"];
-const BARVA_STAVU = {"plán":"#C9BFB0","potvrzeno":"#66713E","hotovo":"#3E7C6B","zrušeno":"#A63D4E"};
+const STAVY = ["plán","nepotvrzeno","zrušeno"];
+const BARVA_STAVU = {"plán":"#66713E","nepotvrzeno":"#D08C3A","zrušeno":"#A63D4E"};
 const ROKY = ["HB19","HB20","HB21","HB22","HB23","HB24","HB25","HB26","HB27"];
 const DOPRAVY = ["","osobní auto","dodávka","veřejná","kolo","pěšky"];
 const NOCI = ["pátek","sobota"];
+const PRAVA = ["zápis","čtení","žádné"];
+const OBLASTI = [
+  {kod:"ukoly",          nazev:"Plán úkolů a podrobný plán", sekce:["s-ukoly","s-podrobny"]},
+  {kod:"tymy_org",       nazev:"Party",                      sekce:["s-tymy"]},
+  {kod:"clenove_tymu",   nazev:"Členové part",               sekce:["s-clenove"]},
+  {kod:"kontakty",       nazev:"Telefony, e-maily, čísla účtů", sekce:[]},
+  {kod:"predavky",       nazev:"Předávky",                   sekce:["s-predavky"]},
+  {kod:"nastaveni",      nazev:"Nastavení ročníku",          sekce:["s-nastaveni"]},
+  {kod:"noclehy_adresy", nazev:"Noclehy — místa",            sekce:["s-noclehy-mista"]},
+  {kod:"noclehy_lide",   nazev:"Noclehy — lidé",             sekce:["s-noclehy-lide"]},
+  {kod:"tricka",         nazev:"Trička a objednávky",        sekce:["s-tricka"]},
+  {kod:"pristupy",       nazev:"Přístupy k webu",            sekce:["s-pristupy"]}
+];
+let nahledUroven = "";
+const VEREJNA = true;   // veřejná verze pro GitHub Pages = true
+const CITLIVE = ["Telefon","E-mail","Číslo účtu","Kontakt","Cena","Rezervace","Poznámka","Adresa","Mapa"];
+const bezCitlivych = sl => VEREJNA ? sl.filter(x=>CITLIVE.indexOf(x.nadpis)<0) : sl;
 const NERESI = "neřeší se";
 const volbyNoclehu = () => ["", NERESI].concat(D.nocMista.map(m=>m.kod));
 
@@ -3340,11 +726,22 @@ const barva = k => (parta(k)||{}).barva || "#96907F";
 const MIMO_DB = [];
 // místní grupy a dodavatelé se vedou bez jmen lidí
 const BEZ_JMEN = [];   // jména part se zachovávají všude
+const prvniClen = k => {
+  const c = D.clenove.find(x=>x.kod_tymu===k);
+  return c ? c.jmeno : "";
+};
+// na štítek se vejde jen první slovo jména, celé je v bublině
+const prvniJmeno = k => {
+  const j = prvniClen(k).replace(/\s*\(.*?\)\s*/g,' ').trim();
+  return j ? j.split(/\s+/)[0] : "";
+};
 const jePartaVDb = k => !!parta(k) && MIMO_DB.indexOf(k)<0;
 const hlaska = t => {const h=$('#hlaska');h.textContent=t;h.classList.add('videt');
   clearTimeout(h._t);h._t=setTimeout(()=>h.classList.remove('videt'),1900);};
 function odznakHtml(r, vslotu){
   const v = vslotu ? ' vslotu' : '';
+  if(r && r.stav === "nepotvrzeno")
+    return '<span class="odznak otazka'+v+'" title="Nepotvrzeno — čeká se na potvrzení od party nebo z obce.">?</span>';
   if(r && r.zRocniku)
     return '<span class="odznak stary'+v+'" title="Zkopírováno z ročníku '+r.zRocniku
          + ', zatím neprošlo revizí. Jakákoli úprava značku přepne na aktuální ročník.">'
@@ -3368,7 +765,9 @@ const ZALOZKY = [
   {id:"s-predavky",      nazev:"Předávky",           napoveda:"Místa předávek, souřadnice, vzdálenosti a časy mezi nimi."},
   {id:"s-nastaveni",     nazev:"Nastavení ročníku",  napoveda:"Aktivní ročník a datum závodu."},
   {id:"s-noclehy-mista", nazev:"Noclehy — místa",    napoveda:"Ubytování, kapacity a stav rezervací."},
-  {id:"s-noclehy-lide",  nazev:"Noclehy — lidé",     napoveda:"Kdo kde spí v pátek a v sobotu."}
+  {id:"s-noclehy-lide",  nazev:"Noclehy — lidé",     napoveda:"Kdo kde spí v pátek a v sobotu."},
+  {id:"s-tricka",        nazev:"Trička",             napoveda:"Odhad potřeby triček podle velikostí, sklad a objednávky po vlnách."},
+  {id:"s-pristupy",      nazev:"Přístupy",           napoveda:"Tři úrovně přístupu k webu, co která smí, a seznam uživatelů."}
 ];
 
 function kresliNav(){
@@ -3383,6 +782,8 @@ function prepni(id){
   });
   zavriEditor();
   if(id==="s-podrobny") kresliPodrobny();
+  if(id==="s-pristupy") kresliPristupy();
+  if(id==="s-tricka") kresliTricka();
   if(id==="s-noclehy-lide") kresliNocLide();
   if(id==="s-clenove") kresliClenove();
 }
@@ -3443,8 +844,12 @@ function kresliPaletu(){
     const c = document.createElement('span');
     c.className = 'chip' + (MIMO_DB.indexOf(t.kod)>=0?' cizi':'') + ((zvyraznit&&vybrany===t.kod)?' zvyrazneno':'');
     c.style.background = t.barva; c.draggable = true;
-    c.innerHTML = '<span>'+esc(t.kod)+'</span><span class="pocet">'+(poc[t.kod]||0)+'</span>';
-    c.title = (t.nazev||t.kod) + (t.doprava?' · '+t.doprava:'');
+    const jm = prvniJmeno(t.kod);
+    c.innerHTML = '<span>'+esc(t.kod)+'</span>'
+      + (jm ? '<span class="jmeno">'+esc(jm)+'</span>' : '')
+      + '<span class="pocet">'+(poc[t.kod]||0)+'</span>';
+    const vsichni = D.clenove.filter(x=>x.kod_tymu===t.kod).map(x=>x.jmeno).join(', ');
+    c.title = (t.nazev||t.kod) + (vsichni?' — '+vsichni:'') + (t.doprava?' · '+t.doprava:'');
     c.ondragstart = e=>e.dataTransfer.setData('text/plain', t.kod);
     c.onclick = ()=>{ vybrany = vybrany===t.kod?null:t.kod; kresliPlan(); };
     el.appendChild(c);
@@ -3469,7 +874,11 @@ function slotChip(u){
   t.style.background = BARVA_STAVU[u.stav]||'#C9BFB0'; t.title = 'stav: '+u.stav;
   c.appendChild(t);
   const j = document.createElement('span'); j.textContent = u.parta; c.appendChild(j);
-  const x = document.createElement('span'); x.className='smaz'; x.textContent='×'; x.title='Odebrat';
+  const jm = prvniJmeno(u.parta);
+  if(jm){ const n = document.createElement('span'); n.className='jmeno'; n.textContent = jm; c.appendChild(n); }
+  const vsichni = D.clenove.filter(x=>x.kod_tymu===u.parta).map(x=>x.jmeno).join(', ');
+  c.title = u.kod + (vsichni?' — '+vsichni:'');
+  const x = document.createElement('span'); x.className='smaz'; x.textContent='×'; x.title='Odebere úkol z tohoto políčka. Vrátit se to nedá.';
   x.onclick = e=>{ e.stopPropagation(); D.ukoly.splice(D.ukoly.indexOf(u),1); kresliPlan(); };
   c.appendChild(x);
   c.onclick = e=>{ if(e.target!==x) otevriEditor(u); };
@@ -3526,7 +935,7 @@ function kresliPlan(){
     });
     const akce = document.createElement('td'); akce.className='akce';
     const b = document.createElement('button'); b.className='tl'; b.textContent='z HB25';
-    b.title = 'Zkopíruje do etapy E'+e+' všech pět rolí z ročníku HB25 a přepíše, co je v ní teď.';
+    b.title = 'Zkopíruje do etapy E'+e+' všech pět rolí z HB25. Přejezdy a noclehy tudy nepřijdou — na ty je tlačítko Kopírovat celý HB25.';
     b.onclick = ()=>{ kopirujEtapu(e); };
     akce.appendChild(b); tr.appendChild(akce);
     telo.appendChild(tr);
@@ -3550,10 +959,12 @@ function kresliPlan(){
     + (dvakrat.size ? ' · dvakrát zadáno: ' + [...dvakrat].join(', ') : '')
     + (cizi.size ? ' · party mimo tymy_org: ' + [...cizi].join(', ') : '');
   const neprosle = D.ukoly.filter(u=>u.zRocniku).length;
-  $('#stavRevize').innerHTML = neprosle
-    ? odznakHtml({zRocniku:'HB25'}) + ' ' + neprosle + ' bez revize · '
-      + odznakHtml({}) + ' ' + (D.ukoly.length - neprosle) + ' hotovo'
-    : odznakHtml({}) + ' všechny úkoly prošly revizí';
+  const nepotvrzene = D.ukoly.filter(u=>u.stav==="nepotvrzeno").length;
+  $('#stavRevize').innerHTML = (neprosle
+      ? odznakHtml({zRocniku:'HB25'}) + ' ' + neprosle + ' bez revize · '
+        + odznakHtml({}) + ' ' + (D.ukoly.length - neprosle) + ' hotovo'
+      : odznakHtml({}) + ' všechny úkoly prošly revizí')
+    + (nepotvrzene ? ' · ' + odznakHtml({stav:'nepotvrzeno'}) + ' ' + nepotvrzene + ' nepotvrzeno' : '');
 }
 
 function kopirujEtapu(e){
@@ -3694,7 +1105,7 @@ function kresliClenove(){
   const f = $('#filtrParty').value;
   const vsichni = D.clenove;
   const videt = f ? vsichni.filter(c=>c.kod_tymu===f) : vsichni;
-  tabulka('#tabClenove', [
+  tabulka('#tabClenove', bezCitlivych([
     {nadpis:"Parta", pole:"kod_tymu", typ:"select", moznosti:()=>D.tymy.map(t=>t.kod), sirka:"110px"},
     {nadpis:"Jméno", pole:"jmeno", sirka:"210px"},
     {nadpis:"Telefon", pole:"telefon", sirka:"150px"},
@@ -3703,13 +1114,13 @@ function kresliClenove(){
     {nadpis:"Nocleh sobota", pole:"nocleh_sobota", typ:"select", moznosti:volbyNoclehu, sirka:"140px"},
     {nadpis:"Číslo účtu", pole:"cislo_uctu", sirka:"160px"},
     {nadpis:"Poznámka", pole:"poznamka"}
-  ], videt, (r)=>{ if(r===undefined){ /* smazání */ } kresliClenove(); kresliPaletu(); }, true);
+  ]), videt, (r)=>{ if(r===undefined){ /* smazání */ } kresliClenove(); kresliPaletu(); }, true);
   $('#stavClenove').textContent = videt.length + ' z ' + vsichni.length + ' lidí';
 }
 
 /* ---------- 4. předávky ---------- */
 function kresliPredavky(){
-  tabulka('#tabPredavky', [
+  tabulka('#tabPredavky', bezCitlivych([
     {nadpis:"#", pole:"cislo", typ:"number", sirka:"60px", trida:"stred"},
     {nadpis:"Název místa", pole:"nazev", sirka:"210px"},
     {nadpis:"GPS šířka", pole:"lat", typ:"number", sirka:"130px"},
@@ -3718,7 +1129,7 @@ function kresliPredavky(){
     {nadpis:"Soubor GPX", pole:"gpx", sirka:"150px"},
     {nadpis:"Na další", pole:"_km", typ:"text", jenCist:true, sirka:"110px"},
     {nadpis:"Poznámka", pole:"pozn"}
-  ], D.predavky.map(p=>Object.assign(p,{_km: p.km==null?'—':(p.km+' km · '+p.min+' min')})),
+  ]), D.predavky.map(p=>Object.assign(p,{_km: p.km==null?'—':(p.km+' km · '+p.min+' min')})),
      ()=>{kresliPredavky();kresliPlan();}, false);
 }
 
@@ -3740,7 +1151,7 @@ function zmenNastaveni(){
 
 /* ---------- 6. noclehy místa ---------- */
 function kresliNocMista(){
-  tabulka('#tabNocMista', [
+  tabulka('#tabNocMista', bezCitlivych([
     {nadpis:"Kód", pole:"kod", sirka:"120px"},
     {nadpis:"Název", pole:"nazev", sirka:"230px"},
     {nadpis:"Adresa", pole:"adresa", sirka:"160px"},
@@ -3753,7 +1164,7 @@ function kresliNocMista(){
     {nadpis:"Platba", pole:"platba", typ:"select", moznosti:["","nezaplaceno","záloha","zaplaceno"], sirka:"130px"},
     {nadpis:"Rezervace", pole:"rezervace", sirka:"230px"},
     {nadpis:"Poznámka", pole:"poznamka", sirka:"260px"}
-  ], D.nocMista, ()=>{kresliNocMista();kresliNocLide();}, true);
+  ]), D.nocMista, ()=>{kresliNocMista();kresliNocLide();}, true);
 }
 
 /* ---------- 7. noclehy lidé ---------- */
@@ -3807,11 +1218,344 @@ function doplnZeClenu(){
   hlaska(pridano ? ('Doplněno '+pridano+' nocležníků') : 'Nic k doplnění — u členů nejsou vyplněné noclehy');
 }
 
+
+
+/* ---------- 9. trička ---------- */
+const tr = () => D.tricka;
+const bezciCelkem = () => Math.round((tr().tymy_zaplaceno + tr().tymy_ocekavano) * tr().koeficient);
+const potreba = v => Math.round(bezciCelkem() * (v.odhad||0) / 100) + (v.pomocnici||0);
+const sRezervou = v => Math.ceil(potreba(v) * (1 + (tr().rezerva_pct||0)/100));
+const spocteno = v => Math.max(0, sRezervou(v) - (v.sklad||0));
+
+function poleCislo(popis, klic, krok){
+  return '<div style="flex:1;min-width:150px">'
+    + '<label class="popisek" style="display:block;margin-bottom:3px">'+popis+'</label>'
+    + '<input type="number" step="'+(krok||1)+'" data-t="'+klic+'" value="'+(tr()[klic])+'" '
+    + 'style="width:100%;padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit"></div>';
+}
+
+function poleText(popis, klic){
+  return '<div style="flex:1;min-width:150px">'
+    + '<label class="popisek" style="display:block;margin-bottom:3px">'+popis+'</label>'
+    + '<input type="text" data-t="'+klic+'" value="'+esc(tr()[klic]||'')+'" '
+    + 'style="width:100%;padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit"></div>';
+}
+
+function kresliTricka(){
+  // vstupy
+  const v = $('#vstupyTricka');
+  v.innerHTML = poleCislo('Zaplacené týmy','tymy_zaplaceno')
+    + poleCislo('Očekávané týmy','tymy_ocekavano')
+    + poleCislo('Běžců na tým','koeficient', 0.1)
+    + poleCislo('Rezerva v %','rezerva_pct')
+    + poleText('Barva ročníku','barva')
+    + poleText('Velikost loga','velikost_loga')
+    + poleText('Barva loga','barva_loga');
+  v.querySelectorAll('input').forEach(el=>{
+    el.onchange = ()=>{ tr()[el.dataset.t] = el.type==='number' ? (+el.value||0) : el.value; kresliTricka(); };
+  });
+
+  const bezci = bezciCelkem();
+  const pom = D.velikosti.reduce((a,x)=>a+(x.pomocnici||0),0);
+  const skl = D.velikosti.reduce((a,x)=>a+(x.sklad||0),0);
+  const obj = D.velikosti.reduce((a,x)=>a+(x.objednat||0),0);
+  const potr = D.velikosti.reduce((a,x)=>a+potreba(x),0);
+  const rez = D.velikosti.reduce((a,x)=>a+sRezervou(x),0);
+  const spoc = D.velikosti.reduce((a,x)=>a+spocteno(x),0);
+  $('#souhrnTricka').innerHTML =
+    '<b>'+(tr().tymy_zaplaceno+tr().tymy_ocekavano)+' týmů</b> × '+tr().koeficient+' = <b>'+bezci+' běžců</b>'
+    + ' · pomocníci <b>'+pom+'</b> · potřeba <b>'+potr+'</b> ks, s rezervou <b>'+rez+'</b>'
+    + ' · na skladě <b>'+skl+'</b> · spočtená doobjednávka <b>'+spoc+'</b>, zadáno <b>'+obj+'</b> ks'
+    + ' · dodavatel '+esc(tr().dodavatel)+', '+esc(tr().model_pansky)+' a '+esc(tr().model_damsky)
+    + ' · logo '+esc(tr().velikost_loga||'nezadáno')+(tr().barva_loga?', '+esc(tr().barva_loga):'');
+
+  // tabulka velikostí
+  const t = $('#tabTricka');
+  let h = '<thead><tr>'
+    + '<th style="width:56px"></th><th style="width:150px">Velikost</th>'
+    + '<th style="width:70px">HB24 %</th><th style="width:70px">HB25 %</th><th style="width:86px">HB26 dosud %</th>'
+    + '<th style="width:86px">Odhad %</th><th style="width:80px">Běžci</th><th style="width:90px">Pomocníci</th>'
+    + '<th style="width:80px">Potřeba</th><th style="width:86px">+rezerva</th><th style="width:80px">Sklad</th>'
+    + '<th style="width:92px">Spočteno</th><th style="width:96px">Objednat</th></tr></thead><tbody>';
+  D.velikosti.slice().sort((a,b)=>a.poradi-b.poradi).forEach((x,i)=>{
+    const bez = Math.round(bezci*(x.odhad||0)/100);
+    const chybi = (x.sklad||0)===0 && sRezervou(x)>0;
+    h += '<tr'+(chybi?' style="background:#FBF1F2"':'')+'>'
+      + '<td class="odzn">'+odznakHtml(x)+'</td>'
+      + '<td style="padding:7px 8px;font-size:13px;font-weight:700">'+esc(x.rada)+' '+esc(x.kod)+'</td>'
+      + '<td class="stred" style="padding:7px;font-size:12px;color:var(--pisek)">'+x.hb24.toFixed(1)+'</td>'
+      + '<td class="stred" style="padding:7px;font-size:12px;color:var(--pisek)">'+x.hb25.toFixed(1)+'</td>'
+      + '<td class="stred" style="padding:7px;font-size:12px;color:var(--pisek)">'+x.hb26.toFixed(1)+'</td>'
+      + '<td class="stred"><input type="number" step="0.1" data-i="'+i+'" data-p="odhad" value="'+x.odhad+'"></td>'
+      + '<td class="stred" style="padding:7px;font-size:13px">'+bez+'</td>'
+      + '<td class="stred"><input type="number" data-i="'+i+'" data-p="pomocnici" value="'+(x.pomocnici||0)+'"></td>'
+      + '<td class="stred" style="padding:7px;font-size:13px">'+potreba(x)+'</td>'
+      + '<td class="stred" style="padding:7px;font-size:13px;color:var(--olive);font-weight:700">'+sRezervou(x)+'</td>'
+      + '<td class="stred"><input type="number" data-i="'+i+'" data-p="sklad" value="'+(x.sklad||0)+'"></td>'
+      + '<td class="stred" style="padding:7px;font-size:13px;font-weight:800;color:var(--hneda)">'+spocteno(x)+'</td>'
+      + '<td class="stred"><input type="number" data-i="'+i+'" data-p="objednat" value="'+(x.objednat||0)+'"></td></tr>';
+  });
+  h += '<tr style="background:#F3EFE6;font-weight:800"><td></td><td style="padding:8px">Celkem</td>'
+     + '<td></td><td></td><td></td>'
+     + '<td class="stred">'+D.velikosti.reduce((a,x)=>a+(x.odhad||0),0).toFixed(1)+'</td>'
+     + '<td class="stred">'+bezci+'</td><td class="stred">'+pom+'</td><td class="stred">'+potr+'</td>'
+     + '<td class="stred">'+rez+'</td><td class="stred">'+skl+'</td>'
+     + '<td class="stred">'+spoc+'</td><td class="stred">'+obj+'</td></tr>';
+  t.innerHTML = h + '</tbody>';
+  const serazene = D.velikosti.slice().sort((a,b)=>a.poradi-b.poradi);
+  t.querySelectorAll('input').forEach(el=>{
+    el.onchange = ()=>{ const r = serazene[+el.dataset.i]; r[el.dataset.p] = +el.value||0; zrevidovano(r); kresliTricka(); };
+  });
+
+  const chybejici = serazene.filter(x=>(x.sklad||0)===0 && sRezervou(x)>0).map(x=>x.rada+' '+x.kod);
+  const soucet = D.velikosti.reduce((a,x)=>a+(x.odhad||0),0);
+  $('#varovaniTricka').innerHTML =
+    (chybejici.length ? '<b style="color:var(--vinova)">Není na skladě vůbec:</b> '+esc(chybejici.join(', '))+'. ' : '')
+    + (Math.abs(soucet-100)>1 ? '<b style="color:var(--vinova)">Součet odhadovaných podílů je '+soucet.toFixed(1)+' %, ne 100 %.</b>' : '');
+
+  kresliObjednavky();
+}
+
+function kresliObjednavky(){
+  tabulka('#tabObjednavky', [
+    {nadpis:"Ročník", pole:"rok", typ:"select", moznosti:ROKY, sirka:"110px"},
+    {nadpis:"Vlna", pole:"vlna", typ:"number", sirka:"80px", trida:"stred"},
+    {nadpis:"Datum", pole:"datum", typ:"date", sirka:"150px"},
+    {nadpis:"Kusů", pole:"pocet", typ:"number", sirka:"100px", trida:"stred"},
+    {nadpis:"Poznámka", pole:"poznamka"}
+  ], D.objednavky, ()=>kresliObjednavky(), true, false);
+}
+
+
+/* ---------- heslo u nevratných akcí ---------- */
+// Vlastní SHA-256, aby to fungovalo i při otevření souboru z disku (crypto.subtle
+// je v prohlížeči na file:// nedostupné).
+function sha256(zprava){
+  const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  let H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const b=[]; for(const ch of unescape(encodeURIComponent(zprava))) b.push(ch.charCodeAt(0));
+  const bitu=b.length*8; b.push(0x80); while(b.length%64!==56) b.push(0);
+  for(let i=7;i>=0;i--) b.push((bitu/Math.pow(2,i*8))&0xff);
+  const rr=(x,n)=>(x>>>n)|(x<<(32-n));
+  for(let i=0;i<b.length;i+=64){
+    const w=new Array(64);
+    for(let j=0;j<16;j++) w[j]=(b[i+j*4]<<24)|(b[i+j*4+1]<<16)|(b[i+j*4+2]<<8)|b[i+j*4+3];
+    for(let j=16;j<64;j++){
+      const s0=rr(w[j-15],7)^rr(w[j-15],18)^(w[j-15]>>>3);
+      const s1=rr(w[j-2],17)^rr(w[j-2],19)^(w[j-2]>>>10);
+      w[j]=(w[j-16]+s0+w[j-7]+s1)|0;
+    }
+    let [a,c,d,e,f,g,h,l]=H;
+    for(let j=0;j<64;j++){
+      const S1=rr(f,6)^rr(f,11)^rr(f,25), ch=(f&g)^(~f&h);
+      const t1=(l+S1+ch+K[j]+w[j])|0;
+      const S0=rr(a,2)^rr(a,13)^rr(a,22), mj=(a&c)^(a&d)^(c&d);
+      const t2=(S0+mj)|0;
+      l=h; h=g; g=f; f=(e+t1)|0; e=d; d=c; c=a; a=(t1+t2)|0;
+    }
+    H=[(H[0]+a)|0,(H[1]+c)|0,(H[2]+d)|0,(H[3]+e)|0,(H[4]+f)|0,(H[5]+g)|0,(H[6]+h)|0,(H[7]+l)|0];
+  }
+  return H.map(x=>((x>>>0).toString(16).padStart(8,'0'))).join('');
+}
+
+// uživatel s nejvyšší úrovní = nejmenší pořadí úrovně
+function spravce(){
+  const poradi = k => (uroven(k)||{}).poradi || 99;
+  return D.uzivatele
+    .filter(u=>u.aktivni!=='ne')
+    .slice()
+    .sort((a,b)=>poradi(a.uroven)-poradi(b.uroven))[0] || null;
+}
+
+let poZamku = null;
+function otevriZamek(akce){
+  const sp = spravce();
+  if(!sp || !sp.heslo_hash){
+    akce(); hlaska('Heslo není nastavené, akce proběhla rovnou');
+    return;
+  }
+  poZamku = akce;
+  $('#zamekKdo').textContent = 'Zadejte heslo uživatele ' + (sp.jmeno||sp.email||sp.uroven)
+    + ' (' + ((uroven(sp.uroven)||{}).nazev || sp.uroven) + ').';
+  $('#zamekHeslo').value = '';
+  $('#zamekChyba').style.display = 'none';
+  $('#zamek').classList.add('videt');
+  setTimeout(()=>$('#zamekHeslo').focus(), 30);
+}
+function potvrdZamek(){
+  const sp = spravce();
+  if(sha256($('#zamekHeslo').value) !== (sp&&sp.heslo_hash)){
+    $('#zamekChyba').style.display = 'block';
+    $('#zamekHeslo').select();
+    return;
+  }
+  const akce = poZamku; zavriZamek();
+  if(akce) akce();
+}
+function zavriZamek(){ poZamku=null; $('#zamek').classList.remove('videt'); }
+
+function nastavHeslo(){
+  const sp = spravce();
+  const h = $('#noveHeslo').value;
+  if(!sp){ $('#stavHesla').textContent = 'Není komu heslo nastavit — přidejte nejdřív uživatele.'; return; }
+  if(h.length < 6){ $('#stavHesla').textContent = 'Heslo musí mít aspoň šest znaků.'; return; }
+  sp.heslo_hash = sha256(h);
+  $('#noveHeslo').value = '';
+  kresliPristupy();
+  hlaska('Heslo nastaveno uživateli ' + (sp.jmeno||sp.email));
+}
+
+/* ---------- 8. přístupy k webu ---------- */
+const uroven = k => D.urovne.find(u=>u.kod===k);
+const pravo  = (k, oblast) => (D.prava[k]||{})[oblast] || "žádné";
+
+function kresliUrovne(){
+  tabulka('#tabUrovne', [
+    {nadpis:"Kód", pole:"kod", sirka:"130px"},
+    {nadpis:"Název", pole:"nazev", sirka:"210px"},
+    {nadpis:"Pořadí", pole:"poradi", typ:"number", sirka:"90px", trida:"stred"},
+    {nadpis:"Popis", pole:"popis"}
+  ], D.urovne, ()=>{srovnejPrava();kresliPristupy();}, true, false);
+}
+
+function srovnejPrava(){
+  D.urovne.forEach(u=>{
+    if(!D.prava[u.kod]){
+      D.prava[u.kod] = {};
+      OBLASTI.forEach(o=>{ D.prava[u.kod][o.kod] = "žádné"; });
+    }
+  });
+  Object.keys(D.prava).forEach(k=>{ if(!uroven(k)) delete D.prava[k]; });
+}
+
+function kresliMatici(){
+  srovnejPrava();
+  const u = D.urovne.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99));
+  const t = $('#tabMatice');
+  let h = '<thead><tr><th style="width:280px">Oblast</th>'
+        + u.map(x=>`<th style="text-align:center">${esc(x.nazev)}</th>`).join('') + '</tr></thead><tbody>';
+  OBLASTI.forEach(o=>{
+    h += '<tr><td style="padding:8px 10px;font-size:13px;font-weight:700">'+esc(o.nazev)
+       + '<span style="display:block;font-weight:400;font-size:11px;color:var(--pisek)">'+esc(o.kod)+'</span></td>';
+    u.forEach(x=>{
+      const v = pravo(x.kod, o.kod);
+      const tr = v==="zápis"?"zap":(v==="čtení"?"cti":"nic");
+      h += '<td class="pravo '+tr+'"><select data-u="'+esc(x.kod)+'" data-o="'+esc(o.kod)+'">'
+         + PRAVA.map(pv=>`<option${pv===v?' selected':''}>${pv}</option>`).join('') + '</select></td>';
+    });
+    h += '</tr>';
+  });
+  t.innerHTML = h + '</tbody>';
+  t.querySelectorAll('select').forEach(el=>{
+    el.onchange = ()=>{ D.prava[el.dataset.u][el.dataset.o] = el.value; kresliMatici(); uplatniPrava(); };
+  });
+}
+
+function kresliUzivatele(){
+  tabulka('#tabUzivatele', bezCitlivych([
+    {nadpis:"E-mail", pole:"email", sirka:"250px"},
+    {nadpis:"Jméno", pole:"jmeno", sirka:"200px"},
+    {nadpis:"Úroveň", pole:"uroven", typ:"select",
+      moznosti:()=>D.urovne.map(u=>u.kod), sirka:"150px"},
+    {nadpis:"Parta", pole:"kod_tymu", typ:"select",
+      moznosti:()=>[""].concat(D.tymy.map(t=>t.kod)), sirka:"120px"},
+    {nadpis:"Aktivní", pole:"aktivni", typ:"select", moznosti:["ano","ne"], sirka:"100px"},
+    {nadpis:"Heslo", pole:"_heslo", jenCist:true, sirka:"110px"},
+    {nadpis:"Poznámka", pole:"poznamka"}
+  ]), D.uzivatele.map(u=>Object.assign(u,{_heslo: u.heslo_hash?"nastaveno":"není"})), ()=>kresliPristupy(), true, false);
+}
+
+function kresliPristupy(){
+  kresliUrovne(); kresliMatici(); kresliUzivatele();
+  const sp = spravce();
+  const st = $('#stavHesla');
+  if(st) st.innerHTML = sp
+    ? ('Heslo teď platí pro <b>' + esc(sp.jmeno||sp.email||'?') + '</b>, úroveň '
+       + esc((uroven(sp.uroven)||{}).nazev||sp.uroven) + ' — '
+       + (sp.heslo_hash ? 'nastavené' : '<b style="color:var(--vinova)">není nastavené, tlačítko Vyprázdnit plán je bez ochrany</b>') + '.')
+    : 'Žádný aktivní uživatel, heslo nemá koho chránit.';
+  const v = $('#volbaNahledu');
+  v.innerHTML = '<option value="">bez omezení — plný přístup</option>'
+    + D.urovne.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))
+        .map(u=>`<option value="${esc(u.kod)}"${u.kod===nahledUroven?' selected':''}>prohlížet jako ${esc(u.nazev)}</option>`).join('');
+}
+
+function zapniNahled(kod){
+  nahledUroven = kod || "";
+  const l = $('#nahledLista');
+  if(nahledUroven){
+    const u = uroven(nahledUroven) || {};
+    $('#nahledNazev').textContent = u.nazev || nahledUroven;
+    $('#nahledPopis').textContent = u.popis || '';
+    l.classList.add('videt');
+  } else l.classList.remove('videt');
+  const v = $('#volbaNahledu'); if(v) v.value = nahledUroven;
+  uplatniPrava();
+  hlaska(nahledUroven ? ('Náhled: '+((uroven(nahledUroven)||{}).nazev||nahledUroven)) : 'Plný přístup');
+}
+
+function uplatniPrava(){
+  // 1) záložky podle práva k oblasti
+  const skryte = new Set();
+  if(nahledUroven){
+    OBLASTI.forEach(o=>{
+      if(pravo(nahledUroven, o.kod)==="žádné") o.sekce.forEach(x=>skryte.add(x));
+    });
+  }
+  let prvniVidet = null;
+  ZALOZKY.forEach(z=>{
+    const b = document.querySelector(`#nav button[data-id="${z.id}"]`);
+    if(!b) return;
+    b.style.display = skryte.has(z.id) ? 'none' : '';
+    if(!skryte.has(z.id) && !prvniVidet) prvniVidet = z.id;
+    if(skryte.has(z.id)) $('#'+z.id).classList.remove('videt');
+  });
+  if(nahledUroven && !ZALOZKY.some(z=>$('#'+z.id).classList.contains('videt')) && prvniVidet) prepni(prvniVidet);
+
+  // 2) zámek na čtení
+  ZALOZKY.forEach(z=>{
+    const sek = $('#'+z.id);
+    const o = OBLASTI.find(x=>x.sekce.indexOf(z.id)>=0);
+    const jenCist = nahledUroven && o && pravo(nahledUroven, o.kod)==="čtení";
+    sek.classList.toggle('zamceno', !!jenCist);
+    sek.querySelectorAll('input,select,textarea,button').forEach(el=>{
+      if(el.closest('.nastroje') && el.tagName==='SELECT') return;   // filtry nechat funkční
+      el.disabled = !!jenCist;
+    });
+    sek.querySelectorAll('[draggable]').forEach(el=>{ el.draggable = !jenCist; });
+    sek.querySelectorAll('.smaz').forEach(el=>{ el.style.display = jenCist ? 'none' : ''; });
+  });
+
+  // 3) citlivé sloupce
+  const bezKontaktu = nahledUroven && pravo(nahledUroven, "kontakty")==="žádné";
+  const tab = $('#tabClenove');
+  if(tab && bezKontaktu){
+    const skryt = [];
+    tab.querySelectorAll('thead th').forEach((th,i)=>{
+      const n = th.textContent.trim();
+      if(n==='Telefon' || n==='E-mail' || n==='Číslo účtu') skryt.push(i);
+    });
+    tab.querySelectorAll('tr').forEach(tr=>{
+      skryt.forEach(i=>{ const c = tr.children[i]; if(c) c.style.display='none'; });
+    });
+  }
+}
+
 /* ---------- přidávání řádků ---------- */
 function pridej(co){
   if(co==='tymy'){ D.tymy.push({kod:"NOVÁ",nazev:"",poradi:(D.tymy.length+1),doprava:"",barva:"#8a8a8a",poznamka:""}); kresliTymy(); kresliPaletu(); naplnFiltrPart(); }
   if(co==='clenove'){ const f=$('#filtrParty').value; D.clenove.push({kod_tymu:f||D.tymy[0].kod,jmeno:"",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""}); kresliClenove(); }
   if(co==='nocMista'){ D.nocMista.push({kod:"NOVÉ",nazev:"",adresa:"",mapa_url:"",kapacita:0,pokoje:"",kontakt:"",telefon:"",cena:"",platba:"",rezervace:"",poznamka:""}); kresliNocMista(); }
+  if(co==='objednavka'){ D.objednavky.push({rok:D.nastaveni.aktivni_rok,vlna:1,datum:"",pocet:0,poznamka:""}); kresliObjednavky(); }
+  if(co==='uroven'){ D.urovne.push({kod:"NOVA",nazev:"Nová úroveň",poradi:D.urovne.length+1,popis:""}); srovnejPrava(); kresliPristupy(); }
+  if(co==='uzivatel'){ D.uzivatele.push({email:"",jmeno:"",uroven:(D.urovne[0]||{}).kod||"",kod_tymu:"",aktivni:"ano",poznamka:""}); kresliUzivatele(); }
   if(co==='nocLide'){ D.nocLide.push({noc:"pátek",kod_noclehu:"",jmeno:"",kod_tymu:"",poznamka:""}); kresliNocLide(); }
 }
 
@@ -3821,7 +1565,8 @@ function kopirujVse(){
   kresliPlan(); if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
   hlaska('Celý HB25 zkopírován do '+D.nastaveni.aktivni_rok+' — '+D.ukoly.length+' úkolů');
 }
-function vycisti(){
+function vycisti(){ otevriZamek(vycistiOpravdu); }
+function vycistiOpravdu(){
   D.ukoly = [];
   kresliPlan(); if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
   hlaska('Plán vyprázdněn');
@@ -3862,10 +1607,12 @@ function nactiSoubor(vstup){
 function vseKresli(){
   kresliNastaveni(); kresliTymy(); naplnFiltrPart(); kresliClenove();
   kresliPredavky(); kresliNocMista(); kresliNocLide(); kresliPlan(); kresliPodrobny();
+  kresliPristupy(); kresliTricka(); uplatniPrava();
 }
 D.ukoly.forEach(u=>{ u.zRocniku = "HB25"; });      // vzor z minulého ročníku, neprošlo revizí
 D.tymy.forEach(t=>{ t.zRocniku = "HB25"; });
 D.clenove.forEach(c=>{ c.zRocniku = "HB25"; });
+D.velikosti.forEach(v=>{ v.zRocniku = "HB25"; });   // podíly i pomocníci jsou převzaté
 D.vzorHB25 = JSON.parse(JSON.stringify(D.ukoly));   // neměnný vzor pro kopírování
 D.ukoly = D.ukoly.filter(u=>!u.cislo || u.cislo<=5);  // HB26 začíná jen prvními pár úkoly
 kresliNav();

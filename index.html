@@ -173,13 +173,13 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   <!-- 1. PLÁN ÚKOLŮ -->
   <section class="sekce" id="s-ukoly">
     <div class="nastroje">
-      <button class="tl hlavni" onclick="kopirujVse()">Kopírovat celý HB25</button>
-      <button class="tl" onclick="vycisti()">Vyprázdnit plán</button>
-      <button class="tl" onclick="prepniZvyrazneni()">Zvýraznit vybranou partu</button>
-      <button class="tl" onclick="ulozSoubor()">Uložit do souboru</button>
-      <button class="tl" onclick="document.getElementById('nacti').click()">Načíst ze souboru</button>
+      <button class="tl hlavni" title="Přepíše celý plán ročníku vzorem z HB25 (232 úkolů). Co máte rozpracované, se ztratí." onclick="kopirujVse()">Kopírovat celý HB25</button>
+      <button class="tl" title="Smaže všechny úkoly aktuálního ročníku. Vzor HB25 zůstává, vrátíte ho tlačítkem Kopírovat celý HB25." onclick="vycisti()">Vyprázdnit plán</button>
+      <button class="tl" title="Zvýrazní v mřížce políčka vybrané party a ostatní ztlumí. Dalším kliknutím zvýraznění vypnete." onclick="prepniZvyrazneni()">Zvýraznit vybranou partu</button>
+      <button class="tl" title="Stáhne celý plán jako soubor JSON do složky Stažené. Nikam se nic neodesílá." onclick="ulozSoubor()">Uložit do souboru</button>
+      <button class="tl" title="Načte plán ze souboru JSON a přepíše jím to, co je teď na obrazovce." onclick="document.getElementById('nacti').click()">Načíst ze souboru</button>
       <input type="file" id="nacti" accept=".json" style="display:none" onchange="nactiSoubor(this)">
-      <button class="tl" onclick="oznacZrevidovane()">Označit vše jako zrevidované</button>
+      <button class="tl" title="Přepne všechny červené značky HB25 na zelené HB26 — potvrzujete tím, že jste hodnoty prošel." onclick="oznacZrevidovane()">Označit vše jako zrevidované</button>
       <span class="stav" id="stavPlan"></span>
       <span class="stav" id="stavRevize"></span>
     </div>
@@ -228,9 +228,9 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
         <select id="filtrTyp" onchange="kresliPodrobny()"
           style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
       </label>
-      <button class="tl" onclick="rozbalVse(true)">Rozbalit vše</button>
-      <button class="tl" onclick="rozbalVse(false)">Sbalit vše</button>
-      <button class="tl" onclick="window.print()">Tisk / PDF</button>
+      <button class="tl" title="Rozbalí všechny party naráz." onclick="rozbalVse(true)">Rozbalit vše</button>
+      <button class="tl" title="Sbalí všechny party na jeden řádek." onclick="rozbalVse(false)">Sbalit vše</button>
+      <button class="tl" title="Otevře tiskový dialog prohlížeče. Volbou Uložit jako PDF z toho uděláte PDF." onclick="window.print()">Tisk / PDF</button>
       <span class="stav" id="stavPodrobny"></span>
     </div>
     <div id="podrobny"></div>
@@ -244,7 +244,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
         <p class="popisek">Kdo všechno se na závodě podílí. Pořadí určuje, v jakém sledu se
           party ukazují v paletě u plánu. Barva je jen pro rozlišení v mřížce.</p>
         <div class="obal-tab"><table class="tab" id="tabTymy"></table></div>
-        <button class="tl" style="margin-top:10px" onclick="pridej('tymy')">+ Přidat partu</button>
+        <button class="tl" style="margin-top:10px" title="Přidá do tabulky prázdný řádek pro novou partu." onclick="pridej('tymy')">+ Přidat partu</button>
       </div>
     </div>
   </section>
@@ -263,7 +263,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
           <span class="stav" id="stavClenove"></span>
         </div>
         <div class="obal-tab"><table class="tab" id="tabClenove"></table></div>
-        <button class="tl" style="margin-top:10px" onclick="pridej('clenove')">+ Přidat člověka</button>
+        <button class="tl" style="margin-top:10px" title="Přidá do tabulky prázdný řádek pro nového člena party." onclick="pridej('clenove')">+ Přidat člověka</button>
       </div>
     </div>
   </section>
@@ -313,7 +313,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
         <p class="popisek">Kde tým spí. Jedno místo může sloužit víc nocí, proto noc není
           součástí klíče — noc se určuje až u lidí.</p>
         <div class="obal-tab"><table class="tab" id="tabNocMista"></table></div>
-        <button class="tl" style="margin-top:10px" onclick="pridej('nocMista')">+ Přidat nocleh</button>
+        <button class="tl" style="margin-top:10px" title="Přidá prázdný řádek pro další místo noclehu." onclick="pridej('nocMista')">+ Přidat nocleh</button>
       </div>
     </div>
   </section>
@@ -328,8 +328,8 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
         <div id="obsazenost" style="margin-bottom:14px"></div>
         <div class="obal-tab"><table class="tab" id="tabNocLide"></table></div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-          <button class="tl" onclick="pridej('nocLide')">+ Přidat nocležníka</button>
-          <button class="tl" onclick="doplnZeClenu()">Doplnit podle sloupců nocleh u členů</button>
+          <button class="tl" title="Přidá prázdný řádek pro dalšího nocležníka." onclick="pridej('nocLide')">+ Přidat nocležníka</button>
+          <button class="tl" title="Sestaví seznam nocležníků podle sloupců nocleh pátek a nocleh sobota u členů part." onclick="doplnZeClenu()">Doplnit podle sloupců nocleh u členů</button>
         </div>
       </div>
     </div>
@@ -348,9 +348,9 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   <label>Popis</label>
   <textarea id="edPopis" rows="2"></textarea>
   <div class="paticka">
-    <button class="tl hlavni" style="flex:1" onclick="ulozEditor()">Uložit</button>
-    <button class="tl cerv" onclick="smazZEditoru()">Smazat</button>
-    <button class="tl" onclick="zavriEditor()">Zavřít</button>
+    <button class="tl hlavni" style="flex:1" title="Uloží změny v tomto úkolu a zavře editor." onclick="ulozEditor()">Uložit</button>
+    <button class="tl cerv" title="Nenávratně smaže tento úkol z plánu." onclick="smazZEditoru()">Smazat</button>
+    <button class="tl" title="Zavře editor bez uložení změn." onclick="zavriEditor()">Zavřít</button>
   </div>
 </div>
 
@@ -3315,7 +3315,7 @@ const D = {
    "zdroj": "hrubý"
   }
  ]
-};;;
+};;
 
 const ROLE  = ["T","U","P","PZ","PK"];
 const NAZVY = ["trasování","úklid fáborků","obsluha předávky","zahájení předávky","ukončení předávky"];
@@ -3361,19 +3361,19 @@ const najdi = (typ, cislo) => D.ukoly.find(u=>u.typ===typ && u.cislo===cislo);
 
 /* ---------- záložky ---------- */
 const ZALOZKY = [
-  {id:"s-ukoly",         nazev:"Plán úkolů"},
-  {id:"s-podrobny",      nazev:"Podrobný plán"},
-  {id:"s-tymy",          nazev:"Party"},
-  {id:"s-clenove",       nazev:"Členové part"},
-  {id:"s-predavky",      nazev:"Předávky"},
-  {id:"s-nastaveni",     nazev:"Nastavení ročníku"},
-  {id:"s-noclehy-mista", nazev:"Noclehy — místa"},
-  {id:"s-noclehy-lide",  nazev:"Noclehy — lidé"}
+  {id:"s-ukoly",         nazev:"Plán úkolů",         napoveda:"Mřížka etap a rolí — kdo trasuje, uklízí a obsluhuje které předávky."},
+  {id:"s-podrobny",      nazev:"Podrobný plán",      napoveda:"Všechny úkoly po partách, včetně přejezdů, noclehů, startu a cíle."},
+  {id:"s-tymy",          nazev:"Party",              napoveda:"Seznam part, jejich barvy a způsob dopravy."},
+  {id:"s-clenove",       nazev:"Členové part",       napoveda:"Lidé v partách a jejich kontakty."},
+  {id:"s-predavky",      nazev:"Předávky",           napoveda:"Místa předávek, souřadnice, vzdálenosti a časy mezi nimi."},
+  {id:"s-nastaveni",     nazev:"Nastavení ročníku",  napoveda:"Aktivní ročník a datum závodu."},
+  {id:"s-noclehy-mista", nazev:"Noclehy — místa",    napoveda:"Ubytování, kapacity a stav rezervací."},
+  {id:"s-noclehy-lide",  nazev:"Noclehy — lidé",     napoveda:"Kdo kde spí v pátek a v sobotu."}
 ];
 
 function kresliNav(){
   const n = $('#nav');
-  n.innerHTML = ZALOZKY.map(z=>`<button data-id="${z.id}" onclick="prepni('${z.id}')">${z.nazev}</button>`).join('')
+  n.innerHTML = ZALOZKY.map(z=>`<button data-id="${z.id}" title="${z.napoveda||''}" onclick="prepni('${z.id}')">${z.nazev}</button>`).join('')
     + `<span class="odd">skryté: vzdálenosti · historie plánů · fotky</span>`;
 }
 function prepni(id){
@@ -3410,7 +3410,7 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky){
         h += `<td class="${s.trida||''}"><input type="${s.typ||'text'}" data-i="${i}" data-p="${s.pole}" value="${esc(v)}"></td>`;
       }
     });
-    if(mazatelne) h += `<td class="smaz"><button class="smazX" data-del="${i}" title="Smazat řádek">×</button></td>`;
+    if(mazatelne) h += `<td class="smaz"><button class="smazX" data-del="${i}" title="Smaže celý tento řádek. Vrátit se to nedá.">×</button></td>`;
     h += '</tr>';
   });
   t.innerHTML = h + '</tbody>';
@@ -3526,6 +3526,7 @@ function kresliPlan(){
     });
     const akce = document.createElement('td'); akce.className='akce';
     const b = document.createElement('button'); b.className='tl'; b.textContent='z HB25';
+    b.title = 'Zkopíruje do etapy E'+e+' všech pět rolí z ročníku HB25 a přepíše, co je v ní teď.';
     b.onclick = ()=>{ kopirujEtapu(e); };
     akce.appendChild(b); tr.appendChild(akce);
     telo.appendChild(tr);
@@ -3655,7 +3656,7 @@ function kresliPodrobny(){
 
     const pridat = document.createElement('div');
     pridat.style.padding = '10px 14px';
-    pridat.innerHTML = '<button class="tl">+ Přidat úkol partě '+esc(t.kod)+'</button>';
+    pridat.innerHTML = '<button class="tl" title="Přidá partě '+esc(t.kod)+' nový prázdný úkol do podrobného plánu.">+ Přidat úkol partě '+esc(t.kod)+'</button>';
     pridat.querySelector('button').onclick = ()=>{
       D.ukoly.push({parta:t.kod,typ:"A",kod:"A",cislo:null,kdy_text:"",popis:"",stav:"plán",zdroj:"ručně"});
       sbaleno[t.kod] = false; kresliPodrobny(); kresliPlan();
@@ -3866,7 +3867,7 @@ D.ukoly.forEach(u=>{ u.zRocniku = "HB25"; });      // vzor z minulého ročníku
 D.tymy.forEach(t=>{ t.zRocniku = "HB25"; });
 D.clenove.forEach(c=>{ c.zRocniku = "HB25"; });
 D.vzorHB25 = JSON.parse(JSON.stringify(D.ukoly));   // neměnný vzor pro kopírování
-D.ukoly = D.ukoly.filter(u=>u.cislo && u.cislo<=5);  // HB26 začíná jen prvními pár úkoly
+D.ukoly = D.ukoly.filter(u=>!u.cislo || u.cislo<=5);  // HB26 začíná jen prvními pár úkoly
 kresliNav();
 vseKresli();
 prepni('s-ukoly');

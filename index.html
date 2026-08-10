@@ -1610,9 +1610,15 @@ function dopoctiPrejezdy(){
   return {pridano, bezUdaje};
 }
 
+// jméno předávky pro hlášky; číslo už nese kód úkolu, tak ho neopakujeme
+function popisPredavky(cislo){
+  const p = D.predavky[cislo-1];
+  return (p && p.nazev) ? p.nazev : ('předávka ' + cislo);
+}
+
 function zkontrolujNavaznosti(){
   const nalezy = [];
-  let bezCasu = 0;
+  const neposouzeno = [];
   D.tymy.forEach(t=>{
     const rada = radaParty(t.kod).filter(u=>u.cislo);
     for(let i=0;i<rada.length-1;i++){
@@ -1621,19 +1627,64 @@ function zkontrolujNavaznosti(){
       const v = vzdal(a.cislo, b.cislo);
       const konecA = minuty(a.den, a.kdy_do || a.kdy_od);
       const zacatekB = minuty(b.den, b.kdy_od);
-      if(!v || konecA==null || zacatekB==null){ bezCasu++; continue; }
+
+      // co konkrétně chybí — ať se dá rovnou doplnit
+      const chybi = [];
+      if(konecA==null) chybi.push('u <b>'+esc(a.kod)+'</b> (' + esc(popisPredavky(a.cislo))
+        + ') chybí čas — je prázdné Od i Do');
+      else if(!a.den) chybi.push('u <b>'+esc(a.kod)+'</b> (' + esc(popisPredavky(a.cislo))
+        + ') chybí den, takže se nedá říct, kdy ten čas platí');
+      if(zacatekB==null) chybi.push('u <b>'+esc(b.kod)+'</b> (' + esc(popisPredavky(b.cislo))
+        + ') chybí čas Od');
+      else if(!b.den) chybi.push('u <b>'+esc(b.kod)+'</b> (' + esc(popisPredavky(b.cislo))
+        + ') chybí den, takže se nedá říct, kdy ten čas platí');
+      if(!v) chybi.push('v tabulce vzdáleností není dvojice <b>'
+        + esc(popisPredavky(a.cislo)) + '</b> → <b>' + esc(popisPredavky(b.cislo)) + '</b>');
+
+      if(chybi.length){ neposouzeno.push({parta:t.kod, a, b, chybi}); continue; }
+
       const kDispozici = zacatekB - konecA;
       if(kDispozici < v.min){
         nalezy.push({parta:t.kod, a, b, v, kDispozici});
       }
     }
   });
+  const bezCasu = neposouzeno.length;
+
+  // tabulka nedoposouzených dvojic — u každé je vypsané, co přesně chybí
+  function tabulkaNeposouzeno(){
+    if(!neposouzeno.length) return '';
+    let h = '<div class="karta"><h2>Nešlo posoudit — ' + neposouzeno.length + '</h2><div class="telo">'
+      + '<p class="popisek">U těchhle dvojic chybí údaj, bez kterého se nedá spočítat, jestli se '
+      + 'grupa stihne přesunout. Doplňte ho v podrobném plánu (sloupce Den, Od, Do) nebo '
+      + 'v tabulce vzdáleností.</p>'
+      + '<div class="obal-tab"><table class="tab"><thead><tr><th style="width:110px">Grupa</th>'
+      + '<th style="width:230px">Z čeho</th><th style="width:230px">Na co</th>'
+      + '<th>Co chybí</th></tr></thead><tbody>';
+    neposouzeno.forEach(n=>{
+      const kdy = (den, cas, slovo) => {
+        if(!den && !cas) return 'bez dne i času';
+        if(!cas) return esc(den) + ', čas nevyplněný';
+        if(!den) return 'bez dne, ' + slovo + ' ' + esc(cas);
+        return esc(den) + ' ' + slovo + ' ' + esc(cas);
+      };
+      const casA = kdy(n.a.den, n.a.kdy_do || n.a.kdy_od, 'do');
+      const casB = kdy(n.b.den, n.b.kdy_od, 'od');
+      h += '<tr><td style="padding:7px 10px;font-weight:800;color:'+barva(n.parta)+'">'+esc(n.parta)+'</td>'
+        + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.a.kod)+' '+esc(popisPredavky(n.a.cislo))
+        + '<br><span style="color:var(--pisek)">'+casA+'</span></td>'
+        + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.b.kod)+' '+esc(popisPredavky(n.b.cislo))
+        + '<br><span style="color:var(--pisek)">'+casB+'</span></td>'
+        + '<td style="padding:7px 10px;font-size:12.5px">' + n.chybi.join('<br>') + '</td></tr>';
+    });
+    return h + '</tbody></table></div></div></div>';
+  }
 
   const cil = $("#kontrola");
   if(!nalezy.length){
-    cil.innerHTML = '<div class="karta"><div class="telo">Žádná nemožná návaznost. '
-      + (bezCasu ? bezCasu + ' dvojic nešlo posoudit, protože u nich chybí čas nebo vzdálenost.' : '')
-      + '</div></div>';
+    cil.innerHTML = '<div class="karta"><div class="telo">Žádná nemožná návaznost.'
+      + (bezCasu ? ' ' + bezCasu + ' dvojic ale nešlo posoudit — proč, je v tabulce níž.' : '')
+      + '</div></div>' + tabulkaNeposouzeno();
   } else {
     let h = '<div class="karta"><h2>Nemožné návaznosti — ' + nalezy.length + '</h2><div class="telo">'
       + '<p class="popisek">Grupa by musela být na dvou místech dřív, než tam stihne dojet. '
@@ -1642,8 +1693,8 @@ function zkontrolujNavaznosti(){
       + '<th>Z čeho</th><th>Na co</th><th style="width:110px">K dispozici</th>'
       + '<th style="width:110px">Potřeba</th><th style="width:90px">Schodek</th></tr></thead><tbody>';
     nalezy.forEach(n=>{
-      const mA = (D.predavky[n.a.cislo-1]||{}).nazev || "";
-      const mB = (D.predavky[n.b.cislo-1]||{}).nazev || "";
+      const mA = popisPredavky(n.a.cislo);
+      const mB = popisPredavky(n.b.cislo);
       h += '<tr><td style="padding:7px 10px;font-weight:800;color:'+barva(n.parta)+'">'+esc(n.parta)+'</td>'
         + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.a.kod)+' '+esc(mA)+'<br>'
         + '<span style="color:var(--pisek)">'+esc(n.a.den)+' do '+esc(n.a.kdy_do||n.a.kdy_od)+'</span></td>'
@@ -1654,10 +1705,10 @@ function zkontrolujNavaznosti(){
         + '<td class="stred" style="padding:7px;font-weight:800;color:var(--vinova)">'+(n.v.min-n.kDispozici)+' min</td></tr>';
     });
     h += '</tbody></table></div>';
-    if(bezCasu) h += '<p class="popisek" style="margin-top:10px">Dalších '+bezCasu
-      + ' dvojic nešlo posoudit — chybí u nich čas nebo vzdálenost.</p>';
+    if(bezCasu) h += '<p class="popisek" style="margin-top:10px">Dalších ' + bezCasu
+      + ' dvojic nešlo posoudit — proč, je v tabulce níž.</p>';
     h += '</div></div>';
-    cil.innerHTML = h;
+    cil.innerHTML = h + tabulkaNeposouzeno();
   }
   hlaska(nalezy.length ? (nalezy.length + " nemožných návazností") : "Návaznosti sedí");
   return nalezy.length;

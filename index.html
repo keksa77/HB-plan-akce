@@ -302,7 +302,9 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
       <div class="telo">
         <p class="popisek">Jedenatřicet míst, poslední je cíl v Mikulově. GPS a soubor GPX se
           plní od ročníku HB26 dál. Kilometry na následující předávku jsou dopočítané
-          z tabulky vzdalenosti, proto se needitují.</p>
+          z tabulky vzdalenosti, proto se needitují. Časy prvního a posledního běžce jsou
+          průměr skutečných hodnot z HB24 a HB25 a slouží k odhadu, jak dlouho musí být
+          předávka otevřená.</p>
         <div class="obal-tab"><table class="tab" id="tabPredavky"></table></div>
       </div>
     </div>
@@ -589,37 +591,37 @@ const D = {
 
   // predavky HB26 (31 míst) + km/min na následující předávku z tabulky vzdalenosti
   predavky: [
-    {cislo:1, nazev:"Dolní Lomná",       lat:49.5554500, lon:18.7335361, typ:"Local",      pozn:"", gpx:"", km:9.2, min:14},
-    {cislo:2, nazev:"Horní Lomná",       lat:49.5296144, lon:18.6379006, typ:"Local",      pozn:"", gpx:"", km:63.2, min:69},
-    {cislo:3, nazev:"Morávka",           lat:49.5612047, lon:18.5505747, typ:"Local",      pozn:"", gpx:"", km:6.7, min:25},
-    {cislo:4, nazev:"Visalaje",          lat:49.5177819, lon:18.5284303, typ:"Local",      pozn:"", gpx:"", km:49.1, min:63},
-    {cislo:5, nazev:"Staré Hamry",       lat:49.4859372, lon:18.4776239, typ:"Interně HB", pozn:"", gpx:"", km:9.0, min:16},
-    {cislo:6, nazev:"Bílá",              lat:49.4430025, lon:18.4581692, typ:"Local",      pozn:"", gpx:"", km:12.0, min:12},
-    {cislo:7, nazev:"Bumbálka",          lat:49.3990919, lon:18.4110378, typ:"Local",      pozn:"", gpx:"", km:13.9, min:17},
-    {cislo:8, nazev:"Světlá",            lat:49.3479767, lon:18.3689822, typ:"Local",      pozn:"", gpx:"", km:3.9, min:7},
-    {cislo:9, nazev:"Kasárne",           lat:49.3271775, lon:18.3816800, typ:"Local",      pozn:"", gpx:"", km:34.2, min:52},
-    {cislo:10,nazev:"Kohútka",           lat:49.2550597, lon:18.2187267, typ:"Local",      pozn:"", gpx:"", km:26.7, min:39},
-    {cislo:11,nazev:"Huslenky",          lat:49.2764436, lon:18.1477394, typ:"Interně HB", pozn:"", gpx:"", km:29.4, min:39},
-    {cislo:12,nazev:"Pulčín",            lat:49.2199331, lon:18.0768194, typ:"Local",      pozn:"", gpx:"", km:11.3, min:18},
-    {cislo:13,nazev:"Študlov",           lat:49.1585350, lon:18.0861778, typ:"Local",      pozn:"", gpx:"", km:16.4, min:20},
-    {cislo:14,nazev:"Návojná",           lat:49.1080494, lon:18.0479172, typ:"Local",      pozn:"", gpx:"", km:10.3, min:14},
-    {cislo:15,nazev:"Popov",             lat:49.0824411, lon:17.9709131, typ:"Local",      pozn:"", gpx:"", km:6.6, min:8},
-    {cislo:16,nazev:"Rokytnice",         lat:49.0667764, lon:17.9162406, typ:"Local",      pozn:"", gpx:"", km:9.5, min:11},
-    {cislo:17,nazev:"Bojkovice",         lat:49.0384564, lon:17.8171467, typ:"Local",      pozn:"", gpx:"", km:10.8, min:14},
-    {cislo:18,nazev:"Starý Hrozenkov",   lat:48.9706333, lon:17.8612167, typ:"Local",      pozn:"", gpx:"", km:9.3, min:10},
-    {cislo:19,nazev:"Mikulčin vrch",     lat:48.9498192, lon:17.8014039, typ:"Local",      pozn:"", gpx:"", km:16.5, min:24},
-    {cislo:20,nazev:"Strání",            lat:48.9137661, lon:17.6617256, typ:"Local",      pozn:"", gpx:"", km:20.4, min:20},
-    {cislo:21,nazev:"Nová Lhota",        lat:48.8608856, lon:17.5936308, typ:"Local",      pozn:"", gpx:"", km:10.5, min:15},
-    {cislo:22,nazev:"Velká nad Veličkou",lat:48.8801433, lon:17.5147478, typ:"Local",      pozn:"", gpx:"", km:20.9, min:30},
-    {cislo:23,nazev:"Lučina, koupaliště",lat:48.8611175, lon:17.3922178, typ:"Local",      pozn:"", gpx:"", km:14.7, min:19},
-    {cislo:24,nazev:"Sudoměřice",        lat:48.8643533, lon:17.2559186, typ:"Local",      pozn:"", gpx:"", km:14.7, min:19},
-    {cislo:25,nazev:"Hodonín",           lat:48.8437192, lon:17.1200578, typ:"Local",      pozn:"", gpx:"", km:17.4, min:21},
-    {cislo:26,nazev:"Týnec",             lat:48.7735797, lon:17.0116775, typ:"Local",      pozn:"", gpx:"", km:7.8, min:12},
-    {cislo:27,nazev:"Lanžhot",           lat:48.7235136, lon:16.9723267, typ:"Local",      pozn:"", gpx:"", km:7.4, min:11},
-    {cislo:28,nazev:"Břeclav",           lat:48.7428022, lon:16.8968669, typ:"Local",      pozn:"", gpx:"", km:10.1, min:16},
-    {cislo:29,nazev:"Valtice",           lat:48.7466506, lon:16.7923433, typ:"Local",      pozn:"", gpx:"", km:8.9, min:13},
-    {cislo:30,nazev:"Hlohovec",          lat:48.7795208, lon:16.7576239, typ:"Local",      pozn:"", gpx:"", km:20.5, min:26},
-    {cislo:31,nazev:"Mikulov",           lat:48.8130847, lon:16.6393036, typ:"",           pozn:"", gpx:"", km:null, min:null}
+    {cislo:1, nazev:"Dolní Lomná",       lat:49.5554500, lon:18.7335361, typ:"Local",      pozn:"", gpx:"", km:9.2, min:14, prvni:"so 06:00", posledni:"so 11:30"},
+    {cislo:2, nazev:"Horní Lomná",       lat:49.5296144, lon:18.6379006, typ:"Local",      pozn:"", gpx:"", km:63.2, min:69, prvni:"so 06:54", posledni:"so 12:18"},
+    {cislo:3, nazev:"Morávka",           lat:49.5612047, lon:18.5505747, typ:"Local",      pozn:"", gpx:"", km:6.7, min:25, prvni:"so 08:08", posledni:"so 13:24"},
+    {cislo:4, nazev:"Visalaje",          lat:49.5177819, lon:18.5284303, typ:"Local",      pozn:"", gpx:"", km:49.1, min:63, prvni:"so 08:52", posledni:"so 14:03"},
+    {cislo:5, nazev:"Staré Hamry",       lat:49.4859372, lon:18.4776239, typ:"Interně HB", pozn:"", gpx:"", km:9.0, min:16, prvni:"so 09:38", posledni:"so 14:42"},
+    {cislo:6, nazev:"Bílá",              lat:49.4430025, lon:18.4581692, typ:"Local",      pozn:"", gpx:"", km:12.0, min:12, prvni:"so 10:25", posledni:"so 15:20"},
+    {cislo:7, nazev:"Bumbálka",          lat:49.3990919, lon:18.4110378, typ:"Local",      pozn:"", gpx:"", km:13.9, min:17, prvni:"so 11:13", posledni:"so 16:06"},
+    {cislo:8, nazev:"Světlá",            lat:49.3479767, lon:18.3689822, typ:"Local",      pozn:"", gpx:"", km:3.9, min:7, prvni:"so 12:28", posledni:"so 17:23"},
+    {cislo:9, nazev:"Kasárne",           lat:49.3271775, lon:18.3816800, typ:"Local",      pozn:"", gpx:"", km:34.2, min:52, prvni:"so 13:19", posledni:"so 17:56"},
+    {cislo:10,nazev:"Kohútka",           lat:49.2550597, lon:18.2187267, typ:"Local",      pozn:"", gpx:"", km:26.7, min:39, prvni:"so 14:28", posledni:"so 19:04"},
+    {cislo:11,nazev:"Huslenky",          lat:49.2764436, lon:18.1477394, typ:"Interně HB", pozn:"", gpx:"", km:29.4, min:39, prvni:"so 15:18", posledni:"so 19:46"},
+    {cislo:12,nazev:"Pulčín",            lat:49.2199331, lon:18.0768194, typ:"Local",      pozn:"", gpx:"", km:11.3, min:18, prvni:"so 16:33", posledni:"so 21:20"},
+    {cislo:13,nazev:"Študlov",           lat:49.1585350, lon:18.0861778, typ:"Local",      pozn:"", gpx:"", km:16.4, min:20, prvni:"so 17:44", posledni:"so 22:24"},
+    {cislo:14,nazev:"Návojná",           lat:49.1080494, lon:18.0479172, typ:"Local",      pozn:"", gpx:"", km:10.3, min:14, prvni:"so 18:54", posledni:"so 23:25"},
+    {cislo:15,nazev:"Popov",             lat:49.0824411, lon:17.9709131, typ:"Local",      pozn:"", gpx:"", km:6.6, min:8, prvni:"so 20:02", posledni:"ne 00:30"},
+    {cislo:16,nazev:"Rokytnice",         lat:49.0667764, lon:17.9162406, typ:"Local",      pozn:"", gpx:"", km:9.5, min:11, prvni:"so 21:02", posledni:"ne 01:24"},
+    {cislo:17,nazev:"Bojkovice",         lat:49.0384564, lon:17.8171467, typ:"Local",      pozn:"", gpx:"", km:10.8, min:14, prvni:"so 21:56", posledni:"ne 02:32"},
+    {cislo:18,nazev:"Starý Hrozenkov",   lat:48.9706333, lon:17.8612167, typ:"Local",      pozn:"", gpx:"", km:9.3, min:10, prvni:"so 23:15", posledni:"ne 03:42"},
+    {cislo:19,nazev:"Mikulčin vrch",     lat:48.9498192, lon:17.8014039, typ:"Local",      pozn:"", gpx:"", km:16.5, min:24, prvni:"ne 00:10", posledni:"ne 04:40"},
+    {cislo:20,nazev:"Strání",            lat:48.9137661, lon:17.6617256, typ:"Local",      pozn:"", gpx:"", km:20.4, min:20, prvni:"ne 01:32", posledni:"ne 06:16"},
+    {cislo:21,nazev:"Nová Lhota",        lat:48.8608856, lon:17.5936308, typ:"Local",      pozn:"", gpx:"", km:10.5, min:15, prvni:"ne 02:33", posledni:"ne 07:00"},
+    {cislo:22,nazev:"Velká nad Veličkou",lat:48.8801433, lon:17.5147478, typ:"Local",      pozn:"", gpx:"", km:20.9, min:30, prvni:"ne 03:22", posledni:"ne 08:28"},
+    {cislo:23,nazev:"Lučina, koupaliště",lat:48.8611175, lon:17.3922178, typ:"Local",      pozn:"", gpx:"", km:14.7, min:19, prvni:"ne 04:22", posledni:"ne 09:36"},
+    {cislo:24,nazev:"Sudoměřice",        lat:48.8643533, lon:17.2559186, typ:"Local",      pozn:"", gpx:"", km:14.7, min:19, prvni:"ne 05:35", posledni:"ne 10:56"},
+    {cislo:25,nazev:"Hodonín",           lat:48.8437192, lon:17.1200578, typ:"Local",      pozn:"", gpx:"", km:17.4, min:21, prvni:"ne 06:38", posledni:"ne 12:17"},
+    {cislo:26,nazev:"Týnec",             lat:48.7735797, lon:17.0116775, typ:"Local",      pozn:"", gpx:"", km:7.8, min:12, prvni:"ne 07:44", posledni:"ne 13:46"},
+    {cislo:27,nazev:"Lanžhot",           lat:48.7235136, lon:16.9723267, typ:"Local",      pozn:"", gpx:"", km:7.4, min:11, prvni:"ne 08:31", posledni:"ne 14:38"},
+    {cislo:28,nazev:"Břeclav",           lat:48.7428022, lon:16.8968669, typ:"Local",      pozn:"", gpx:"", km:10.1, min:16, prvni:"ne 09:10", posledni:"ne 15:33"},
+    {cislo:29,nazev:"Valtice",           lat:48.7466506, lon:16.7923433, typ:"Local",      pozn:"", gpx:"", km:8.9, min:13, prvni:"ne 09:59", posledni:"ne 16:28"},
+    {cislo:30,nazev:"Hlohovec",          lat:48.7795208, lon:16.7576239, typ:"Local",      pozn:"", gpx:"", km:20.5, min:26, prvni:"ne 10:43", posledni:"ne 17:22"},
+    {cislo:31,nazev:"Mikulov",           lat:48.8130847, lon:16.6393036, typ:"",           pozn:"", gpx:"", km:null, min:null, prvni:"ne 11:32", posledni:"ne 18:10"}
   ],
 
   // noclehy_adresy HB26
@@ -832,6 +834,8 @@ const NAPOVEDA = {
   "GPS délka":"Zeměpisná délka, plní se od ročníku HB26.",
   "Typ zajištění":"Local znamená místní pořadatele, Interně HB naši partu.",
   "Soubor GPX":"Název trasy na webu, například hb26-07-v1.gpx.",
+  "První běžec":"Kdy na předávku dorazil první běžec. Průměr skutečných časů z HB24 a HB25.",
+  "Poslední běžec":"Kdy dorazil poslední běžec. Průměr z HB24 a HB25, po vyřazení zjevných chyb v zápisu.",
   // noclehy
   "Kapacita":"Kolik lůžek je celkem k dispozici.",
   "Pokoje":"Jak jsou lůžka rozdělená.",
@@ -1227,6 +1231,8 @@ function kresliPredavky(){
     {nadpis:"Typ zajištění", pole:"typ", typ:"select", moznosti:["","Local","Interně HB"], sirka:"140px"},
     {nadpis:"Soubor GPX", pole:"gpx", sirka:"150px"},
     {nadpis:"Na další", pole:"_km", typ:"text", jenCist:true, sirka:"110px"},
+    {nadpis:"První běžec", pole:"prvni", jenCist:true, sirka:"104px", trida:"stred"},
+    {nadpis:"Poslední běžec", pole:"posledni", jenCist:true, sirka:"118px", trida:"stred"},
     {nadpis:"Poznámka", pole:"pozn"}
   ]), D.predavky.map(p=>Object.assign(p,{_km: p.km==null?'—':(p.km+' km · '+p.min+' min')})),
      ()=>{kresliPredavky();kresliPlan();}, false);

@@ -56,6 +56,21 @@ button.tl.cerv{color:var(--vinova);border-color:#E4C6CA}
 .tab td{border-bottom:1px solid var(--linka);padding:0;vertical-align:middle}
 .tab tbody tr:nth-child(even){background:#FCFAF7}
 .tab tbody tr:hover{background:#F6F1E9}
+
+/* ---- podrobný plán: jedna plochá tabulka přes všechny grupy ---- */
+.podrobnyTab thead th{position:sticky;top:0;z-index:5}
+.podrobnyTab tbody tr.novaGrupa td{border-top:2px solid var(--khaki)}
+.grupaOdznak{display:inline-block;border-radius:7px;padding:0 2px;vertical-align:middle}
+.grupaOdznak select{width:auto;min-width:56px;color:#fff;font-weight:800;font-size:12.5px;
+  padding:4px 4px;cursor:pointer}
+.grupaOdznak select option{color:var(--tmava);background:#fff;font-weight:600}
+.grupaJmeno{display:inline-block;margin-left:7px;font-size:12.5px;color:var(--tmava);
+  vertical-align:middle;max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* filtry ať zůstanou nad tabulkou i při scrollování dlouhého plánu */
+#s-podrobny .nastroje{position:sticky;top:var(--hlavicka,92px);z-index:8;
+  background:var(--papir);padding:9px 0;margin:0 0 12px;
+  box-shadow:0 6px 8px -8px rgba(75,41,20,.35)}
+.podrobnyTab thead th{top:calc(var(--hlavicka,92px) + 47px)}
 .tab input,.tab select,.tab textarea{width:100%;border:0;background:transparent;font:inherit;
   font-size:13px;padding:7px 8px;color:var(--tmava);border-radius:0}
 .tab input:focus,.tab select:focus,.tab textarea:focus{outline:2px solid var(--khaki);
@@ -260,8 +275,18 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
         <select id="filtrTyp" title="Ukáže jen úkoly jednoho typu, například všechny přejezdy nebo všechny noclehy." onchange="kresliPodrobny()"
           style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
       </label>
-      <button class="tl" title="Rozbalí všechny grupy naráz." onclick="rozbalVse(true)">Rozbalit vše</button>
-      <button class="tl" title="Sbalí všechny grupy na jeden řádek." onclick="rozbalVse(false)">Sbalit vše</button>
+      <label class="stav">Kód:
+        <input id="filtrKod" list="seznamKodu" placeholder="všechny kódy" autocomplete="off"
+          title="Napište část kódu, například P1 najde P1 i P10 až P19. Nebo vyberte ze seznamu kódů, které se v plánu opravdu vyskytují."
+          oninput="kresliPodrobny()"
+          style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px;width:130px">
+        <datalist id="seznamKodu"></datalist>
+      </label>
+      <label class="stav">Stav:
+        <select id="filtrStav" title="Ukáže jen úkoly v jednom stavu — plán, nepotvrzeno, zrušeno." onchange="kresliPodrobny()"
+          style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
+      </label>
+      <button class="tl" title="Zruší všechny čtyři filtry a ukáže celý plán." onclick="zrusFiltryPodrobny()">Zrušit filtry</button>
       <button class="tl" title="Otevře tiskový dialog prohlížeče. Volbou Uložit jako PDF z toho uděláte PDF." onclick="window.print()">Tisk / PDF</button>
       <button class="tl hlavni" title="Pro každou grupu proloží její úkoly přejezdy podle skutečných silničních vzdáleností mezi předávkami. Dřívější dopočet nahradí, ruční přejezdy z HB25 nechá být." onclick="dopoctiPrejezdy()">Dopočítat přejezdy</button>
       <button class="tl" title="Projde u každé grupy sled úkolů a označí místa, kam by nestihla dojet." onclick="zkontrolujNavaznosti()">Zkontrolovat návaznosti</button>
@@ -906,14 +931,16 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky){
   const t = (typeof cil==='string') ? $(cil) : cil;
   const maOdznak = odznaky !== false;
   let h = '<thead><tr>' + (maOdznak?'<th style="width:52px"></th>':'')
-        + sloupce.map(s=>`<th${s.sirka?` style="width:${s.sirka}"`:''}${nap(s.nadpis)}>${s.nadpis}</th>`).join('')
+        + sloupce.map(s=>`<th${s.sirka?` style="width:${s.sirka}"`:''}${s.napovedaSl?' title="'+esc(s.napovedaSl)+'"':nap(s.nadpis)}>${s.nadpis}</th>`).join('')
         + (mazatelne?'<th></th>':'') + '</tr></thead><tbody>';
   radky.forEach((r,i)=>{
     h += '<tr>';
     if(maOdznak) h += '<td class="odzn">'+odznakHtml(r)+'</td>';
     sloupce.forEach(s=>{
       const v = r[s.pole];
-      if(s.jenCist){
+      if(s.html){
+        h += `<td class="${s.trida||''}" style="padding:5px 8px;white-space:nowrap">${s.html(r,i)}</td>`;
+      } else if(s.jenCist){
         h += `<td class="${s.trida||''}" style="padding:7px 8px;font-size:13px;color:var(--pisek)">${esc(v)}</td>`;
       } else if(s.typ==='select'){
         const moznosti = (typeof s.moznosti==='function'? s.moznosti() : s.moznosti);
@@ -1128,81 +1155,123 @@ function zavriEditor(){ edUkol=null; $('#editor').classList.remove('videt'); }
 
 /* ---------- 1b. podrobný plán ---------- */
 function naplnFiltryPodrobny(){
-  const fp = $('#filtrPodrobny'), ft = $('#filtrTyp');
-  const dp = fp.value, dt = ft.value;
+  const fp = $('#filtrPodrobny'), ft = $('#filtrTyp'), fs = $('#filtrStav');
+  const dp = fp.value, dt = ft.value, ds = fs.value;
   fp.innerHTML = '<option value="">všechny grupy</option>' +
     D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))
       .map(t=>`<option${t.kod===dp?' selected':''}>${esc(t.kod)}</option>`).join('');
   ft.innerHTML = '<option value="">všechny typy</option>' +
     TYPY.map(t=>`<option${t===dt?' selected':''} value="${t}">${t} — ${NAZVY_TYPU[t]}</option>`).join('');
+  fs.innerHTML = '<option value="">všechny stavy</option>' +
+    STAVY.map(s=>`<option${s===ds?' selected':''}>${esc(s)}</option>`).join('');
+
+  // našeptávač kódů — jen ty, které se v plánu opravdu vyskytují
+  const kody = [...new Set(D.ukoly.map(u=>u.kod).filter(Boolean))].sort((a,b)=>
+    a.localeCompare(b, 'cs', {numeric:true}));
+  $('#seznamKodu').innerHTML = kody.map(k=>`<option value="${esc(k)}">`).join('');
+}
+
+function zrusFiltryPodrobny(){
+  $('#filtrPodrobny').value = '';
+  $('#filtrTyp').value = '';
+  $('#filtrKod').value = '';
+  $('#filtrStav').value = '';
+  kresliPodrobny();
+}
+
+// pořadí grup pro řazení plochého seznamu
+function poradiGrupy(kod){
+  const t = parta(kod);
+  const i = t ? (t.poradi||99) : 999;
+  return i;
 }
 
 function kresliPodrobny(){
   naplnFiltryPodrobny();
-  const fp = $('#filtrPodrobny').value, ft = $('#filtrTyp').value;
+  const fp = $('#filtrPodrobny').value;
+  const ft = $('#filtrTyp').value;
+  const fk = ($('#filtrKod').value || '').trim().toLowerCase();
+  const fs = $('#filtrStav').value;
+
+  // jeden plochý seznam přes všechny grupy: řadí se podle pořadí grupy,
+  // uvnitř grupy podle času (klic) — plán se tak pořád čte grupa po grupě
+  const vsechny = D.ukoly
+    .map((x,i)=>({x, g: poradiGrupy(x.parta), k: klic(x, i), i}))
+    .sort((a,b)=> (a.g-b.g) || (a.k-b.k) || (a.i-b.i))
+    .map(o=>o.x);
+
+  const u = vsechny.filter(x =>
+       (!fp || x.parta===fp)
+    && (!ft || x.typ===ft)
+    && (!fk || String(x.kod||'').toLowerCase().indexOf(fk)>=0)
+    && (!fs || x.stav===fs));
+
   const cil = $('#podrobny'); cil.innerHTML = '';
-  let celkem = 0;
 
-  D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99)).forEach(t=>{
-    if(fp && t.kod!==fp) return;
-    const u = D.ukoly.filter(x=>x.parta===t.kod && (!ft || x.typ===ft))
-      .map((x,i)=>({x, k: klic(x, D.ukoly.indexOf(x))}))
-      .sort((a,b)=>a.k-b.k).map(o=>o.x);
-    if(!u.length) return;
-    celkem += u.length;
+  if(!u.length){
+    cil.innerHTML = '<div class="karta"><div class="telo">Pro zvolený filtr tu nic není.</div></div>';
+    $('#stavPodrobny').textContent = 'zobrazeno 0 z ' + D.ukoly.length + ' úkolů';
+    return;
+  }
 
-    const karta = document.createElement('div');
-    karta.className = 'karta';
-    const lidi = BEZ_JMEN.indexOf(t.kod)>=0 ? '' : D.clenove.filter(c=>c.kod_tymu===t.kod).map(c=>c.jmeno).join(', ');
-    const noci = u.filter(x=>x.typ==='N').map(x=>x.kod).join(', ');
-    karta.innerHTML =
-      '<div style="background:'+t.barva+';color:#fff;padding:9px 14px;display:flex;'
-      + 'align-items:center;gap:12px;flex-wrap:wrap;border-radius:11px 11px 0 0;cursor:pointer" data-hlava="'+esc(t.kod)+'">'
-      + '<b style="font-size:16px">'+esc(t.kod)+'</b>'
-      + '<span style="font-size:12.5px;opacity:.92">'+esc(t.nazev||'')+(lidi?(t.nazev?' · ':'')+esc(lidi):'')+'</span>'
-      + '<span style="margin-left:auto;font-size:12px;opacity:.92">doprava: '+esc(t.doprava||'neurčeno')
-      + ' · úkolů: '+u.length+(noci?' · nocleh: '+esc(noci):'')
-      + (u.filter(x=>x.zRocniku).length ? ' · bez revize: '+u.filter(x=>x.zRocniku).length : '')+'</span>'
-      + '<span style="font-weight:900">'+(sbaleno[t.kod]?'▸':'▾')+'</span></div>'
-      + '<div class="telo" style="padding:0" data-telo="'+esc(t.kod)+'"></div>';
-    cil.appendChild(karta);
+  const karta = document.createElement('div');
+  karta.className = 'karta';
+  const telo = document.createElement('div');
+  telo.className = 'telo'; telo.style.padding = '0';
+  karta.appendChild(telo); cil.appendChild(karta);
 
-    const telo = karta.querySelector('[data-telo]');
-    telo.style.display = sbaleno[t.kod] ? 'none' : '';
-    const tab = document.createElement('table'); tab.className = 'tab';
-    telo.appendChild(tab);
-    tabulka(tab, [
-      {nadpis:"Typ",  pole:"typ",  typ:"select", moznosti:TYPY, sirka:"74px"},
-      {nadpis:"Kód",  pole:"kod",  sirka:"92px"},
-      {nadpis:"Číslo",pole:"cislo",typ:"number", sirka:"78px", trida:"stred"},
-      {nadpis:"Kdy",  pole:"kdy_text", sirka:"150px"},
-      {nadpis:"Den",  pole:"den", typ:"select", moznosti:["","pátek","sobota","neděle"], sirka:"110px"},
-      {nadpis:"Od",   pole:"kdy_od", typ:"time", sirka:"100px"},
-      {nadpis:"Do",   pole:"kdy_do", typ:"time", sirka:"100px"},
-      {nadpis:"Co se dělá", pole:"popis"},
-      {nadpis:"Stav", pole:"stav", typ:"select", moznosti:STAVY, sirka:"128px"}
-    ], u, ()=>{kresliPodrobny();kresliPlan();}, true);
+  const tab = document.createElement('table');
+  tab.className = 'tab podrobnyTab';
+  telo.appendChild(tab);
 
-    karta.querySelector('[data-hlava]').onclick = ()=>{
-      sbaleno[t.kod] = !sbaleno[t.kod]; kresliPodrobny();
-    };
+  tabulka(tab, [
+    {nadpis:"Grupa", sirka:"172px", html:grupaBunka, napovedaSl:"Kód grupy a jméno prvního člena. Grupu tady jde i přehodit — úkol se rovnou přesune."},
+    {nadpis:"Typ",  pole:"typ",  typ:"select", moznosti:TYPY, sirka:"74px"},
+    {nadpis:"Kód",  pole:"kod",  sirka:"92px"},
+    {nadpis:"Číslo",pole:"cislo",typ:"number", sirka:"78px", trida:"stred"},
+    {nadpis:"Kdy",  pole:"kdy_text", sirka:"150px"},
+    {nadpis:"Den",  pole:"den", typ:"select", moznosti:["","pátek","sobota","neděle"], sirka:"110px"},
+    {nadpis:"Od",   pole:"kdy_od", typ:"time", sirka:"100px"},
+    {nadpis:"Do",   pole:"kdy_do", typ:"time", sirka:"100px"},
+    {nadpis:"Co se dělá", pole:"popis"},
+    {nadpis:"Stav", pole:"stav", typ:"select", moznosti:STAVY, sirka:"128px"}
+  ], u, ()=>{kresliPodrobny();kresliPlan();}, true);
 
-    const pridat = document.createElement('div');
-    pridat.style.padding = '10px 14px';
-    pridat.innerHTML = '<button class="tl" title="Přidá grupě '+esc(t.kod)+' nový prázdný úkol do podrobného plánu.">+ Přidat úkol grupě '+esc(t.kod)+'</button>';
-    pridat.querySelector('button').onclick = ()=>{
-      D.ukoly.push({parta:t.kod,typ:"A",kod:"A",cislo:null,kdy_text:"",popis:"",stav:"plán",zdroj:"ručně"});
-      sbaleno[t.kod] = false; kresliPodrobny(); kresliPlan();
-    };
-    telo.appendChild(pridat);
+  // tenká linka tam, kde začíná jiná grupa — ať se to pořád čte po grupách
+  const radky = tab.querySelectorAll('tbody tr');
+  u.forEach((x,i)=>{
+    if(i>0 && x.parta!==u[i-1].parta) radky[i].classList.add('novaGrupa');
   });
 
-  if(!celkem) cil.innerHTML = '<div class="karta"><div class="telo">Pro zvolený filtr tu nic není.</div></div>';
-  $('#stavPodrobny').textContent = 'zobrazeno ' + celkem + ' z ' + D.ukoly.length + ' úkolů';
+  // přidání úkolu — grupě z filtru, jinak té první v pořadí
+  const pridat = document.createElement('div');
+  pridat.style.padding = '10px 14px';
+  const cilovaGrupa = fp || (D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))[0]||{}).kod || '';
+  pridat.innerHTML = '<button class="tl" title="Přidá nový prázdný úkol grupě '
+    + esc(cilovaGrupa) + '. Grupu pak jde změnit v prvním sloupci.">+ Přidat úkol grupě '
+    + esc(cilovaGrupa) + '</button>';
+  pridat.querySelector('button').onclick = ()=>{
+    D.ukoly.push({parta:cilovaGrupa,typ:"A",kod:"A",cislo:null,kdy_text:"",popis:"",stav:"plán",zdroj:"ručně"});
+    kresliPodrobny(); kresliPlan();
+  };
+  telo.appendChild(pridat);
+
+  const filtrovano = (fp||ft||fk||fs);
+  $('#stavPodrobny').textContent = 'zobrazeno ' + u.length + ' z ' + D.ukoly.length + ' úkolů'
+    + (filtrovano ? ' · ' + new Set(u.map(x=>x.parta)).size + ' grup' : '');
 }
-function rozbalVse(otevrit){
-  D.tymy.forEach(t=>{ sbaleno[t.kod] = !otevrit; });
-  kresliPodrobny();
+
+// první sloupec: barevný odznak grupy s kódem a jménem, zároveň přepínatelný
+function grupaBunka(r, i){
+  const t = parta(r.parta) || {};
+  const jm = prvniJmeno(r.parta);
+  const kody = D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99)).map(x=>x.kod);
+  if(kody.indexOf(r.parta)<0 && r.parta) kody.unshift(r.parta);
+  return '<span class="grupaOdznak" style="background:' + esc(t.barva||'#8A8371') + '">'
+    + '<select data-i="' + i + '" data-p="parta" title="Přehodí úkol jiné grupě.">'
+    + kody.map(k=>`<option${k===r.parta?' selected':''}>${esc(k)}</option>`).join('')
+    + '</select></span>'
+    + (jm ? '<span class="grupaJmeno">' + esc(jm) + '</span>' : '');
 }
 
 /* ---------- 2. grupy ---------- */
@@ -2008,9 +2077,17 @@ D.clenove.forEach(c=>{ c.zRocniku = "HB25"; });
 D.velikosti.forEach(v=>{ v.zRocniku = "HB25"; });   // podíly i pomocníci jsou převzaté
 D.vzorHB25 = JSON.parse(JSON.stringify(D.ukoly));   // neměnný vzor pro kopírování
 D.ukoly = D.ukoly.filter(u=>!u.cislo || u.cislo<=5);  // HB26 začíná jen prvními pár úkoly
+// výška hlavičky pro přilepené filtry a hlavičku tabulky v Podrobném plánu
+function zmerHlavicku(){
+  const h = document.querySelector('header');
+  if(h) document.documentElement.style.setProperty('--hlavicka', h.offsetHeight + 'px');
+}
+window.addEventListener('resize', zmerHlavicku);
+
 kresliNav();
 vseKresli();
 prepni('s-ukoly');
+zmerHlavicku();
 </script>
 </body>
 </html>

@@ -633,7 +633,7 @@ const D = {
   // --- trička (podle HB_znalosti_tricka.md, 9. 8. 2026) ---
   tricka: {
     model_damsky:"Malfini RESIST R02", model_pansky:"Malfini VIPER 143",
-    barva:"bílá", logo_s:"", logo_m:"", logo_l:"A4", barva_loga:"", sita:"vyrobena při 1. várce HB26", dodavatel:"BARTUNKOVA s.r.o.",
+    barva:"bílá", velikost_loga:"A4", barva_loga:"", dodavatel:"BARTUNKOVA s.r.o.",
     tymy_zaplaceno:83, tymy_ocekavano:7, koeficient:9.7, rezerva_pct:5
   },
   velikosti: [
@@ -1252,11 +1252,8 @@ function kresliTricka(){
     + poleCislo('Běžců na tým','koeficient', 0.1)
     + poleCislo('Rezerva v %','rezerva_pct')
     + poleText('Barva ročníku','barva')
-    + poleText('Logo — velikost S','logo_s')
-    + poleText('Logo — velikost M','logo_m')
-    + poleText('Logo — L a větší','logo_l')
-    + poleText('Barva loga','barva_loga')
-    + poleText('Síta','sita');
+    + poleText('Velikost loga','velikost_loga')
+    + poleText('Barva loga','barva_loga');
   v.querySelectorAll('input').forEach(el=>{
     el.onchange = ()=>{ tr()[el.dataset.t] = el.type==='number' ? (+el.value||0) : el.value; kresliTricka(); };
   });
@@ -1278,10 +1275,7 @@ function kresliTricka(){
     + ' · ' + (schazi ? 'schází <b style="color:var(--vinova)">'+schazi+'</b> ks' : 'nic neschází')
     + (navic ? ', jinde přebývá <b>'+navic+'</b> ks' : '')
     + ' · dodavatel '+esc(tr().dodavatel)+', '+esc(tr().model_pansky)+' a '+esc(tr().model_damsky)
-    + ' · logo S ' + esc(tr().logo_s||'—') + ', M ' + esc(tr().logo_m||'—')
-    + ', L a větší ' + esc(tr().logo_l||'—')
-    + (tr().barva_loga?', barva '+esc(tr().barva_loga):'')
-    + (tr().sita?' · síta '+esc(tr().sita):'');
+    + ' · logo '+esc(tr().velikost_loga||'nezadáno')+(tr().barva_loga?', '+esc(tr().barva_loga):'');
 
   // tabulka velikostí
   const t = $('#tabTricka');

@@ -221,14 +221,14 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
           <table>
             <thead>
               <tr>
-                <th>Etapa</th>
-                <th class="uzky">Na další</th>
-                <th>Trasování</th>
-                <th>Úklid fáborků</th>
-                <th>Obsluha předávky</th>
-                <th>Zahájení předávky</th>
-                <th>Ukončení předávky</th>
-                <th class="uzky">Kopie</th>
+                <th data-nap="Etapa">Etapa</th>
+                <th class="uzky" data-nap="Na další">Na další</th>
+                <th data-nap="Trasování">Trasování</th>
+                <th data-nap="Úklid fáborků">Úklid fáborků</th>
+                <th data-nap="Obsluha předávky">Obsluha předávky</th>
+                <th data-nap="Zahájení předávky">Zahájení předávky</th>
+                <th data-nap="Ukončení předávky">Ukončení předávky</th>
+                <th class="uzky" data-nap="Kopie">Kopie</th>
               </tr>
             </thead>
             <tbody id="teloPlan"></tbody>
@@ -245,18 +245,21 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   <section class="sekce" id="s-podrobny">
     <div class="nastroje">
       <label class="stav">Parta:
-        <select id="filtrPodrobny" onchange="kresliPodrobny()"
+        <select id="filtrPodrobny" title="Ukáže jen karty jedné party." onchange="kresliPodrobny()"
           style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
       </label>
       <label class="stav">Typ:
-        <select id="filtrTyp" onchange="kresliPodrobny()"
+        <select id="filtrTyp" title="Ukáže jen úkoly jednoho typu, například všechny přejezdy nebo všechny noclehy." onchange="kresliPodrobny()"
           style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
       </label>
       <button class="tl" title="Rozbalí všechny party naráz." onclick="rozbalVse(true)">Rozbalit vše</button>
       <button class="tl" title="Sbalí všechny party na jeden řádek." onclick="rozbalVse(false)">Sbalit vše</button>
       <button class="tl" title="Otevře tiskový dialog prohlížeče. Volbou Uložit jako PDF z toho uděláte PDF." onclick="window.print()">Tisk / PDF</button>
+      <button class="tl hlavni" title="Pro každou partu proloží její úkoly přejezdy podle skutečných silničních vzdáleností mezi předávkami. Dřívější dopočet nahradí, ruční přejezdy z HB25 nechá být." onclick="dopoctiPrejezdy()">Dopočítat přejezdy</button>
+      <button class="tl" title="Projde u každé party sled úkolů a označí místa, kam by nestihla dojet." onclick="zkontrolujNavaznosti()">Zkontrolovat návaznosti</button>
       <span class="stav" id="stavPodrobny"></span>
     </div>
+    <div id="kontrola"></div>
     <div id="podrobny"></div>
   </section>
 
@@ -282,7 +285,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
           a číslo účtu se používá na proplácení nákladů.</p>
         <div class="nastroje">
           <label class="stav">Filtr party:
-            <select id="filtrParty" onchange="kresliClenove()" style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
+            <select id="filtrParty" title="Ukáže jen členy jedné party." onchange="kresliClenove()" style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
           </label>
           <span class="stav" id="stavClenove"></span>
         </div>
@@ -315,12 +318,12 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
         <div style="display:flex;gap:16px;flex-wrap:wrap;max-width:560px">
           <div style="flex:1;min-width:180px">
             <label class="popisek" style="display:block;margin-bottom:3px">Aktivní ročník</label>
-            <select id="polRok" onchange="zmenNastaveni()"
+            <select id="polRok" title="Ročník, se kterým nástroj pracuje. Historie zůstává v databázi, ale do plánování se nedostane." onchange="zmenNastaveni()"
               style="width:100%;padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit"></select>
           </div>
           <div style="flex:1;min-width:180px">
             <label class="popisek" style="display:block;margin-bottom:3px">Datum závodu</label>
-            <input type="date" id="polDatum" onchange="zmenNastaveni()"
+            <input type="date" id="polDatum" title="Datum závodu. Až bude vyplněné, dají se z něj dopočítat časy úkolů." onchange="zmenNastaveni()"
               style="width:100%;padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit">
           </div>
         </div>
@@ -438,7 +441,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
           <div style="flex:1;min-width:220px">
             <label class="popisek" style="display:block;margin-bottom:3px">Nové heslo</label>
-            <input type="password" id="noveHeslo" autocomplete="off"
+            <input type="password" id="noveHeslo" title="Nejméně šest znaků. Ukládá se jen otisk, ne heslo samo." autocomplete="off"
               style="width:100%;padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit">
           </div>
           <button class="tl hlavni" title="Spočítá otisk hesla a uloží ho k uživateli s nejvyšší úrovní." onclick="nastavHeslo()">Nastavit heslo</button>
@@ -452,7 +455,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
       <div class="telo">
         <p class="popisek">Zapne pohled očima zvolené úrovně — záložky bez práva zmizí,
           v těch jen ke čtení nejde nic přepsat.</p>
-        <select id="volbaNahledu" onchange="zapniNahled(this.value)"
+        <select id="volbaNahledu" title="Přepne web do pohledu zvolené úrovně. Nic to nemění, jen skryje, co daná úroveň nesmí vidět." onchange="zapniNahled(this.value)"
           style="padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit;min-width:240px"></select>
       </div>
     </div>
@@ -790,12 +793,97 @@ function prepni(id){
   if(id==="s-clenove") kresliClenove();
 }
 
+
+// nápověda ke sloupcům a polím — klíčem je popisek, ať se nemusí psát u každé tabulky zvlášť
+const NAPOVEDA = {
+  // plán úkolů
+  "Etapa":"Úsek mezi dvěma předávkami. E1 je z Dolní Lomné do Horní Lomné.",
+  "Na další":"Skutečná vzdálenost a čas autem na následující předávku, z tabulky vzdalenosti.",
+  "Trasování":"Kdo etapu předem naznačí fáborky a šipkami. Kód T a číslo etapy.",
+  "Úklid fáborků":"Kdo po závodě etapu projde a značení sesbírá. Kód U a číslo etapy.",
+  "Obsluha předávky":"Kdo stojí na předávce po celou dobu. Kód P a číslo předávky, tedy etapa plus jedna.",
+  "Zahájení předávky":"Kdo předávku ráno postaví a otevře. Kód PZ.",
+  "Ukončení předávky":"Kdo předávku sbalí a odveze banner. Kód PK.",
+  "Kopie":"Zkopíruje do řádku všech pět rolí z HB25.",
+  // podrobný plán
+  "Typ":"T trasování, U úklid, P obsluha, PZ zahájení, PK ukončení, N nocleh, A přejezd, S start, C cíl.",
+  "Kód":"Označení úkolu tak, jak ho píšete v tabulce — třeba T7 nebo PZ29.",
+  "Číslo":"Číslo etapy u T a U, číslo předávky u P, PZ a PK. U přejezdů a noclehů zůstává prázdné.",
+  "Kdy":"Volný text s časem přesně tak, jak ho píšete: so 8:00 - 10:00.",
+  "Co se dělá":"Popis úkolu, včetně poznámek pro partu.",
+  "Stav":"Plán je běžný stav, nepotvrzeno svítí otazníkem, zrušeno se nedělá.",
+  // party a lidé
+  "Parta":"Kód party z tabulky tymy_org.",
+  "Název":"Delší pojmenování, které vidí lidé.",
+  "Pořadí":"Určuje sled part v paletě u plánu.",
+  "Doprava":"Čím se parta po trati pohybuje.",
+  "Barva":"Slouží jen k rozlišení štítků v mřížce.",
+  "Poznámka":"Volný text, nikde se nepočítá.",
+  "Jméno":"Jméno člena party. První jméno se ukazuje na štítku party.",
+  "Telefon":"Osobní údaj, na veřejném webu se nezobrazuje.",
+  "E-mail":"Osobní údaj, na veřejném webu se nezobrazuje.",
+  "Číslo účtu":"Na proplácení nákladů. Osobní údaj, na web nepatří.",
+  "Nocleh pátek":"Kde člověk spí z pátku na sobotu. Volba neřeší se je pro ty, u kterých nocleh neplánujeme.",
+  "Nocleh sobota":"Kde člověk spí ze soboty na neděli.",
+  // předávky
+  "#":"Číslo předávky, 1 je start a 31 cíl v Mikulově.",
+  "Název místa":"Jak se předávka jmenuje v plánu i na webu.",
+  "GPS šířka":"Zeměpisná šířka, plní se od ročníku HB26.",
+  "GPS délka":"Zeměpisná délka, plní se od ročníku HB26.",
+  "Typ zajištění":"Local znamená místní pořadatele, Interně HB naši partu.",
+  "Soubor GPX":"Název trasy na webu, například hb26-07-v1.gpx.",
+  // noclehy
+  "Kapacita":"Kolik lůžek je celkem k dispozici.",
+  "Pokoje":"Jak jsou lůžka rozdělená.",
+  "Kontakt":"Jméno člověka, se kterým se nocleh domlouvá.",
+  "Cena":"Cena tak, jak ji uvádí ubytovatel.",
+  "Platba":"Jestli je zaplaceno, nebo se platí na místě.",
+  "Rezervace":"Číslo rezervace a čím se platilo.",
+  "Adresa":"Adresa ubytování.",
+  "Mapa":"Odkaz na mapu.",
+  "Noc":"Z pátku na sobotu, nebo ze soboty na neděli.",
+  "Místo":"Kód ubytování. Prázdné znamená vlastní nocleh, neřeší se je pro ty, u kterých nocleh neplánujeme.",
+  // trička
+  "Velikost":"Střihová řada a velikost. Dámská a pánská řada se objednávají zvlášť.",
+  "HB24 %":"Skutečný podíl velikosti mezi běžci v roce 2024.",
+  "HB25 %":"Skutečný podíl velikosti mezi běžci v roce 2025.",
+  "HB26 dosud %":"Podíl mezi dosud zapsanými běžci letoška. Rané soupisky mají jinou skladbu než finální pole.",
+  "Odhad %":"Podíl, se kterým se počítá pro letošek. Součet všech řádků má vyjít na sto.",
+  "Běžci":"Počet běžců v téhle velikosti, tedy odhad procenta z celkového pole.",
+  "Pomocníci":"Trička pro organizátory a lidi na předávkách.",
+  "Potřeba":"Běžci plus pomocníci, bez rezervy.",
+  "+rezerva":"Potřeba navýšená o rezervu, která kryje, že si někdo vezme jinou velikost, než uvedl.",
+  "1. várka":"Kusy objednané v první vlně.",
+  "2. várka":"Kusy ve druhé vlně.",
+  "3. várka":"Kusy ve třetí vlně, obvykle koncem srpna podle stavu soupisek.",
+  "Objednáno":"Součet všech tří várek.",
+  "Zbývá":"Kolik do potřeby s rezervou schází. Se znaménkem plus je to naopak přebytek.",
+  "Ročník":"Kterého ročníku se objednávka týká.",
+  "Vlna":"Pořadí objednávky v rámci ročníku.",
+  "Datum":"Kdy objednávka odešla.",
+  "Kusů":"Celkový počet kusů ve vlně.",
+  // přístupy
+  "Popis":"Vysvětlení, co úroveň znamená, aby to bylo jasné i po roce.",
+  "Oblast":"Část aplikace, ke které se právo vztahuje.",
+  "Úroveň":"Která úroveň přístupu člověku patří.",
+  "Aktivní":"Ne znamená, že se člověk nedostane dovnitř, ale zůstává v seznamu.",
+  "Heslo":"Jestli má člověk nastavené heslo pro nevratné akce.",
+  "Zaplacené týmy":"Kolik týmů má zaplacené startovné. Z toho se odhaduje pole běžců.",
+  "Očekávané týmy":"Kolik dalších týmů se ještě čeká, že doplatí.",
+  "Běžců na tým":"Přepočet týmů na běžce. Historicky vychází mezi 9,4 a 9,6.",
+  "Rezerva v %":"O kolik procent se navyšuje objednávka proti spočtené potřebě.",
+  "Barva ročníku":"Barva triček letošního ročníku.",
+  "Velikost loga":"Rozměr potisku.",
+  "Barva loga":"Barva potisku."
+};
+const nap = t => NAPOVEDA[t] ? ' title="'+esc(NAPOVEDA[t])+'"' : '';
+
 /* ---------- generická editovatelná tabulka ---------- */
 function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky){
   const t = (typeof cil==='string') ? $(cil) : cil;
   const maOdznak = odznaky !== false;
   let h = '<thead><tr>' + (maOdznak?'<th style="width:52px"></th>':'')
-        + sloupce.map(s=>`<th${s.sirka?` style="width:${s.sirka}"`:''}>${s.nadpis}</th>`).join('')
+        + sloupce.map(s=>`<th${s.sirka?` style="width:${s.sirka}"`:''}${nap(s.nadpis)}>${s.nadpis}</th>`).join('')
         + (mazatelne?'<th></th>':'') + '</tr></thead><tbody>';
   radky.forEach((r,i)=>{
     h += '<tr>';
@@ -891,6 +979,7 @@ function slotChip(u){
 }
 
 function kresliPlan(){
+  document.querySelectorAll('[data-nap]').forEach(el=>{ el.title = NAPOVEDA[el.dataset.nap]||''; });
   const telo = $('#teloPlan'); telo.innerHTML='';
   D.predavky.slice(0,30).forEach((m,i)=>{
     const e = i+1;
@@ -910,7 +999,10 @@ function kresliPlan(){
         const cas = document.createElement('span'); cas.className='cas';
         cas.innerHTML = odznakHtml(u,true) + ' ' + esc(u.kdy_text||'');
         slot.appendChild(cas);
-      } else slot.textContent = typ+cislo;
+      } else {
+        slot.textContent = typ+cislo;
+        slot.title = (NAPOVEDA[NAZVY[s]]||'') + ' Sem přetáhněte partu z palety vlevo.';
+      }
       slot.ondragover = ev=>{ev.preventDefault();slot.classList.add('nad');};
       slot.ondragleave = ()=>slot.classList.remove('nad');
       slot.ondrop = ev=>{
@@ -1030,7 +1122,9 @@ function kresliPodrobny(){
 
   D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99)).forEach(t=>{
     if(fp && t.kod!==fp) return;
-    const u = D.ukoly.filter(x=>x.parta===t.kod && (!ft || x.typ===ft));
+    const u = D.ukoly.filter(x=>x.parta===t.kod && (!ft || x.typ===ft))
+      .map((x,i)=>({x, k: klic(x, D.ukoly.indexOf(x))}))
+      .sort((a,b)=>a.k-b.k).map(o=>o.x);
     if(!u.length) return;
     celkem += u.length;
 
@@ -1058,7 +1152,10 @@ function kresliPodrobny(){
       {nadpis:"Typ",  pole:"typ",  typ:"select", moznosti:TYPY, sirka:"74px"},
       {nadpis:"Kód",  pole:"kod",  sirka:"92px"},
       {nadpis:"Číslo",pole:"cislo",typ:"number", sirka:"78px", trida:"stred"},
-      {nadpis:"Kdy",  pole:"kdy_text", sirka:"170px"},
+      {nadpis:"Kdy",  pole:"kdy_text", sirka:"150px"},
+      {nadpis:"Den",  pole:"den", typ:"select", moznosti:["","pátek","sobota","neděle"], sirka:"110px"},
+      {nadpis:"Od",   pole:"kdy_od", typ:"time", sirka:"100px"},
+      {nadpis:"Do",   pole:"kdy_do", typ:"time", sirka:"100px"},
       {nadpis:"Co se dělá", pole:"popis"},
       {nadpis:"Stav", pole:"stav", typ:"select", moznosti:STAVY, sirka:"128px"}
     ], u, ()=>{kresliPodrobny();kresliPlan();}, true);
@@ -1222,6 +1319,155 @@ function doplnZeClenu(){
 
 
 
+
+/* ---------- vzdálenosti mezi předávkami a čas z volného textu ---------- */
+// z tabulky vzdalenosti (HB26). Uložená je jen horní polovina matice, opačný směr
+// se bere jako stejný — rozdíly jsou v jednotkách minut.
+const VZD_RAW = "1,2,9,14;1,3,54,55;1,4,58,56;1,5,74,68;1,6,50,57;1,7,53,61;1,8,63,73;1,9,56,74;1,10,113,100;1,11,81,100;1,12,128,115;1,13,123,111;1,14,129,105;1,15,128,103;1,16,132,106;1,17,141,117;1,18,141,108;1,19,151,118;1,20,163,126;1,21,183,147;1,22,181,145;1,23,204,145;1,24,202,144;1,25,214,158;1,26,229,170;1,27,267,176;1,28,262,172;1,29,266,175;1,30,260,173;1,31,253,169;2,3,63,69;2,4,67,70;2,5,83,82;2,6,59,71;2,7,63,75;2,8,72,87;2,9,65,88;2,10,122,114;2,11,90,114;2,12,138,129;2,13,132,125;2,14,138,118;2,15,138,117;2,16,141,120;2,17,150,131;2,18,151,121;2,19,160,132;2,20,172,140;2,21,193,161;2,22,190,159;2,23,214,159;2,24,212,157;2,25,224,172;2,26,238,184;2,27,277,190;2,28,271,186;2,29,275,189;2,30,269,187;2,31,263,182;3,4,7,25;3,5,47,63;3,6,44,55;3,7,56,65;3,8,69,82;3,9,73,88;3,10,92,115;3,11,88,108;3,12,111,114;3,13,116,120;3,14,127,132;3,15,131,137;3,16,132,138;3,17,175,142;3,18,187,150;3,19,183,149;3,20,184,146;3,21,194,154;3,22,187,147;3,23,187,143;3,24,185,142;3,25,197,156;3,26,211,168;3,27,250,174;3,28,244,170;3,29,249,173;3,30,243,171;3,31,236,167;4,5,49,63;4,6,46,54;4,7,58,65;4,8,72,81;4,9,76,88;4,10,94,114;4,11,90,107;4,12,114,114;4,13,120,121;4,14,131,133;4,15,134,138;4,16,136,139;4,17,179,143;4,18,191,151;4,19,187,150;4,20,187,147;4,21,198,155;4,22,191,148;4,23,190,144;4,24,188,143;4,25,201,157;4,26,215,169;4,27,254,175;4,28,248,171;4,29,252,174;4,30,246,172;4,31,240,168;5,6,9,16;5,7,21,26;5,8,35,43;5,9,39,50;5,10,57,76;5,11,53,69;5,12,73,95;5,13,78,101;5,14,89,113;5,15,119,113;5,16,123,116;5,17,132,127;5,18,132,118;5,19,142,128;5,20,154,137;5,21,174,157;5,22,194,153;5,23,194,149;5,24,192,147;5,25,204,162;5,26,218,174;5,27,257,180;5,28,251,176;5,29,256,179;5,30,249,177;5,31,243,172;6,7,12,12;6,8,26,28;6,9,30,35;6,10,48,62;6,11,44,54;6,12,64,80;6,13,69,87;6,14,81,98;6,15,110,99;6,16,114,102;6,17,123,112;6,18,123,103;6,19,133,113;6,20,145,122;6,21,165,142;6,22,162,140;6,23,191,140;6,24,189,139;6,25,201,153;6,26,215,165;6,27,254,171;6,28,248,167;6,29,253,170;6,30,247,168;6,31,240,164;7,8,14,17;7,9,18,24;7,10,36,51;7,11,32,43;7,12,53,69;7,13,58,76;7,14,69,87;7,15,99,88;7,16,102,91;7,17,111,101;7,18,112,92;7,19,121,102;7,20,133,111;7,21,153,131;7,22,151,130;7,23,175,145;7,24,173,143;7,25,178,156;7,26,199,169;7,27,238,175;7,28,232,171;7,29,237,174;7,30,230,173;7,31,224,168;8,9,4,7;8,10,30,45;8,11,26,38;8,12,47,64;8,13,52,70;8,14,63,82;8,15,67,87;8,16,69,90;8,17,76,97;8,18,121,104;8,19,88,112;8,20,100,117;8,21,108,127;8,22,109,130;8,23,127,142;8,24,125,140;8,25,137,155;8,26,151,166;8,27,157,174;8,28,160,177;8,29,164,180;8,30,234,182;8,31,228,178;9,10,34,52;9,11,30,45;9,12,51,70;9,13,56,77;9,14,67,88;9,15,71,94;9,16,73,97;9,17,80,104;9,18,114,104;9,19,124,114;9,20,136,123;9,21,112,133;9,22,113,136;9,23,131,148;9,24,129,147;9,25,141,161;9,26,155,173;9,27,161,181;9,28,164,183;9,29,168,186;9,30,238,189;9,31,232,184;10,11,27,39;10,12,25,38;10,13,25,33;10,14,36,45;10,15,40,50;10,16,42,53;10,17,49,60;10,18,80,72;10,19,61,75;10,20,102,91;10,21,87,102;10,22,88,105;10,23,102,122;10,24,113,122;10,25,146,136;10,26,140,149;10,27,146,156;10,28,149,159;10,29,153,162;10,30,161,169;10,31,201,174;11,12,29,39;11,13,35,46;11,14,46,57;11,15,50,63;11,16,52,66;11,17,59,73;11,18,69,86;11,19,71,88;11,20,83,92;11,21,91,102;11,22,92,105;11,23,109,117;11,24,107,116;11,25,120,130;11,26,134,142;11,27,140,149;11,28,143,152;11,29,147,155;11,30,192,159;11,31,185,155;12,13,11,18;12,14,22,30;12,15,26,35;12,16,29,38;12,17,35,45;12,18,46,59;12,19,47,60;12,20,66,77;12,21,74,87;12,22,75,90;12,23,98,104;12,24,96,102;12,25,108,116;12,26,123,128;12,27,129,136;12,28,131,139;12,29,136,142;12,30,144,149;12,31,180,146;13,14,16,20;13,15,20,25;13,16,23,28;13,17,29,35;13,18,40,48;13,19,41,50;13,20,60,67;13,21,68,77;13,22,69,80;13,23,83,97;13,24,94,97;13,25,106,112;13,26,121,124;13,27,127,131;13,28,129,134;13,29,134,137;13,30,142,144;13,31,185,152;14,15,10,14;14,16,14,17;14,17,23,27;14,18,34,41;14,19,35,42;14,20,53,59;14,21,62,69;14,22,63,72;14,23,77,89;14,24,88,89;14,25,100,104;14,26,114,116;14,27,121,123;14,28,123,126;14,29,128,129;14,30,136,136;14,31,147,146;15,16,7,8;15,17,16,19;15,18,26,32;15,19,28,34;15,20,46,51;15,21,55,61;15,22,56,64;15,23,70,81;15,24,81,81;15,25,93,96;15,26,107,107;15,27,114,115;15,28,116,118;15,29,121,121;15,30,128,128;15,31,140,138;16,17,10,11;16,18,20,24;16,19,22,26;16,20,40,43;16,21,48,53;16,22,49,56;16,23,63,73;16,24,74,73;16,25,86,88;16,26,101,100;16,27,107,107;16,28,110,110;16,29,114,113;16,30,122,120;16,31,133,130;17,18,11,14;17,19,12,16;17,20,31,33;17,21,39,42;17,22,40,46;17,23,54,63;17,24,65,63;17,25,77,78;17,26,92,89;17,27,98,97;17,28,100,100;17,29,105,103;17,30,113,110;17,31,124,120;18,19,9,10;18,20,27,28;18,21,41,42;18,22,42,45;18,23,60,64;18,24,71,64;18,25,83,79;18,26,98,91;18,27,104,98;18,28,106,101;18,29,111,104;18,30,119,111;18,31,130,121;19,20,17,24;19,21,37,42;19,22,38,45;19,23,56,63;19,24,67,63;19,25,79,78;19,26,94,90;19,27,100,97;19,28,102,100;19,29,107,103;19,30,115,111;19,31,126,120;20,21,20,20;20,22,21,23;20,23,39,42;20,24,40,44;20,25,52,59;20,26,67,71;20,27,73,78;20,28,76,81;20,29,80,84;20,30,88,91;20,31,99,101;21,22,11,15;21,23,37,42;21,24,38,44;21,25,51,58;21,26,65,70;21,27,71,78;21,28,74,81;21,29,78,83;21,30,86,91;21,31,97,100;22,23,21,30;22,24,26,35;22,25,38,50;22,26,53,62;22,27,59,69;22,28,61,72;22,29,66,75;22,30,74,82;22,31,85,92;23,24,15,19;23,25,27,33;23,26,41,45;23,27,48,53;23,28,50,56;23,29,55,58;23,30,63,66;23,31,74,75;24,25,15,19;24,26,29,32;24,27,36,39;24,28,38,42;24,29,43,45;24,30,51,52;24,31,62,62;25,26,17,21;25,27,24,28;25,28,26,31;25,29,31,34;25,30,39,42;25,31,50,51;26,27,8,12;26,28,12,18;26,29,20,26;26,30,28,35;26,31,39,44;27,28,7,11;27,29,16,20;27,30,23,30;27,31,33,38;28,29,10,16;28,30,17,26;28,31,27,34;29,30,9,13;29,31,17,19;30,31,21,26";
+const VZDM = {};
+VZD_RAW.split(";").forEach(z=>{
+  const [a,b,km,min] = z.split(",").map(Number);
+  VZDM[a+"-"+b] = {km, min}; VZDM[b+"-"+a] = {km, min};
+});
+const vzdal = (a,b) => (a&&b&&a!==b) ? (VZDM[a+"-"+b]||null) : null;
+
+const DNY = ["pátek","sobota","neděle"];
+const denIndex = d => DNY.indexOf(d);
+
+// „so 8:00 - 10:00", „ne 3.15", „pá 16-19", „neděle dopoledne" …
+function rozeberCas(t){
+  const v = {den:"", od:"", do:""};
+  if(!t) return v;
+  const s = t.toLowerCase();
+  const kdeDen = [
+    [s.search(/(^|[^a-zá-ž])(pá|pátek)([^a-zá-ž]|$)/), "pátek"],
+    [s.search(/(^|[^a-zá-ž])(so|sobota)([^a-zá-ž]|$)/), "sobota"],
+    [s.search(/(^|[^a-zá-ž])(ne|neděle)([^a-zá-ž]|$)/), "neděle"]
+  ].filter(x=>x[0]>=0).sort((a,b)=>a[0]-b[0]);
+  if(kdeDen.length) v.den = kdeDen[0][1];
+
+  const casy = [];
+  const re1 = /(\d{1,2})[:.](\d{2})/g; let m;
+  while((m = re1.exec(s))){
+    const h = +m[1], mi = +m[2];
+    if(h<24 && mi<60) casy.push(String(h).padStart(2,"0")+":"+String(mi).padStart(2,"0"));
+  }
+  if(casy.length < 2){
+    const re2 = /(?:^|[^\d:.])(\d{1,2})\s*[-–]\s*(\d{1,2})(?![\d:.])/g;
+    while((m = re2.exec(s))){
+      const a = +m[1], b = +m[2];
+      if(a<24 && b<24){ casy.length = 0; casy.push(String(a).padStart(2,"0")+":00", String(b).padStart(2,"0")+":00"); break; }
+    }
+  }
+  if(casy[0]) v.od = casy[0];
+  if(casy[1]) v.do = casy[1];
+  return v;
+}
+
+const minuty = (den, cas) => {
+  if(!cas) return null;
+  const [h,m] = cas.split(":").map(Number);
+  const d = Math.max(0, denIndex(den));
+  return d*1440 + h*60 + m;
+};
+// pořadí úkolu na časové ose; bez času jde na konec, ale drží původní sled
+function klic(u, i){
+  const m = minuty(u.den, u.kdy_od);
+  return (m==null ? 1e9 + i : m);
+}
+
+
+/* ---------- dopočet přejezdů a hlídač návazností ---------- */
+function radaParty(kod){
+  return D.ukoly.filter(u=>u.parta===kod)
+    .map(u=>({u, k: klic(u, D.ukoly.indexOf(u))}))
+    .sort((a,b)=>a.k-b.k).map(o=>o.u);
+}
+
+function dopoctiPrejezdy(){
+  // vlastní dřívější dopočet zahodíme, ruční přejezdy z HB25 necháme být
+  for(let i=D.ukoly.length-1;i>=0;i--) if(D.ukoly[i].auto) D.ukoly.splice(i,1);
+
+  let pridano = 0, bezUdaje = 0;
+  D.tymy.forEach(t=>{
+    const rada = radaParty(t.kod);
+    for(let i=0;i<rada.length-1;i++){
+      const a = rada[i], b = rada[i+1];
+      if(!a.cislo || !b.cislo || a.cislo===b.cislo) continue;
+      if(b.typ==="A" || a.typ==="A") continue;        // přejezd už tam je
+      const v = vzdal(a.cislo, b.cislo);
+      if(!v){ bezUdaje++; continue; }
+      const mistoA = (D.predavky[a.cislo-1]||{}).nazev || ("předávka "+a.cislo);
+      const mistoB = (D.predavky[b.cislo-1]||{}).nazev || ("předávka "+b.cislo);
+      D.ukoly.push({
+        parta: t.kod, typ:"A", kod:"A", cislo:null,
+        kdy_text:"", den: b.den || a.den, kdy_od: a.kdy_do || a.kdy_od || "", kdy_do: b.kdy_od || "",
+        popis: "přejezd " + a.cislo + " " + mistoA + " → " + b.cislo + " " + mistoB
+               + ", " + v.km + " km, " + v.min + " min"
+               + ((a.kdy_od && b.kdy_od) ? "" : " · pořadí odvozeno bez času, zkontrolujte"),
+        stav:"plán", zdroj:"dopočet", auto:true
+      });
+      pridano++;
+    }
+  });
+  kresliPodrobny(); kresliPlan();
+  hlaska(pridano ? ("Dopočítáno " + pridano + " přejezdů") : "Není co dopočítat");
+  return {pridano, bezUdaje};
+}
+
+function zkontrolujNavaznosti(){
+  const nalezy = [];
+  let bezCasu = 0;
+  D.tymy.forEach(t=>{
+    const rada = radaParty(t.kod).filter(u=>u.cislo);
+    for(let i=0;i<rada.length-1;i++){
+      const a = rada[i], b = rada[i+1];
+      if(a.cislo===b.cislo) continue;
+      const v = vzdal(a.cislo, b.cislo);
+      const konecA = minuty(a.den, a.kdy_do || a.kdy_od);
+      const zacatekB = minuty(b.den, b.kdy_od);
+      if(!v || konecA==null || zacatekB==null){ bezCasu++; continue; }
+      const kDispozici = zacatekB - konecA;
+      if(kDispozici < v.min){
+        nalezy.push({parta:t.kod, a, b, v, kDispozici});
+      }
+    }
+  });
+
+  const cil = $("#kontrola");
+  if(!nalezy.length){
+    cil.innerHTML = '<div class="karta"><div class="telo">Žádná nemožná návaznost. '
+      + (bezCasu ? bezCasu + ' dvojic nešlo posoudit, protože u nich chybí čas nebo vzdálenost.' : '')
+      + '</div></div>';
+  } else {
+    let h = '<div class="karta"><h2>Nemožné návaznosti — ' + nalezy.length + '</h2><div class="telo">'
+      + '<p class="popisek">Parta by musela být na dvou místech dřív, než tam stihne dojet. '
+      + 'Časy i vzdálenosti jsou z plánu, ne odhad.</p>'
+      + '<div class="obal-tab"><table class="tab"><thead><tr><th style="width:110px">Parta</th>'
+      + '<th>Z čeho</th><th>Na co</th><th style="width:110px">K dispozici</th>'
+      + '<th style="width:110px">Potřeba</th><th style="width:90px">Schodek</th></tr></thead><tbody>';
+    nalezy.forEach(n=>{
+      const mA = (D.predavky[n.a.cislo-1]||{}).nazev || "";
+      const mB = (D.predavky[n.b.cislo-1]||{}).nazev || "";
+      h += '<tr><td style="padding:7px 10px;font-weight:800;color:'+barva(n.parta)+'">'+esc(n.parta)+'</td>'
+        + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.a.kod)+' '+esc(mA)+'<br>'
+        + '<span style="color:var(--pisek)">'+esc(n.a.den)+' do '+esc(n.a.kdy_do||n.a.kdy_od)+'</span></td>'
+        + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.b.kod)+' '+esc(mB)+'<br>'
+        + '<span style="color:var(--pisek)">'+esc(n.b.den)+' od '+esc(n.b.kdy_od)+'</span></td>'
+        + '<td class="stred" style="padding:7px">'+n.kDispozici+' min</td>'
+        + '<td class="stred" style="padding:7px">'+n.v.min+' min ('+n.v.km+' km)</td>'
+        + '<td class="stred" style="padding:7px;font-weight:800;color:var(--vinova)">'+(n.v.min-n.kDispozici)+' min</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    if(bezCasu) h += '<p class="popisek" style="margin-top:10px">Dalších '+bezCasu
+      + ' dvojic nešlo posoudit — chybí u nich čas nebo vzdálenost.</p>';
+    h += '</div></div>';
+    cil.innerHTML = h;
+  }
+  hlaska(nalezy.length ? (nalezy.length + " nemožných návazností") : "Návaznosti sedí");
+  return nalezy.length;
+}
+
 /* ---------- 9. trička ---------- */
 const tr = () => D.tricka;
 const bezciCelkem = () => Math.round((tr().tymy_zaplaceno + tr().tymy_ocekavano) * tr().koeficient);
@@ -1232,15 +1478,15 @@ const zbyva = v => sRezervou(v) - objednano(v);
 
 function poleCislo(popis, klic, krok){
   return '<div style="flex:1;min-width:150px">'
-    + '<label class="popisek" style="display:block;margin-bottom:3px">'+popis+'</label>'
-    + '<input type="number" step="'+(krok||1)+'" data-t="'+klic+'" value="'+(tr()[klic])+'" '
+    + '<label class="popisek" style="display:block;margin-bottom:3px"'+nap(popis)+'>'+popis+'</label>'
+    + '<input type="number"'+nap(popis)+' step="'+(krok||1)+'" data-t="'+klic+'" value="'+(tr()[klic])+'" '
     + 'style="width:100%;padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit"></div>';
 }
 
 function poleText(popis, klic){
   return '<div style="flex:1;min-width:150px">'
-    + '<label class="popisek" style="display:block;margin-bottom:3px">'+popis+'</label>'
-    + '<input type="text" data-t="'+klic+'" value="'+esc(tr()[klic]||'')+'" '
+    + '<label class="popisek" style="display:block;margin-bottom:3px"'+nap(popis)+'>'+popis+'</label>'
+    + '<input type="text"'+nap(popis)+' data-t="'+klic+'" value="'+esc(tr()[klic]||'')+'" '
     + 'style="width:100%;padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit"></div>';
 }
 
@@ -1280,12 +1526,12 @@ function kresliTricka(){
   // tabulka velikostí
   const t = $('#tabTricka');
   let h = '<thead><tr>'
-    + '<th style="width:56px"></th><th style="width:150px">Velikost</th>'
-    + '<th style="width:70px">HB24 %</th><th style="width:70px">HB25 %</th><th style="width:86px">HB26 dosud %</th>'
-    + '<th style="width:86px">Odhad %</th><th style="width:80px">Běžci</th><th style="width:90px">Pomocníci</th>'
-    + '<th style="width:80px">Potřeba</th><th style="width:86px">+rezerva</th>'
-    + '<th style="width:86px">1. várka</th><th style="width:86px">2. várka</th><th style="width:86px">3. várka</th>'
-    + '<th style="width:92px">Objednáno</th><th style="width:86px">Zbývá</th></tr></thead><tbody>';
+    + '<th style="width:56px"></th><th style="width:150px"'+nap('Velikost')+'>Velikost</th>'
+    + '<th style="width:70px"'+nap('HB24 %')+'>HB24 %</th><th style="width:70px"'+nap('HB25 %')+'>HB25 %</th><th style="width:86px"'+nap('HB26 dosud %')+'>HB26 dosud %</th>'
+    + '<th style="width:86px"'+nap('Odhad %')+'>Odhad %</th><th style="width:80px"'+nap('Běžci')+'>Běžci</th><th style="width:90px"'+nap('Pomocníci')+'>Pomocníci</th>'
+    + '<th style="width:80px"'+nap('Potřeba')+'>Potřeba</th><th style="width:86px"'+nap('+rezerva')+'>+rezerva</th>'
+    + '<th style="width:86px"'+nap('1. várka')+'>1. várka</th><th style="width:86px"'+nap('2. várka')+'>2. várka</th><th style="width:86px"'+nap('3. várka')+'>3. várka</th>'
+    + '<th style="width:92px"'+nap('Objednáno')+'>Objednáno</th><th style="width:86px"'+nap('Zbývá')+'>Zbývá</th></tr></thead><tbody>';
   D.velikosti.slice().sort((a,b)=>a.poradi-b.poradi).forEach((x,i)=>{
     const bez = Math.round(bezci*(x.odhad||0)/100);
     const chybi = objednano(x)===0 && sRezervou(x)>0;
@@ -1454,8 +1700,8 @@ function kresliMatici(){
   srovnejPrava();
   const u = D.urovne.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99));
   const t = $('#tabMatice');
-  let h = '<thead><tr><th style="width:280px">Oblast</th>'
-        + u.map(x=>`<th style="text-align:center">${esc(x.nazev)}</th>`).join('') + '</tr></thead><tbody>';
+  let h = '<thead><tr><th style="width:280px"'+nap('Oblast')+'>Oblast</th>'
+        + u.map(x=>`<th style="text-align:center" title="${esc(x.popis||x.nazev)}">${esc(x.nazev)}</th>`).join('') + '</tr></thead><tbody>';
   OBLASTI.forEach(o=>{
     h += '<tr><td style="padding:8px 10px;font-size:13px;font-weight:700">'+esc(o.nazev)
        + '<span style="display:block;font-weight:400;font-size:11px;color:var(--pisek)">'+esc(o.kod)+'</span></td>';
@@ -1624,7 +1870,13 @@ function vseKresli(){
   kresliPredavky(); kresliNocMista(); kresliNocLide(); kresliPlan(); kresliPodrobny();
   kresliPristupy(); kresliTricka(); uplatniPrava();
 }
-D.ukoly.forEach(u=>{ u.zRocniku = "HB25"; });      // vzor z minulého ročníku, neprošlo revizí
+D.ukoly.forEach(u=>{
+  u.zRocniku = "HB25";
+  const c = rozeberCas(u.kdy_text);          // doplněné sloupce den, kdy_od, kdy_do
+  if(u.den===undefined)    u.den = c.den;
+  if(u.kdy_od===undefined) u.kdy_od = c.od;
+  if(u.kdy_do===undefined) u.kdy_do = c.do;
+});      // vzor z minulého ročníku, neprošlo revizí
 D.tymy.forEach(t=>{ t.zRocniku = "HB25"; });
 D.clenove.forEach(c=>{ c.zRocniku = "HB25"; });
 D.velikosti.forEach(v=>{ v.zRocniku = "HB25"; });   // podíly i pomocníci jsou převzaté

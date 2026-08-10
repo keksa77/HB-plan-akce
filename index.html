@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Hory Bory — plánování HB26 (veřejná ukázka)</title>
+<title>Hory Bory — plánování HB26 (v4 — sloučená větev)</title>
 <style>
 :root{
   --hneda:#4B2914; --tmava:#3F372A; --khaki:#9D9951; --zelena:#4D582C;
@@ -141,6 +141,13 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   white-space:nowrap;vertical-align:middle}
 .odznak.stary{background:#F9EBEC;color:#8E2833;border-color:#E4C1C6}
 .odznak.novy {background:#EDF2E3;color:#41521F;border-color:#CBDAB0}
+#grafPredavky{overflow-x:auto}
+#grafPredavky svg{display:block;width:100%}
+#grafPredavky{margin:0 -16px;padding:0 4px}
+.gbub{position:absolute;pointer-events:none;background:var(--bila);border:1px solid var(--linka);
+  border-radius:9px;padding:7px 10px;font-size:12px;box-shadow:0 4px 14px rgba(75,41,20,.16);
+  opacity:0;transition:opacity .1s;z-index:60;white-space:nowrap}
+.gbub b{font-size:12.5px}
 .odznak.otazka{background:#FBF0DE;color:#8A5A12;border-color:#EDD6AB;font-size:11px;padding:0 6px}
 .odznak.vslotu{background:rgba(255,255,255,.88)}
 .tab td.odzn{width:52px;text-align:center;padding:0 4px}
@@ -162,13 +169,13 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
 .zamceno{opacity:.62}
 </style>
 </head>
-<body>
+<body data-build="verejna">
 
 <header>
   <div class="hlava">
     <h1>Hory Bory — plánování</h1>
     <span class="rok" id="odznakRok">HB26</span>
-    <span class="pozn">Veřejná ukázka bez osobních údajů · data jen v paměti prohlížeče</span>
+    <span class="pozn">v4 · sloučeno s větví v3.8 · data ze Supabase a z tabulky HB2025 public · jen v paměti prohlížeče</span>
   </div>
   <nav id="nav"></nav>
 </header>
@@ -189,17 +196,18 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   </div>
 
   <div class="varovani">
-    <b>Veřejná verze bez osobních údajů.</b> Telefony, e-maily, čísla účtů, adresy
-    a kontakty na ubytovny tady nejsou a nikdy tu být nesmí — tahle stránka je
-    veřejně čitelná. Plná verze s kontakty běží jen jako soubor na počítači.
+    <b>Veřejná ukázka.</b> Tohle je očištěná verze pro náhled. Telefony, e-maily,
+    čísla účtů, kontakty na noclehy a poznámky u předávek jsou z ní odstraněné a
+    tlačítko <b>Vyprázdnit plán</b> je vypnuté. Plná verze s kontakty běží jen lokálně.
+    Změny se nikam neukládají, žijí jen v paměti prohlížeče do obnovení stránky.
   </div>
 
   <!-- 1. PLÁN ÚKOLŮ -->
   <section class="sekce" id="s-ukoly">
     <div class="nastroje">
       <button class="tl hlavni" title="Přepíše celý plán ročníku vzorem z HB25 (232 úkolů). Co máte rozpracované, se ztratí." onclick="kopirujVse()">Kopírovat celý HB25</button>
-      <button class="tl" title="Smaže všechny úkoly aktuálního ročníku. Chráněné heslem správce. Vzor HB25 zůstává, vrátíte ho tlačítkem Kopírovat celý HB25." onclick="vycisti()">Vyprázdnit plán</button>
-      <button class="tl" title="Zvýrazní v mřížce políčka vybrané party a ostatní ztlumí. Dalším kliknutím zvýraznění vypnete." onclick="prepniZvyrazneni()">Zvýraznit vybranou partu</button>
+      <button class="tl" style="opacity:.45" title="Ve veřejné ukázce je tohle tlačítko vypnuté. V plné verzi smaže všechny úkoly ročníku a je chráněné heslem správce." onclick="hlaska('Ve veřejné ukázce je Vyprázdnit plán vypnuté.')">Vyprázdnit plán</button>
+      <button class="tl" title="Zvýrazní v mřížce políčka vybrané grupy a ostatní ztlumí. Dalším kliknutím zvýraznění vypnete." onclick="prepniZvyrazneni()">Zvýraznit vybranou grupu</button>
       <button class="tl" title="Stáhne celý plán jako soubor JSON do složky Stažené. Nikam se nic neodesílá." onclick="ulozSoubor()">Uložit do souboru</button>
       <button class="tl" title="Načte plán ze souboru JSON a přepíše jím to, co je teď na obrazovce." onclick="document.getElementById('nacti').click()">Načíst ze souboru</button>
       <input type="file" id="nacti" accept=".json" style="display:none" onchange="nactiSoubor(this)">
@@ -210,7 +218,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
 
     <div class="rozvrh">
       <aside>
-        <h3>Party</h3>
+        <h3>Grupy</h3>
         <p>Přetáhni do mřížky vpravo</p>
         <div class="tymy" id="paleta"></div>
         <div class="detail" id="detailParty"></div>
@@ -244,34 +252,34 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   <!-- 1b. PODROBNÝ PLÁN -->
   <section class="sekce" id="s-podrobny">
     <div class="nastroje">
-      <label class="stav">Parta:
-        <select id="filtrPodrobny" title="Ukáže jen karty jedné party." onchange="kresliPodrobny()"
+      <label class="stav">Grupa:
+        <select id="filtrPodrobny" title="Ukáže jen karty jedné grupy." onchange="kresliPodrobny()"
           style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
       </label>
       <label class="stav">Typ:
         <select id="filtrTyp" title="Ukáže jen úkoly jednoho typu, například všechny přejezdy nebo všechny noclehy." onchange="kresliPodrobny()"
           style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
       </label>
-      <button class="tl" title="Rozbalí všechny party naráz." onclick="rozbalVse(true)">Rozbalit vše</button>
-      <button class="tl" title="Sbalí všechny party na jeden řádek." onclick="rozbalVse(false)">Sbalit vše</button>
+      <button class="tl" title="Rozbalí všechny grupy naráz." onclick="rozbalVse(true)">Rozbalit vše</button>
+      <button class="tl" title="Sbalí všechny grupy na jeden řádek." onclick="rozbalVse(false)">Sbalit vše</button>
       <button class="tl" title="Otevře tiskový dialog prohlížeče. Volbou Uložit jako PDF z toho uděláte PDF." onclick="window.print()">Tisk / PDF</button>
-      <button class="tl hlavni" title="Pro každou partu proloží její úkoly přejezdy podle skutečných silničních vzdáleností mezi předávkami. Dřívější dopočet nahradí, ruční přejezdy z HB25 nechá být." onclick="dopoctiPrejezdy()">Dopočítat přejezdy</button>
-      <button class="tl" title="Projde u každé party sled úkolů a označí místa, kam by nestihla dojet." onclick="zkontrolujNavaznosti()">Zkontrolovat návaznosti</button>
+      <button class="tl hlavni" title="Pro každou grupu proloží její úkoly přejezdy podle skutečných silničních vzdáleností mezi předávkami. Dřívější dopočet nahradí, ruční přejezdy z HB25 nechá být." onclick="dopoctiPrejezdy()">Dopočítat přejezdy</button>
+      <button class="tl" title="Projde u každé grupy sled úkolů a označí místa, kam by nestihla dojet." onclick="zkontrolujNavaznosti()">Zkontrolovat návaznosti</button>
       <span class="stav" id="stavPodrobny"></span>
     </div>
     <div id="kontrola"></div>
     <div id="podrobny"></div>
   </section>
 
-  <!-- 2. PARTY -->
+  <!-- 2. GRUPY -->
   <section class="sekce" id="s-tymy">
     <div class="karta">
-      <h2>Party — tabulka tymy_org</h2>
+      <h2>Grupy — tabulka tymy_org</h2>
       <div class="telo">
         <p class="popisek">Kdo všechno se na závodě podílí. Pořadí určuje, v jakém sledu se
-          party ukazují v paletě u plánu. Barva je jen pro rozlišení v mřížce.</p>
+          grupy ukazují v paletě u plánu. Barva je jen pro rozlišení v mřížce.</p>
         <div class="obal-tab"><table class="tab" id="tabTymy"></table></div>
-        <button class="tl" style="margin-top:10px" title="Přidá do tabulky prázdný řádek pro novou partu." onclick="pridej('tymy')">+ Přidat partu</button>
+        <button class="tl" style="margin-top:10px" title="Přidá do tabulky prázdný řádek pro novou grupu." onclick="pridej('tymy')">+ Přidat grupu</button>
       </div>
     </div>
   </section>
@@ -279,18 +287,18 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   <!-- 3. ČLENOVÉ PART -->
   <section class="sekce" id="s-clenove">
     <div class="karta">
-      <h2>Členové part — tabulka clenove_tymu</h2>
+      <h2>Členové grup — tabulka clenove_tymu</h2>
       <div class="telo">
         <p class="popisek">Osobní kontakty. V databázi má tahle tabulka zakázané veřejné čtení
           a číslo účtu se používá na proplácení nákladů.</p>
         <div class="nastroje">
-          <label class="stav">Filtr party:
-            <select id="filtrParty" title="Ukáže jen členy jedné party." onchange="kresliClenove()" style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
+          <label class="stav">Filtr grupy:
+            <select id="filtrParty" title="Ukáže jen členy jedné grupy." onchange="kresliClenove()" style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
           </label>
           <span class="stav" id="stavClenove"></span>
         </div>
         <div class="obal-tab"><table class="tab" id="tabClenove"></table></div>
-        <button class="tl" style="margin-top:10px" title="Přidá do tabulky prázdný řádek pro nového člena party." onclick="pridej('clenove')">+ Přidat člověka</button>
+        <button class="tl" style="margin-top:10px" title="Přidá do tabulky prázdný řádek pro nového člena grupy." onclick="pridej('clenove')">+ Přidat člověka</button>
       </div>
     </div>
   </section>
@@ -306,6 +314,17 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
           průměr skutečných hodnot z HB24 a HB25 a slouží k odhadu, jak dlouho musí být
           předávka otevřená.</p>
         <div class="obal-tab"><table class="tab" id="tabPredavky"></table></div>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Kdy na předávkách někdo je — HB25</h2>
+      <div class="telo">
+        <p class="popisek">Každý pruh je jedna předávka. Světlá část je od prvního
+          po posledního běžce, tmavá půlka pole uprostřed a bílá čárka medián.
+          Skutečné časy z ročníku 2025, tabulka nad grafem má stejná čísla zprůměrovaná
+          s HB24. Šedý pás je tma mezi západem a východem slunce.</p>
+        <div id="grafPredavky" style="position:relative"></div>
       </div>
     </div>
   </section>
@@ -479,7 +498,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
 <div class="editor" id="editor">
   <h4 id="edNadpis">Úkol</h4>
   <div class="kdeco" id="edKde"></div>
-  <label>Parta</label>
+  <label>Grupa</label>
   <select id="edParta"></select>
   <label>Kdy (sloupec kdy_text)</label>
   <input type="text" id="edKdy" placeholder="např. so 8:00 - 10:00">
@@ -626,11 +645,11 @@ const D = {
 
   // noclehy_adresy HB26
   nocMista: [
-    {kod:"JABLUNKOV",nazev:"Sport resort Jablunkov",adresa:"",mapa_url:"",kapacita:16,pokoje:"16 lůžek, z toho dvoulůžák pro fotografa",kontakt:"",telefon:"",cena:"",platba:"zaplaceno",rezervace:"",poznamka:""},
-    {kod:"HBECVA",nazev:"Kemp u přehrady Horní Bečva",adresa:"",mapa_url:"",kapacita:16,pokoje:"16 osob",kontakt:"",telefon:"",cena:"",platba:"zaplaceno",rezervace:"",poznamka:""},
-    {kod:"PULCIN",nazev:"Penzion Pulčínské skály",adresa:"",mapa_url:"",kapacita:9,pokoje:"9 lidí ve 3 pokojích",kontakt:"",telefon:"",cena:"",platba:"zaplaceno",rezervace:"",poznamka:""},
-    {kod:"NLHOTA",nazev:"Ubytovna Nová Lhota č.p. 1",adresa:"",mapa_url:"",kapacita:28,pokoje:"1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka",kontakt:"",telefon:"",cena:"",platba:"",rezervace:"",poznamka:""},
-    {kod:"DANAJ",nazev:"Chatová osada Danaj Lučina",adresa:"",mapa_url:"",kapacita:10,pokoje:"2× chatka po 5 lůžkách",kontakt:"",telefon:"",cena:"",platba:"",rezervace:"",poznamka:""}
+    {kod:"JABLUNKOV",nazev:"Sport resort Jablunkov",adresa:"Jablunkov 298",mapa_url:"https://mapy.com/s/gavarerato",kapacita:16,pokoje:"16 lůžek, z toho dvoulůžák pro fotografa",kontakt:"",telefon:"",cena:"",platba:"zaplaceno",rezervace:"",poznamka:"Pátek, na startu. Je nás 11 z 16 lůžek."},
+    {kod:"HBECVA",nazev:"Kemp u přehrady Horní Bečva",adresa:"Horní Bečva",mapa_url:"",kapacita:16,pokoje:"16 osob",kontakt:"",telefon:"",cena:"410 Kč/os + 25 Kč poplatek",platba:"zaplaceno",rezervace:"",poznamka:"Pátek, pro traséry."},
+    {kod:"PULCIN",nazev:"Penzion Pulčínské skály",adresa:"Pulčín 22",mapa_url:"https://mapy.com/s/nacetumuse",kapacita:9,pokoje:"9 lidí ve 3 pokojích",kontakt:"",telefon:"",cena:"",platba:"zaplaceno",rezervace:"",poznamka:"Sobota. Placeno kartou 29. 7. 2026. Lze přiobjednat snídaně za 6 €."},
+    {kod:"NLHOTA",nazev:"Ubytovna Nová Lhota č.p. 1",adresa:"Nová Lhota 1",mapa_url:"http://bit.ly/N_Lhota_ubytovna",kapacita:28,pokoje:"1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka",kontakt:"",telefon:"",cena:"",platba:"",rezervace:"",poznamka:"Sobota. Klíče vyzvedne první posádka v hospodě. Bude nás 18 z 28 lůžek."},
+    {kod:"DANAJ",nazev:"Chatová osada Danaj Lučina",adresa:"Lučina",mapa_url:"https://mapy.com/s/jovunerope",kapacita:10,pokoje:"2× chatka po 5 lůžkách",kontakt:"",telefon:"",cena:"",platba:"",rezervace:"",poznamka:"Sobota."}
   ],
 
   nocLide: [],
@@ -671,7 +690,7 @@ const D = {
   // --- přístupy k webu ---
   urovne: [
     {kod:"SPRAVCE", nazev:"Správce",       popis:"Vidí a mění všechno včetně přístupů a kontaktů.", poradi:1},
-    {kod:"VEDOUCI", nazev:"Vedoucí party", popis:"Vidí celý plán, mění úkoly a noclehy, kontakty jen čte.", poradi:2},
+    {kod:"VEDOUCI", nazev:"Vedoucí grupy", popis:"Vidí celý plán, mění úkoly a noclehy, kontakty jen čte.", poradi:2},
     {kod:"HOST",    nazev:"Host",          popis:"Jen si čte plán a předávky, kontakty nevidí vůbec.", poradi:3}
   ],
   prava: {
@@ -683,7 +702,7 @@ const D = {
                 predavky:"čtení", nastaveni:"žádné", noclehy_adresy:"žádné", noclehy_lide:"žádné", pristupy:"žádné"}
   },
   uzivatele: [
-    {email:"", jmeno:"Keksa", uroven:"SPRAVCE", kod_tymu:"G0A", aktivni:"ano", heslo_hash:"b9c229404570d56f1011e5e73f5bd5e39a420f1481c5ea636b25689bdda50314", poznamka:""}
+    {email:"", jmeno:"Keksa", uroven:"SPRAVCE", kod_tymu:"G0A", aktivni:"ano", heslo_hash:"", poznamka:""}
   ],
 
   // ukoly — jeden seznam pro všechny typy, přesně jak to má tabulka ukoly v databázi.
@@ -707,8 +726,8 @@ const NOCI = ["pátek","sobota"];
 const PRAVA = ["zápis","čtení","žádné"];
 const OBLASTI = [
   {kod:"ukoly",          nazev:"Plán úkolů a podrobný plán", sekce:["s-ukoly","s-podrobny"]},
-  {kod:"tymy_org",       nazev:"Party",                      sekce:["s-tymy"]},
-  {kod:"clenove_tymu",   nazev:"Členové part",               sekce:["s-clenove"]},
+  {kod:"tymy_org",       nazev:"Grupy",                      sekce:["s-tymy"]},
+  {kod:"clenove_tymu",   nazev:"Členové grup",               sekce:["s-clenove"]},
   {kod:"kontakty",       nazev:"Telefony, e-maily, čísla účtů", sekce:[]},
   {kod:"predavky",       nazev:"Předávky",                   sekce:["s-predavky"]},
   {kod:"nastaveni",      nazev:"Nastavení ročníku",          sekce:["s-nastaveni"]},
@@ -718,7 +737,7 @@ const OBLASTI = [
   {kod:"pristupy",       nazev:"Přístupy k webu",            sekce:["s-pristupy"]}
 ];
 let nahledUroven = "";
-const VEREJNA = true;   // veřejná verze pro GitHub Pages = true
+const VEREJNA = false;   // veřejná verze pro GitHub Pages = true
 const CITLIVE = ["Telefon","E-mail","Číslo účtu","Kontakt","Cena","Rezervace","Poznámka","Adresa","Mapa"];
 const bezCitlivych = sl => VEREJNA ? sl.filter(x=>CITLIVE.indexOf(x.nadpis)<0) : sl;
 const NERESI = "neřeší se";
@@ -748,7 +767,7 @@ const hlaska = t => {const h=$('#hlaska');h.textContent=t;h.classList.add('videt
 function odznakHtml(r, vslotu){
   const v = vslotu ? ' vslotu' : '';
   if(r && r.stav === "nepotvrzeno")
-    return '<span class="odznak otazka'+v+'" title="Nepotvrzeno — čeká se na potvrzení od party nebo z obce.">?</span>';
+    return '<span class="odznak otazka'+v+'" title="Nepotvrzeno — čeká se na potvrzení od grupy nebo z obce.">?</span>';
   if(r && r.zRocniku)
     return '<span class="odznak stary'+v+'" title="Zkopírováno z ročníku '+r.zRocniku
          + ', zatím neprošlo revizí. Jakákoli úprava značku přepne na aktuální ročník.">'
@@ -766,9 +785,9 @@ const najdi = (typ, cislo) => D.ukoly.find(u=>u.typ===typ && u.cislo===cislo);
 /* ---------- záložky ---------- */
 const ZALOZKY = [
   {id:"s-ukoly",         nazev:"Plán úkolů",         napoveda:"Mřížka etap a rolí — kdo trasuje, uklízí a obsluhuje které předávky."},
-  {id:"s-podrobny",      nazev:"Podrobný plán",      napoveda:"Všechny úkoly po partách, včetně přejezdů, noclehů, startu a cíle."},
-  {id:"s-tymy",          nazev:"Party",              napoveda:"Seznam part, jejich barvy a způsob dopravy."},
-  {id:"s-clenove",       nazev:"Členové part",       napoveda:"Lidé v partách a jejich kontakty."},
+  {id:"s-podrobny",      nazev:"Podrobný plán",      napoveda:"Všechny úkoly po grupách, včetně přejezdů, noclehů, startu a cíle."},
+  {id:"s-tymy",          nazev:"Grupy",              napoveda:"Seznam grup, jejich barvy a způsob dopravy."},
+  {id:"s-clenove",       nazev:"Členové grup",       napoveda:"Lidé v grupách a jejich kontakty."},
   {id:"s-predavky",      nazev:"Předávky",           napoveda:"Místa předávek, souřadnice, vzdálenosti a časy mezi nimi."},
   {id:"s-nastaveni",     nazev:"Nastavení ročníku",  napoveda:"Aktivní ročník a datum závodu."},
   {id:"s-noclehy-mista", nazev:"Noclehy — místa",    napoveda:"Ubytování, kapacity a stav rezervací."},
@@ -812,16 +831,16 @@ const NAPOVEDA = {
   "Kód":"Označení úkolu tak, jak ho píšete v tabulce — třeba T7 nebo PZ29.",
   "Číslo":"Číslo etapy u T a U, číslo předávky u P, PZ a PK. U přejezdů a noclehů zůstává prázdné.",
   "Kdy":"Volný text s časem přesně tak, jak ho píšete: so 8:00 - 10:00.",
-  "Co se dělá":"Popis úkolu, včetně poznámek pro partu.",
+  "Co se dělá":"Popis úkolu, včetně poznámek pro grupu.",
   "Stav":"Plán je běžný stav, nepotvrzeno svítí otazníkem, zrušeno se nedělá.",
-  // party a lidé
-  "Parta":"Kód party z tabulky tymy_org.",
+  // grupy a lidé
+  "Grupa":"Kód grupy z tabulky tymy_org.",
   "Název":"Delší pojmenování, které vidí lidé.",
-  "Pořadí":"Určuje sled part v paletě u plánu.",
-  "Doprava":"Čím se parta po trati pohybuje.",
+  "Pořadí":"Určuje sled grup v paletě u plánu.",
+  "Doprava":"Čím se grupa po trati pohybuje.",
   "Barva":"Slouží jen k rozlišení štítků v mřížce.",
   "Poznámka":"Volný text, nikde se nepočítá.",
-  "Jméno":"Jméno člena party. První jméno se ukazuje na štítku party.",
+  "Jméno":"Jméno člena grupy. První jméno se ukazuje na štítku grupy.",
   "Telefon":"Osobní údaj, na veřejném webu se nezobrazuje.",
   "E-mail":"Osobní údaj, na veřejném webu se nezobrazuje.",
   "Číslo účtu":"Na proplácení nákladů. Osobní údaj, na web nepatří.",
@@ -832,7 +851,7 @@ const NAPOVEDA = {
   "Název místa":"Jak se předávka jmenuje v plánu i na webu.",
   "GPS šířka":"Zeměpisná šířka, plní se od ročníku HB26.",
   "GPS délka":"Zeměpisná délka, plní se od ročníku HB26.",
-  "Typ zajištění":"Local znamená místní pořadatele, Interně HB naši partu.",
+  "Typ zajištění":"Local znamená místní pořadatele, Interně HB naše grupa.",
   "Soubor GPX":"Název trasy na webu, například hb26-07-v1.gpx.",
   "První běžec":"Kdy na předávku dorazil první běžec. Průměr skutečných časů z HB24 a HB25.",
   "Poslední běžec":"Kdy dorazil poslední běžec. Průměr z HB24 a HB25, po vyřazení zjevných chyb v zápisu.",
@@ -958,7 +977,7 @@ function kresliPaletu(){
       + '<br>lidé: '+(lidi.length?esc(lidi.join(', ')):(BEZ_JMEN.indexOf(vybrany)>=0?'místní grupa, jména se nevedou':'nikdo v clenove_tymu'))
       + '<br>úkolů celkem: '+(poc[vybrany]||0)
       + (MIMO_DB.indexOf(t.kod)>=0?'<br><b style="color:var(--vinova)">Není v tabulce tymy_org.</b>':'');
-  } else d.textContent = 'Klikni na partu pro detail.';
+  } else d.textContent = 'Klikni na grupu pro detail.';
 }
 
 function slotChip(u){
@@ -1005,7 +1024,7 @@ function kresliPlan(){
         slot.appendChild(cas);
       } else {
         slot.textContent = typ+cislo;
-        slot.title = (NAPOVEDA[NAZVY[s]]||'') + ' Sem přetáhněte partu z palety vlevo.';
+        slot.title = (NAPOVEDA[NAZVY[s]]||'') + ' Sem přetáhněte grupu z palety vlevo.';
       }
       slot.ondragover = ev=>{ev.preventDefault();slot.classList.add('nad');};
       slot.ondragleave = ()=>slot.classList.remove('nad');
@@ -1055,7 +1074,7 @@ function kresliPlan(){
   $('#stavPlan').textContent = 'obsazeno ' + vMrizce + ' ze 150 políček · dalších '
     + mimo + ' úkolů (přejezdy, noclehy, start, cíl) je v Podrobném plánu'
     + (dvakrat.size ? ' · dvakrát zadáno: ' + [...dvakrat].join(', ') : '')
-    + (cizi.size ? ' · party mimo tymy_org: ' + [...cizi].join(', ') : '');
+    + (cizi.size ? ' · grupy mimo tymy_org: ' + [...cizi].join(', ') : '');
   const neprosle = D.ukoly.filter(u=>u.zRocniku).length;
   const nepotvrzene = D.ukoly.filter(u=>u.stav==="nepotvrzeno").length;
   $('#stavRevize').innerHTML = (neprosle
@@ -1111,7 +1130,7 @@ function zavriEditor(){ edUkol=null; $('#editor').classList.remove('videt'); }
 function naplnFiltryPodrobny(){
   const fp = $('#filtrPodrobny'), ft = $('#filtrTyp');
   const dp = fp.value, dt = ft.value;
-  fp.innerHTML = '<option value="">všechny party</option>' +
+  fp.innerHTML = '<option value="">všechny grupy</option>' +
     D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))
       .map(t=>`<option${t.kod===dp?' selected':''}>${esc(t.kod)}</option>`).join('');
   ft.innerHTML = '<option value="">všechny typy</option>' +
@@ -1170,7 +1189,7 @@ function kresliPodrobny(){
 
     const pridat = document.createElement('div');
     pridat.style.padding = '10px 14px';
-    pridat.innerHTML = '<button class="tl" title="Přidá partě '+esc(t.kod)+' nový prázdný úkol do podrobného plánu.">+ Přidat úkol partě '+esc(t.kod)+'</button>';
+    pridat.innerHTML = '<button class="tl" title="Přidá grupě '+esc(t.kod)+' nový prázdný úkol do podrobného plánu.">+ Přidat úkol grupě '+esc(t.kod)+'</button>';
     pridat.querySelector('button').onclick = ()=>{
       D.ukoly.push({parta:t.kod,typ:"A",kod:"A",cislo:null,kdy_text:"",popis:"",stav:"plán",zdroj:"ručně"});
       sbaleno[t.kod] = false; kresliPodrobny(); kresliPlan();
@@ -1186,7 +1205,7 @@ function rozbalVse(otevrit){
   kresliPodrobny();
 }
 
-/* ---------- 2. party ---------- */
+/* ---------- 2. grupy ---------- */
 function kresliTymy(){
   tabulka('#tabTymy', [
     {nadpis:"Kód", pole:"kod", sirka:"110px"},
@@ -1201,7 +1220,7 @@ function kresliTymy(){
 /* ---------- 3. členové ---------- */
 function naplnFiltrPart(){
   const f = $('#filtrParty'); const drive = f.value;
-  f.innerHTML = '<option value="">všechny party</option>' +
+  f.innerHTML = '<option value="">všechny grupy</option>' +
     D.tymy.map(t=>`<option${t.kod===drive?' selected':''}>${esc(t.kod)}</option>`).join('');
 }
 function kresliClenove(){
@@ -1209,7 +1228,7 @@ function kresliClenove(){
   const vsichni = D.clenove;
   const videt = f ? vsichni.filter(c=>c.kod_tymu===f) : vsichni;
   tabulka('#tabClenove', bezCitlivych([
-    {nadpis:"Parta", pole:"kod_tymu", typ:"select", moznosti:()=>D.tymy.map(t=>t.kod), sirka:"110px"},
+    {nadpis:"Grupa", pole:"kod_tymu", typ:"select", moznosti:()=>D.tymy.map(t=>t.kod), sirka:"110px"},
     {nadpis:"Jméno", pole:"jmeno", sirka:"210px"},
     {nadpis:"Telefon", pole:"telefon", sirka:"150px"},
     {nadpis:"E-mail", pole:"email", sirka:"230px"},
@@ -1236,7 +1255,108 @@ function kresliPredavky(){
     {nadpis:"Poznámka", pole:"pozn"}
   ]), D.predavky.map(p=>Object.assign(p,{_km: p.km==null?'—':(p.km+' km · '+p.min+' min')})),
      ()=>{kresliPredavky();kresliPlan();}, false);
+  kresliGrafPredavek();
 }
+
+
+/* ---------- graf časů na předávkách (HB25) ---------- */
+// [číslo, první, dolní kvartil, medián, horní kvartil, poslední, počet týmů]
+// minuty od půlnoci soboty; z HB25_vysledky_etap.csv, jeden chybný zápis vyřazen
+const GRAF_HB25 = [[1,360,420,520,615,700,84],[2,410,484,567,666,749,84],[3,489,560,641,737,810,84],[4,533,603,684,774,848,84],[5,579,654,724,814,884,84],[6,626,705,769,859,918,84],[7,668,752,816,903,960,84],[8,745,812,882,967,1020,84],[9,792,865,930,1010,1071,84],[10,859,938,999,1083,1131,83],[11,909,987,1046,1120,1170,83],[12,988,1064,1129,1189,1258,83],[13,1053,1123,1183,1243,1317,83],[14,1120,1195,1245,1298,1381,83],[15,1183,1266,1312,1361,1446,83],[16,1248,1325,1376,1419,1501,83],[17,1304,1380,1431,1482,1572,82],[18,1380,1459,1510,1553,1627,83],[19,1430,1517,1560,1605,1687,83],[20,1512,1591,1630,1672,1792,83],[21,1570,1662,1692,1737,1805,83],[22,1616,1714,1749,1787,1922,83],[23,1686,1773,1809,1843,1980,83],[24,1761,1850,1886,1921,2063,83],[25,1828,1911,1949,1989,2145,83],[26,1897,1977,2026,2055,2213,83],[27,1943,2031,2072,2099,2261,83],[28,1987,2076,2113,2150,2322,83],[29,2043,2130,2174,2202,2380,83],[30,2085,2175,2228,2254,2435,83],[31,2152,2241,2287,2327,2497,83]];
+
+function grafCas(m){
+  const d = Math.floor(m/1440), h = Math.floor((m%1440)/60), mi = Math.round(m%60);
+  return (d===0?"so ":"ne ") + h + ":" + String(mi).padStart(2,"0");
+}
+
+function kresliGrafPredavek(){
+  const cil = $("#grafPredavky"); if(!cil) return;
+  const S = 360, K = 2520;                        // osa od so 6:00 do ne 18:00
+  // noc není odhad: západ a východ slunce pro 6. a 7. 9. 2025 uprostřed trati (Nová Lhota)
+  const ZAPAD = 19*60+23, VYCHOD = 1440 + 6*60+14;
+  const L = 150, P = 26, H = 62, D = 36, radek = 22;
+  const sirka = Math.max(900, Math.floor(cil.clientWidth || 1200));
+  const vyska = H + GRAF_HB25.length*radek + D;
+  const x = m => L + (m - S) / (K - S) * (sirka - L - P);
+  const y = i => H + i*radek + radek/2;
+
+  let g = '<svg viewBox="0 0 '+sirka+' '+vyska+'" width="100%" height="'+vyska+'" '
+        + 'preserveAspectRatio="none" role="img" '
+        + 'aria-label="Časy prvního a posledního běžce na 31 předávkách ročníku HB25">';
+
+  // střídavé pruhy řádků — spojují popisek vlevo s daty vpravo
+  GRAF_HB25.forEach((r,i)=>{
+    if(i%2) g += '<rect class="pas" data-i="'+i+'" x="0" y="'+(y(i)-radek/2)+'" width="'+sirka
+              + '" height="'+(radek-2)+'" fill="#FBF9F5"></rect>';
+    else    g += '<rect class="pas" data-i="'+i+'" x="0" y="'+(y(i)-radek/2)+'" width="'+sirka
+              + '" height="'+(radek-2)+'" fill="#fff" fill-opacity="0"></rect>';
+  });
+
+  // noc podle skutečného západu a východu slunce
+  g += '<rect x="'+x(ZAPAD)+'" y="'+(H-10)+'" width="'+(x(VYCHOD)-x(ZAPAD))+'" height="'
+     + (vyska-H-D+18)+'" fill="#F1EDE6"></rect>'
+     + '<text x="'+((x(ZAPAD)+x(VYCHOD))/2)+'" y="'+(H-18)+'" text-anchor="middle" '
+     + 'font-size="10.5" fill="#9C8E7C">tma · 19:23 až 6:14</text>';
+
+  // svislé linky a popisky času
+  for(let m=S; m<=K; m+=180){
+    g += '<line x1="'+x(m)+'" y1="'+(H-10)+'" x2="'+x(m)+'" y2="'+(vyska-D+6)+'" stroke="#E3DCD1" stroke-width="1"></line>'
+       + '<text x="'+x(m)+'" y="'+(vyska-D+22)+'" text-anchor="middle" font-size="11" fill="#AD9E8D">'
+       + grafCas(m)+'</text>';
+  }
+
+  GRAF_HB25.forEach((r,i)=>{
+    const [c, mn, q1, med, q3, mx, n] = r;
+    const misto = (D_predavka(c)||{}).nazev || "";
+    const yy = y(i), popisek = c + " " + misto;
+    g += '<g class="gr" data-i="'+i+'">'
+       + '<text x="'+(L-12)+'" y="'+(yy+4)+'" text-anchor="end" font-size="11.5" fill="#3F372A">'
+       + esc(popisek.length>20 ? popisek.slice(0,19)+"…" : popisek) + '</text>'
+       // tečkovaná spojnice od popisku k začátku pruhu
+       + '<line x1="'+(L-6)+'" y1="'+yy+'" x2="'+(x(mn)-3)+'" y2="'+yy+'" stroke="#E3DCD1" '
+       + 'stroke-width="1" stroke-dasharray="1 3"></line>'
+       + '<rect x="'+x(mn)+'" y="'+(yy-5)+'" width="'+Math.max(4,x(mx)-x(mn))+'" height="10" rx="4" fill="#8C9A5A"></rect>'
+       + '<rect x="'+x(q1)+'" y="'+(yy-3)+'" width="'+Math.max(3,x(q3)-x(q1))+'" height="6" rx="3" fill="#4D582C"></rect>'
+       + '<rect x="'+(x(med)-1)+'" y="'+(yy-5)+'" width="2" height="10" fill="#fff"></rect>'
+       + '<rect x="0" y="'+(yy-radek/2)+'" width="'+sirka+'" height="'+radek+'" fill="transparent"></rect>'
+       + '</g>';
+  });
+
+  g += '<rect x="'+L+'" y="'+(vyska-D+2)+'" width="'+(sirka-L-P)+'" height="1" fill="#E3DCD1"></rect>';
+  g += '</svg><div class="gbub" id="gbub"></div>';
+  cil.innerHTML = g;
+
+  const bub = $("#gbub");
+  cil.querySelectorAll('.gr').forEach(el=>{
+    const pas = cil.querySelector('.pas[data-i="'+el.dataset.i+'"]');
+    el.onmousemove = e=>{
+      const r = GRAF_HB25[+el.dataset.i];
+      const misto = (D_predavka(r[0])||{}).nazev || "";
+      pas.setAttribute('fill', '#EDE7DA'); pas.setAttribute('fill-opacity', '1');
+      bub.innerHTML = '<b>'+r[0]+' '+esc(misto)+'</b><br>'
+        + 'první ' + grafCas(r[1]) + ' · poslední ' + grafCas(r[5]) + '<br>'
+        + 'medián ' + grafCas(r[3]) + ' · ' + r[6] + ' týmů';
+      const o = cil.getBoundingClientRect();
+      bub.style.left = Math.min(e.clientX - o.left + 14, cil.clientWidth - 200) + 'px';
+      bub.style.top  = (e.clientY - o.top + 12) + 'px';
+      bub.style.opacity = 1;
+    };
+    el.onmouseleave = ()=>{
+      const li = (+el.dataset.i)%2;
+      pas.setAttribute('fill', li ? '#FBF9F5' : '#fff');
+      pas.setAttribute('fill-opacity', li ? '1' : '0');
+      bub.style.opacity = 0;
+    };
+  });
+}
+
+let _grafCasovac;
+window.addEventListener('resize', ()=>{
+  clearTimeout(_grafCasovac);
+  _grafCasovac = setTimeout(()=>{ if($('#s-predavky').classList.contains('videt')) kresliGrafPredavek(); }, 200);
+});
+
+const D_predavka = c => D.predavky.find(p=>p.cislo===c);
 
 /* ---------- 5. nastavení ---------- */
 function kresliNastaveni(){
@@ -1278,7 +1398,7 @@ function kresliNocLide(){
     {nadpis:"Noc", pole:"noc", typ:"select", moznosti:NOCI, sirka:"120px"},
     {nadpis:"Místo", pole:"kod_noclehu", typ:"select", moznosti:volbyNoclehu, sirka:"150px"},
     {nadpis:"Jméno", pole:"jmeno", sirka:"230px"},
-    {nadpis:"Parta", pole:"kod_tymu", typ:"select", moznosti:()=>[""].concat(D.tymy.map(t=>t.kod)), sirka:"120px"},
+    {nadpis:"Grupa", pole:"kod_tymu", typ:"select", moznosti:()=>[""].concat(D.tymy.map(t=>t.kod)), sirka:"120px"},
     {nadpis:"Poznámka", pole:"poznamka"}
   ], D.nocLide, ()=>kresliNocLide(), true);
 
@@ -1447,9 +1567,9 @@ function zkontrolujNavaznosti(){
       + '</div></div>';
   } else {
     let h = '<div class="karta"><h2>Nemožné návaznosti — ' + nalezy.length + '</h2><div class="telo">'
-      + '<p class="popisek">Parta by musela být na dvou místech dřív, než tam stihne dojet. '
+      + '<p class="popisek">Grupa by musela být na dvou místech dřív, než tam stihne dojet. '
       + 'Časy i vzdálenosti jsou z plánu, ne odhad.</p>'
-      + '<div class="obal-tab"><table class="tab"><thead><tr><th style="width:110px">Parta</th>'
+      + '<div class="obal-tab"><table class="tab"><thead><tr><th style="width:110px">Grupa</th>'
       + '<th>Z čeho</th><th>Na co</th><th style="width:110px">K dispozici</th>'
       + '<th style="width:110px">Potřeba</th><th style="width:90px">Schodek</th></tr></thead><tbody>';
     nalezy.forEach(n=>{
@@ -1731,7 +1851,7 @@ function kresliUzivatele(){
     {nadpis:"Jméno", pole:"jmeno", sirka:"200px"},
     {nadpis:"Úroveň", pole:"uroven", typ:"select",
       moznosti:()=>D.urovne.map(u=>u.kod), sirka:"150px"},
-    {nadpis:"Parta", pole:"kod_tymu", typ:"select",
+    {nadpis:"Grupa", pole:"kod_tymu", typ:"select",
       moznosti:()=>[""].concat(D.tymy.map(t=>t.kod)), sirka:"120px"},
     {nadpis:"Aktivní", pole:"aktivni", typ:"select", moznosti:["ano","ne"], sirka:"100px"},
     {nadpis:"Heslo", pole:"_heslo", jenCist:true, sirka:"110px"},
@@ -1844,7 +1964,7 @@ function oznacZrevidovane(){
   vseKresli(); hlaska(n ? ('Zrevidováno '+n+' záznamů') : 'Není co označovat');
 }
 function prepniZvyrazneni(){ zvyraznit=!zvyraznit; kresliPlan();
-  hlaska(zvyraznit?'Zvýraznění zapnuto — klikni na partu':'Zvýraznění vypnuto'); }
+  hlaska(zvyraznit?'Zvýraznění zapnuto — klikni na grupu':'Zvýraznění vypnuto'); }
 
 /* ---------- uložení a načtení ---------- */
 function ulozSoubor(){

@@ -373,10 +373,11 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
     </div>
 
     <div class="karta">
-      <h2>Potřeba, sklad a doobjednávka</h2>
+      <h2>Potřeba a objednávky po várkách</h2>
       <div class="telo">
-        <p class="popisek">Bílé sloupce se počítají samy, editovat jde odhad podílu,
-          pomocníky, sklad a finální počet k objednání.</p>
+        <p class="popisek">Bílé sloupce se počítají samy, editovat jde odhad podílu, pomocníci
+          a kusy v jednotlivých várkách. Sloupec „Zbývá" ukazuje, kolik k pokrytí
+          potřeby s rezervou schází; se znaménkem plus je to naopak přebytek.</p>
         <div class="obal-tab"><table class="tab" id="tabTricka"></table></div>
         <p class="popisek" id="varovaniTricka" style="margin-top:10px"></p>
       </div>
@@ -632,33 +633,34 @@ const D = {
   // --- trička (podle HB_znalosti_tricka.md, 9. 8. 2026) ---
   tricka: {
     model_damsky:"Malfini RESIST R02", model_pansky:"Malfini VIPER 143",
-    barva:"bílá", velikost_loga:"A4", barva_loga:"", dodavatel:"BARTUNKOVA s.r.o.",
+    barva:"bílá", logo_s:"", logo_m:"", logo_l:"A4", barva_loga:"", sita:"vyrobena při 1. várce HB26", dodavatel:"BARTUNKOVA s.r.o.",
     tymy_zaplaceno:83, tymy_ocekavano:7, koeficient:9.7, rezerva_pct:5
   },
   velikosti: [
-    // rada, kod, poradi, podíly z minulých ročníků, odhad pro letošek, pomocníci, sklad, objednat
-    {rada:"dámská", kod:"S",    poradi:1,  hb24:14.0, hb25:14.8, hb26:16.1, odhad:14.9, pomocnici:6,  sklad:100, objednat:45},
-    {rada:"dámská", kod:"M",    poradi:2,  hb24:13.8, hb25:12.3, hb26:11.5, odhad:12.4, pomocnici:10, sklad:100, objednat:25},
-    {rada:"dámská", kod:"L",    poradi:3,  hb24:3.9,  hb25:1.5,  hb26:2.8,  odhad:3.0,  pomocnici:9,  sklad:0,   objednat:40},
-    {rada:"dámská", kod:"XL",   poradi:4,  hb24:0.8,  hb25:0.4,  hb26:0.0,  odhad:0.3,  pomocnici:1,  sklad:0,   objednat:5},
-    {rada:"dámská", kod:"XXL",  poradi:5,  hb24:0.1,  hb25:0.0,  hb26:0.0,  odhad:0.0,  pomocnici:0,  sklad:0,   objednat:0},
-    {rada:"pánská", kod:"S",    poradi:6,  hb24:4.9,  hb25:6.2,  hb26:4.8,  odhad:6.0,  pomocnici:2,  sklad:0,   objednat:60},
-    {rada:"pánská", kod:"M",    poradi:7,  hb24:28.1, hb25:30.1, hb26:26.2, odhad:26.4, pomocnici:19, sklad:250, objednat:15},
-    {rada:"pánská", kod:"L",    poradi:8,  hb24:28.0, hb25:27.4, hb26:29.0, odhad:29.8, pomocnici:36, sklad:250, objednat:60},
-    {rada:"pánská", kod:"XL",   poradi:9,  hb24:5.3,  hb25:6.5,  hb26:7.9,  odhad:6.0,  pomocnici:22, sklad:50,  objednat:30},
-    {rada:"pánská", kod:"XXL",  poradi:10, hb24:1.2,  hb25:0.9,  hb26:1.7,  odhad:1.3,  pomocnici:15, sklad:0,   objednat:30},
-    {rada:"pánská", kod:"XXXL", poradi:11, hb24:0.0,  hb25:0.0,  hb26:0.0,  odhad:0.0,  pomocnici:1,  sklad:0,   objednat:3},
-    {rada:"pánská", kod:"4XL",  poradi:12, hb24:0.0,  hb25:0.0,  hb26:0.0,  odhad:0.0,  pomocnici:0,  sklad:0,   objednat:2}
+    // rada, kod, poradi, podíly z minulých ročníků, odhad pro letošek, pomocníci a tři vlny objednávek
+    {rada:"dámská", kod:"S",    poradi:1,  hb24:14.0, hb25:14.8, hb26:16.1, odhad:14.9, pomocnici:6,  varka1:100, varka2:30, varka3:0},
+    {rada:"dámská", kod:"M",    poradi:2,  hb24:13.8, hb25:12.3, hb26:11.5, odhad:12.4, pomocnici:10, varka1:100, varka2:17, varka3:0},
+    {rada:"dámská", kod:"L",    poradi:3,  hb24:3.9,  hb25:1.5,  hb26:2.8,  odhad:3.0,  pomocnici:9,  varka1:0, varka2:25, varka3:0},
+    {rada:"dámská", kod:"XL",   poradi:4,  hb24:0.8,  hb25:0.4,  hb26:0.0,  odhad:0.3,  pomocnici:1,  varka1:0, varka2:3, varka3:0},
+    {rada:"dámská", kod:"XXL",  poradi:5,  hb24:0.1,  hb25:0.0,  hb26:0.0,  odhad:0.0,  pomocnici:0,  varka1:0, varka2:0, varka3:0},
+    {rada:"pánská", kod:"S",    poradi:6,  hb24:4.9,  hb25:6.2,  hb26:4.8,  odhad:6.0,  pomocnici:2,  varka1:0, varka2:40, varka3:0},
+    {rada:"pánská", kod:"M",    poradi:7,  hb24:28.1, hb25:30.1, hb26:26.2, odhad:26.4, pomocnici:19, varka1:250, varka2:10, varka3:0},
+    {rada:"pánská", kod:"L",    poradi:8,  hb24:28.0, hb25:27.4, hb26:29.0, odhad:29.8, pomocnici:36, varka1:250, varka2:40, varka3:0},
+    {rada:"pánská", kod:"XL",   poradi:9,  hb24:5.3,  hb25:6.5,  hb26:7.9,  odhad:6.0,  pomocnici:22, varka1:50, varka2:20, varka3:0},
+    {rada:"pánská", kod:"XXL",  poradi:10, hb24:1.2,  hb25:0.9,  hb26:1.7,  odhad:1.3,  pomocnici:15, varka1:0, varka2:20, varka3:0},
+    {rada:"pánská", kod:"XXXL", poradi:11, hb24:0.0,  hb25:0.0,  hb26:0.0,  odhad:0.0,  pomocnici:1,  varka1:0, varka2:2, varka3:0},
+    {rada:"pánská", kod:"4XL",  poradi:12, hb24:0.0,  hb25:0.0,  hb26:0.0,  odhad:0.0,  pomocnici:0,  varka1:0, varka2:1, varka3:0}
   ],
   objednavky: [
-    {rok:"HB24", vlna:1, datum:"2024-08-05", pocet:592,  castka:"76 942 Kč",  poznamka:""},
-    {rok:"HB24", vlna:2, datum:"",           pocet:269,  castka:"61 309 Kč",  poznamka:""},
-    {rok:"HB24", vlna:3, datum:"",           pocet:140,  castka:"6 501 Kč",   poznamka:""},
-    {rok:"HB25", vlna:1, datum:"2025-07-03", pocet:305,  castka:"59 901 Kč",  poznamka:""},
-    {rok:"HB25", vlna:2, datum:"2025-08-11", pocet:405,  castka:"104 486 Kč", poznamka:"včetně 9 mikin CAPE a 9 merino RISE pro organizátory"},
-    {rok:"HB25", vlna:3, datum:"2025-08-11", pocet:303,  castka:"64 298 Kč",  poznamka:""},
-    {rok:"HB26", vlna:1, datum:"",           pocet:750,  castka:"",           poznamka:"už na skladě"},
-    {rok:"HB26", vlna:2, datum:"",           pocet:315,  castka:"",           poznamka:"plán podle přehledu níž"}
+    {rok:"HB24", vlna:1, datum:"2024-08-05", pocet:592,  poznamka:""},
+    {rok:"HB24", vlna:2, datum:"",           pocet:269,  poznamka:""},
+    {rok:"HB24", vlna:3, datum:"",           pocet:140,   poznamka:""},
+    {rok:"HB25", vlna:1, datum:"2025-07-03", pocet:305,  poznamka:""},
+    {rok:"HB25", vlna:2, datum:"2025-08-11", pocet:405, poznamka:"včetně 9 mikin CAPE a 9 merino RISE pro organizátory"},
+    {rok:"HB25", vlna:3, datum:"2025-08-11", pocet:303,  poznamka:""},
+    {rok:"HB26", vlna:1, datum:"",           pocet:750,           poznamka:"objednáno a na skladě"},
+    {rok:"HB26", vlna:2, datum:"",           pocet:208,  poznamka:"připraveno k objednání, ještě neobjednáno"},
+    {rok:"HB26", vlna:3, datum:"",           pocet:90,   poznamka:"doobjednávka koncem srpna podle soupisek — P L 21, P S 17, D S 13, D L 12, P XL 8, P XXL 8, D M 7, D XL 2, P M 2"}
   ],
 
   // --- přístupy k webu ---
@@ -1225,7 +1227,8 @@ const tr = () => D.tricka;
 const bezciCelkem = () => Math.round((tr().tymy_zaplaceno + tr().tymy_ocekavano) * tr().koeficient);
 const potreba = v => Math.round(bezciCelkem() * (v.odhad||0) / 100) + (v.pomocnici||0);
 const sRezervou = v => Math.ceil(potreba(v) * (1 + (tr().rezerva_pct||0)/100));
-const spocteno = v => Math.max(0, sRezervou(v) - (v.sklad||0));
+const objednano = v => (v.varka1||0) + (v.varka2||0) + (v.varka3||0);
+const zbyva = v => sRezervou(v) - objednano(v);
 
 function poleCislo(popis, klic, krok){
   return '<div style="flex:1;min-width:150px">'
@@ -1249,25 +1252,36 @@ function kresliTricka(){
     + poleCislo('Běžců na tým','koeficient', 0.1)
     + poleCislo('Rezerva v %','rezerva_pct')
     + poleText('Barva ročníku','barva')
-    + poleText('Velikost loga','velikost_loga')
-    + poleText('Barva loga','barva_loga');
+    + poleText('Logo — velikost S','logo_s')
+    + poleText('Logo — velikost M','logo_m')
+    + poleText('Logo — L a větší','logo_l')
+    + poleText('Barva loga','barva_loga')
+    + poleText('Síta','sita');
   v.querySelectorAll('input').forEach(el=>{
     el.onchange = ()=>{ tr()[el.dataset.t] = el.type==='number' ? (+el.value||0) : el.value; kresliTricka(); };
   });
 
   const bezci = bezciCelkem();
   const pom = D.velikosti.reduce((a,x)=>a+(x.pomocnici||0),0);
-  const skl = D.velikosti.reduce((a,x)=>a+(x.sklad||0),0);
-  const obj = D.velikosti.reduce((a,x)=>a+(x.objednat||0),0);
+  const v1 = D.velikosti.reduce((a,x)=>a+(x.varka1||0),0);
+  const v2 = D.velikosti.reduce((a,x)=>a+(x.varka2||0),0);
+  const v3 = D.velikosti.reduce((a,x)=>a+(x.varka3||0),0);
+  const obj = v1+v2+v3;
   const potr = D.velikosti.reduce((a,x)=>a+potreba(x),0);
   const rez = D.velikosti.reduce((a,x)=>a+sRezervou(x),0);
-  const spoc = D.velikosti.reduce((a,x)=>a+spocteno(x),0);
+  const schazi = D.velikosti.reduce((a,x)=>a+Math.max(0, zbyva(x)),0);
+  const navic  = D.velikosti.reduce((a,x)=>a+Math.max(0,-zbyva(x)),0);
   $('#souhrnTricka').innerHTML =
     '<b>'+(tr().tymy_zaplaceno+tr().tymy_ocekavano)+' týmů</b> × '+tr().koeficient+' = <b>'+bezci+' běžců</b>'
     + ' · pomocníci <b>'+pom+'</b> · potřeba <b>'+potr+'</b> ks, s rezervou <b>'+rez+'</b>'
-    + ' · na skladě <b>'+skl+'</b> · spočtená doobjednávka <b>'+spoc+'</b>, zadáno <b>'+obj+'</b> ks'
+    + ' · objednáno <b>'+obj+'</b> ks (várky '+v1+' + '+v2+' + '+v3+')'
+    + ' · ' + (schazi ? 'schází <b style="color:var(--vinova)">'+schazi+'</b> ks' : 'nic neschází')
+    + (navic ? ', jinde přebývá <b>'+navic+'</b> ks' : '')
     + ' · dodavatel '+esc(tr().dodavatel)+', '+esc(tr().model_pansky)+' a '+esc(tr().model_damsky)
-    + ' · logo '+esc(tr().velikost_loga||'nezadáno')+(tr().barva_loga?', '+esc(tr().barva_loga):'');
+    + ' · logo S ' + esc(tr().logo_s||'—') + ', M ' + esc(tr().logo_m||'—')
+    + ', L a větší ' + esc(tr().logo_l||'—')
+    + (tr().barva_loga?', barva '+esc(tr().barva_loga):'')
+    + (tr().sita?' · síta '+esc(tr().sita):'');
 
   // tabulka velikostí
   const t = $('#tabTricka');
@@ -1275,11 +1289,13 @@ function kresliTricka(){
     + '<th style="width:56px"></th><th style="width:150px">Velikost</th>'
     + '<th style="width:70px">HB24 %</th><th style="width:70px">HB25 %</th><th style="width:86px">HB26 dosud %</th>'
     + '<th style="width:86px">Odhad %</th><th style="width:80px">Běžci</th><th style="width:90px">Pomocníci</th>'
-    + '<th style="width:80px">Potřeba</th><th style="width:86px">+rezerva</th><th style="width:80px">Sklad</th>'
-    + '<th style="width:92px">Spočteno</th><th style="width:96px">Objednat</th></tr></thead><tbody>';
+    + '<th style="width:80px">Potřeba</th><th style="width:86px">+rezerva</th>'
+    + '<th style="width:86px">1. várka</th><th style="width:86px">2. várka</th><th style="width:86px">3. várka</th>'
+    + '<th style="width:92px">Objednáno</th><th style="width:86px">Zbývá</th></tr></thead><tbody>';
   D.velikosti.slice().sort((a,b)=>a.poradi-b.poradi).forEach((x,i)=>{
     const bez = Math.round(bezci*(x.odhad||0)/100);
-    const chybi = (x.sklad||0)===0 && sRezervou(x)>0;
+    const chybi = objednano(x)===0 && sRezervou(x)>0;
+    const zb = zbyva(x);
     h += '<tr'+(chybi?' style="background:#FBF1F2"':'')+'>'
       + '<td class="odzn">'+odznakHtml(x)+'</td>'
       + '<td style="padding:7px 8px;font-size:13px;font-weight:700">'+esc(x.rada)+' '+esc(x.kod)+'</td>'
@@ -1291,26 +1307,31 @@ function kresliTricka(){
       + '<td class="stred"><input type="number" data-i="'+i+'" data-p="pomocnici" value="'+(x.pomocnici||0)+'"></td>'
       + '<td class="stred" style="padding:7px;font-size:13px">'+potreba(x)+'</td>'
       + '<td class="stred" style="padding:7px;font-size:13px;color:var(--olive);font-weight:700">'+sRezervou(x)+'</td>'
-      + '<td class="stred"><input type="number" data-i="'+i+'" data-p="sklad" value="'+(x.sklad||0)+'"></td>'
-      + '<td class="stred" style="padding:7px;font-size:13px;font-weight:800;color:var(--hneda)">'+spocteno(x)+'</td>'
-      + '<td class="stred"><input type="number" data-i="'+i+'" data-p="objednat" value="'+(x.objednat||0)+'"></td></tr>';
+      + '<td class="stred"><input type="number" data-i="'+i+'" data-p="varka1" value="'+(x.varka1||0)+'"></td>'
+      + '<td class="stred"><input type="number" data-i="'+i+'" data-p="varka2" value="'+(x.varka2||0)+'"></td>'
+      + '<td class="stred"><input type="number" data-i="'+i+'" data-p="varka3" value="'+(x.varka3||0)+'"></td>'
+      + '<td class="stred" style="padding:7px;font-size:13px;font-weight:800;color:var(--hneda)">'+objednano(x)+'</td>'
+      + '<td class="stred" style="padding:7px;font-size:13px;font-weight:800;color:'+(zb>0?'var(--vinova)':'var(--olive)')+'">'
+      + (zb>0?zb:(zb<0?'+'+(-zb):'0'))+'</td></tr>';
   });
   h += '<tr style="background:#F3EFE6;font-weight:800"><td></td><td style="padding:8px">Celkem</td>'
      + '<td></td><td></td><td></td>'
      + '<td class="stred">'+D.velikosti.reduce((a,x)=>a+(x.odhad||0),0).toFixed(1)+'</td>'
      + '<td class="stred">'+bezci+'</td><td class="stred">'+pom+'</td><td class="stred">'+potr+'</td>'
-     + '<td class="stred">'+rez+'</td><td class="stred">'+skl+'</td>'
-     + '<td class="stred">'+spoc+'</td><td class="stred">'+obj+'</td></tr>';
+     + '<td class="stred">'+rez+'</td>'
+     + '<td class="stred">'+v1+'</td><td class="stred">'+v2+'</td><td class="stred">'+v3+'</td>'
+     + '<td class="stred">'+obj+'</td>'
+     + '<td class="stred" style="color:var(--vinova)">'+schazi+'</td></tr>';
   t.innerHTML = h + '</tbody>';
   const serazene = D.velikosti.slice().sort((a,b)=>a.poradi-b.poradi);
   t.querySelectorAll('input').forEach(el=>{
     el.onchange = ()=>{ const r = serazene[+el.dataset.i]; r[el.dataset.p] = +el.value||0; zrevidovano(r); kresliTricka(); };
   });
 
-  const chybejici = serazene.filter(x=>(x.sklad||0)===0 && sRezervou(x)>0).map(x=>x.rada+' '+x.kod);
+  const chybejici = serazene.filter(x=>objednano(x)===0 && sRezervou(x)>0).map(x=>x.rada+' '+x.kod);
   const soucet = D.velikosti.reduce((a,x)=>a+(x.odhad||0),0);
   $('#varovaniTricka').innerHTML =
-    (chybejici.length ? '<b style="color:var(--vinova)">Není na skladě vůbec:</b> '+esc(chybejici.join(', '))+'. ' : '')
+    (chybejici.length ? '<b style="color:var(--vinova)">Zatím neobjednáno v žádné várce:</b> '+esc(chybejici.join(', '))+'. ' : '')
     + (Math.abs(soucet-100)>1 ? '<b style="color:var(--vinova)">Součet odhadovaných podílů je '+soucet.toFixed(1)+' %, ne 100 %.</b>' : '');
 
   kresliObjednavky();

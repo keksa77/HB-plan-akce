@@ -206,11 +206,15 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
     <p class="popisek" style="margin:0 0 16px">
       Bez přihlášení vidíte jen ukázku bez kontaktů a nic se neukládá.</p>
     <label class="popisek" for="prihEmail">E-mail</label>
-    <input id="prihEmail" type="email" autocomplete="username" required
+    <input id="prihEmail" name="email" type="email" autocomplete="username" required
            style="width:100%;margin:4px 0 12px">
     <label class="popisek" for="prihHeslo">Heslo</label>
-    <input id="prihHeslo" type="password" autocomplete="current-password" required
-           style="width:100%;margin:4px 0 16px">
+    <input id="prihHeslo" name="password" type="password" autocomplete="current-password" required
+           style="width:100%;margin:4px 0 12px">
+    <label style="display:flex;align-items:center;gap:7px;margin:0 0 14px;cursor:pointer">
+      <input type="checkbox" id="prihZustat" checked>
+      <span class="popisek" style="margin:0">Zůstat přihlášen na tomhle počítači</span>
+    </label>
     <div id="prihChyba" class="popisek" style="color:#A4443A;min-height:18px;margin-bottom:8px"></div>
     <div style="display:flex;gap:8px">
       <button class="tl hlavni" type="submit" id="prihTlacitko">Přihlásit</button>
@@ -3224,16 +3228,36 @@ const MAPA = {
   }
 };
 
-/* ---------- relace ---------- */
+/* ---------- relace ----------
+   Heslo se nikam neukládá — stránka si drží jen přihlašovací lístek, který
+   databáze vydala. Zaškrtnuté „Zůstat přihlášen" ho nechá v prohlížeči i po
+   zavření okna, odškrtnuté jen do zavření karty. Samotné heslo si může
+   zapamatovat správce hesel v prohlížeči; formulář je na to připravený. */
+let relaceTrvale = true;
+const uloziste = () => relaceTrvale ? localStorage : sessionStorage;
+
 function relaceUloz(){
-  try{ localStorage.setItem(SB.ulozKlic, JSON.stringify(relace)); }catch(e){}
+  try{
+    uloziste().setItem(SB.ulozKlic, JSON.stringify(relace));
+    // ať lístek neleží na dvou místech naráz
+    (relaceTrvale ? sessionStorage : localStorage).removeItem(SB.ulozKlic);
+    localStorage.setItem(SB.ulozKlic + '_trvale', relaceTrvale ? '1' : '0');
+  }catch(e){}
 }
 function relaceNacti(){
-  try{ relace = JSON.parse(localStorage.getItem(SB.ulozKlic) || 'null'); }catch(e){ relace = null; }
+  try{
+    relaceTrvale = localStorage.getItem(SB.ulozKlic + '_trvale') !== '0';
+    const t = uloziste().getItem(SB.ulozKlic) || localStorage.getItem(SB.ulozKlic)
+              || sessionStorage.getItem(SB.ulozKlic);
+    relace = JSON.parse(t || 'null');
+  }catch(e){ relace = null; }
 }
 function relaceZahod(){
   relace = null; prihlasen = false; zDatabaze = [];
-  try{ localStorage.removeItem(SB.ulozKlic); }catch(e){}
+  try{
+    localStorage.removeItem(SB.ulozKlic);
+    sessionStorage.removeItem(SB.ulozKlic);
+  }catch(e){}
 }
 
 async function sbToken(telo){
@@ -3260,13 +3284,16 @@ async function sbPlatnyToken(){
 
 async function sbDotaz(cesta, volby){
   const token = await sbPlatnyToken();
-  const o = await fetch(SB.url + '/rest/v1/' + cesta, Object.assign({
-    headers: Object.assign({
-      'apikey': SB.klic,
-      'Authorization': 'Bearer ' + token,
-      'Content-Type': 'application/json'
-    }, (volby||{}).headers || {})
-  }, volby || {}));
+  // Pozor na pořadí: hlavičky se musí složit až nakonec. Kdyby se volby
+  // přilepily po nich, jejich vlastní headers by klíč i token přebily
+  // a databáze by zápis odmítla jako nepřihlášený.
+  const nastaveni = Object.assign({}, volby || {});
+  nastaveni.headers = Object.assign({
+    'apikey': SB.klic,
+    'Authorization': 'Bearer ' + token,
+    'Content-Type': 'application/json'
+  }, (volby || {}).headers || {});
+  const o = await fetch(SB.url + '/rest/v1/' + cesta, nastaveni);
   const txt = await o.text();
   if(!o.ok) throw new Error('databáze odmítla dotaz (' + o.status + '): ' + txt.slice(0,200));
   return txt ? JSON.parse(txt) : [];
@@ -3334,9 +3361,12 @@ async function prihlas(ev){
   ev.preventDefault();
   const tl = $('#prihTlacitko'), chyba = $('#prihChyba');
   chyba.textContent = ''; tl.disabled = true; tl.textContent = 'Přihlašuji…';
+  relaceTrvale = $('#prihZustat').checked;
   try{
     await sbToken({grant:'password', data:{email:$('#prihEmail').value.trim(), password:$('#prihHeslo').value}});
-    $('#prihHeslo').value = '';
+    // Pole se nemaže hned: prohlížeč pozná úspěšné přihlášení podle toho, že
+    // formulář zmizel s vyplněným heslem, a teprve pak nabídne jeho uložení.
+    setTimeout(()=>{ const h = $('#prihHeslo'); if(h) h.value = ''; }, 2500);
     await poPrihlaseni();
   }catch(e){
     chyba.textContent = (String(e.message).indexOf('credentials')>=0)
@@ -3368,7 +3398,8 @@ function odhlas(){
 
 function otevriPrihlaseni(){
   $('#prihlaseni').style.display = 'flex';
-  setTimeout(()=>$('#prihEmail').focus(), 50);
+  try{ $('#prihZustat').checked = localStorage.getItem(SB.ulozKlic + '_trvale') !== '0'; }catch(e){}
+  setTimeout(()=>{ const e = $('#prihEmail'); if(e && !e.value) e.focus(); else $('#prihHeslo').focus(); }, 50);
 }
 function zavriPrihlaseni(){ $('#prihlaseni').style.display = 'none'; }
 

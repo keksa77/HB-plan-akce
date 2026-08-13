@@ -73,6 +73,7 @@ button.tl.cerv{color:var(--vinova);border-color:#E4C6CA}
 .podrobnyTab thead th{top:calc(var(--hlavicka,92px) + 47px)}
 .tab input,.tab select,.tab textarea{width:100%;border:0;background:transparent;font:inherit;
   font-size:13px;padding:7px 8px;color:var(--tmava);border-radius:0}
+.tab textarea{line-height:1.4;min-height:32px}
 .tab input:focus,.tab select:focus,.tab textarea:focus{outline:2px solid var(--khaki);
   outline-offset:-2px;background:#FFFDF7}
 .tab td.uzka{width:74px}
@@ -291,39 +292,19 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
     </div>
 
     <div class="karta">
-      <h2>Naučená pravidla</h2>
-      <div class="telo">
-        <p class="popisek">Vzniknou tím, že opravíte návrh a dáte <b>Zapamatovat</b>. Při dalším
-          rozboru se uplatní a přebijí to, co web vyčte sám. Když pravidlo začne škodit,
-          přepněte ho na <b>ne</b> nebo ho smažte křížkem. Sloupec <b>Použito</b> ukazuje,
-          kolikrát se od začátku sezení uplatnilo.</p>
-        <div class="obal-tab"><table class="tab" id="tabNaucena"></table></div>
-        <div class="stav" id="stavNaucena" style="margin-top:8px"></div>
-      </div>
-    </div>
-
-    <div class="karta">
       <h2>Seznam to-do</h2>
       <div class="telo">
 
         <div id="rucne" style="border:1px solid var(--linka);border-radius:10px;
              padding:11px 13px;margin-bottom:14px;background:#FCFAF7">
           <p class="popisek" style="margin:0 0 8px">Přidat úkol ručně. Jak píšete, web zkouší
-            sám doplnit druh, termín a místo — dokud do políčka sami nesáhnete. Enter úkol přidá.</p>
+            sám doplnit termín a místo — dokud do políčka sami nesáhnete. Enter úkol přidá.</p>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-            <div style="flex:1 1 320px;min-width:240px">
+            <div style="flex:1 1 460px;min-width:320px">
               <label class="popisek" style="display:block;margin-bottom:3px">Co se má udělat</label>
               <input id="r_text" placeholder="například: zavolat na obec Bílá kvůli záchodům do pátku"
                 title="Text úkolu. Podle něj se zkusí předvyplnit ostatní políčka."
                 style="width:100%;font:inherit;padding:7px 9px;border:1px solid var(--linka);border-radius:8px">
-            </div>
-            <div>
-              <label class="popisek" style="display:block;margin-bottom:3px">Druh</label>
-              <select id="r_druh" style="font:inherit;padding:7px 9px;border:1px solid var(--linka);border-radius:8px"></select>
-            </div>
-            <div>
-              <label class="popisek" style="display:block;margin-bottom:3px">Kdo</label>
-              <select id="r_kdo" style="font:inherit;padding:7px 9px;border:1px solid var(--linka);border-radius:8px"></select>
             </div>
             <div>
               <label class="popisek" style="display:block;margin-bottom:3px">Termín</label>
@@ -352,10 +333,6 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
         <div class="nastroje">
           <label class="stav">Stav:
             <select id="todoStav" title="Ukáže jen položky v jednom stavu." onchange="kresliTodo()"
-              style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
-          </label>
-          <label class="stav">Kdo:
-            <select id="todoKdo" title="Ukáže jen položky jednoho člověka." onchange="kresliTodo()"
               style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
           </label>
           <label class="stav" title="Ukáže jen položky, kterým vypršel termín nebo je dnes.">
@@ -831,8 +808,6 @@ const D = {
   },
   todo: [],
 
-  // pravidla naučená z oprav v tabulce návrhů
-  naucena: [],
 
   uzivatele: [
     {email:"", jmeno:"Keksa", uroven:"SPRAVCE", kod_tymu:"G0A", aktivni:"ano", heslo_hash:"", poznamka:""}
@@ -1071,6 +1046,9 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj){
         h += `<td class="${s.trida||''}"><select data-i="${i}" data-p="${s.pole}">`
           + moznosti.map(m=>`<option${String(m)===String(v==null?'':v)?' selected':''}>${esc(m)}</option>`).join('')
           + '</select></td>';
+      } else if(s.viceradkove){
+        h += `<td class="${s.trida||''}"><textarea rows="1" data-i="${i}" data-p="${s.pole}"
+                 style="overflow:hidden;resize:none;white-space:pre-wrap">${esc(v)}</textarea></td>`;
       } else {
         h += `<td class="${s.trida||''}"><input type="${s.typ||'text'}" data-i="${i}" data-p="${s.pole}" value="${esc(v)}"></td>`;
       }
@@ -1080,7 +1058,10 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj){
   });
   t.innerHTML = h + '</tbody>';
 
-  t.querySelectorAll('input,select').forEach(el=>{
+  const dorovnej = el=>{ el.style.height = 'auto'; el.style.height = (el.scrollHeight+2) + 'px'; };
+  t.querySelectorAll('textarea').forEach(el=>{ dorovnej(el); el.addEventListener('input', ()=>dorovnej(el)); });
+
+  t.querySelectorAll('input,select,textarea').forEach(el=>{
     el.onchange = ()=>{
       const r = radky[+el.dataset.i];
       r[el.dataset.p] = (el.type==='number') ? (el.value===''?null:+el.value) : el.value;
@@ -1399,112 +1380,6 @@ function prepniDiktovani(){
 }
 
 
-/* ---------- učení z oprav ----------
-   Když se návrh v tabulce opraví, web ví, co nabídl a co z toho vzniklo.
-   Nabídne proto, že si opravu zapamatuje jako pravidlo: „když je v textu tohle
-   slovo, patří tam tahle hodnota." Pravidla žijí v D.naucena, ukládají se
-   se souborem a dají se kdykoli vypnout nebo smazat. */
-const POLE_UCENI = [
-  {pole:"druh",     nazev:"Druh"},
-  {pole:"kdo",      nazev:"Kdo"},
-  {pole:"predavka", nazev:"Předávka"},
-  {pole:"grupa",    nazev:"Grupa"},
-  {pole:"priorita", nazev:"Priorita"}
-];
-// slova, která jako spoušť nedávají smysl
-const NESPOUSTE = ["musim","musis","potrebuju","potrebuji","chci","mel","bych","bude","budu",
-  "jsem","jsou","tak","pak","potom","jeste","taky","take","tohle","tenhle","toho","tomu",
-  "pro","podle","kvuli","kolem","ohledne","kdyz","jestli","aby","nebo","ale","vsechny",
-  "jednotlive","samostatny","radek","radku","misto","mista","ktery","ktere","kteri"];
-
-function kandidatiNaSpoust(text){
-  return [...new Set(String(text||'').split(/[\s,;.()]+/)
-    .map(w=>w.replace(/[^A-Za-zÁ-Žá-ž0-9\/]/g,''))
-    .filter(w=>w.length>=4)
-    .filter(w=>NESPOUSTE.indexOf(bezDiakritiky(w))<0))];
-}
-
-function zmenenaPole(n){
-  if(!n.puvodni) return [];
-  return POLE_UCENI.filter(x=>{
-    const a = n.puvodni[x.pole], b = n[x.pole];
-    return String(a==null?'':a) !== String(b==null?'':b);
-  });
-}
-
-let uciSe = null;   // index návrhu, u kterého je otevřený panel učení
-
-function otevriUceni(i){
-  uciSe = (uciSe===i) ? null : i;
-  kresliNavrhy();
-}
-
-function ulozNaucene(i){
-  const n = navrhyTodo[i];
-  const vybrana = [...document.querySelectorAll('#panelUceni input[type=checkbox]:checked')]
-    .map(x=>({slovo:x.dataset.slovo, pole:x.dataset.pole}));
-  if(!vybrana.length){ hlaska('Zaškrtněte aspoň jedno slovo'); return; }
-
-  let pridano = 0;
-  vybrana.forEach(v=>{
-    const hodnota = n[v.pole];
-    if(hodnota===null || hodnota==='') return;
-    const uz = D.naucena.find(r=>bezDiakritiky(r.slovo)===bezDiakritiky(v.slovo) && r.pole===v.pole);
-    if(uz){ uz.hodnota = hodnota; uz.aktivni = 'ano'; }
-    else {
-      D.naucena.push({slovo:v.slovo, pole:v.pole, hodnota:hodnota,
-        pouzito:0, aktivni:'ano', vzniklo:dnesIso()});
-      pridano++;
-    }
-  });
-  uciSe = null; oznacZmenu(); kresliNavrhy(); kresliNaucena();
-  hlaska(pridano ? ('Zapamatováno, pravidel je ' + D.naucena.length)
-                 : 'Pravidlo aktualizováno');
-}
-
-const dnesIso = () => new Date().toISOString().slice(0,10);
-
-// naučená pravidla se uplatní po běžném rozboru a přebijí ho
-function uplatniNaucena(u){
-  const t = bezDiakritiky(u.dikt || u.text);
-  (D.naucena||[]).forEach(r=>{
-    if(r.aktivni === 'ne') return;
-    const k = kmen(r.slovo);
-    if(k.length >= 3 && t.indexOf(k) >= 0){
-      u[r.pole] = (r.pole === 'predavka') ? (r.hodnota===''?null:+r.hodnota) : r.hodnota;
-      r.pouzito = (r.pouzito||0) + 1;
-      u.zNaucenych = (u.zNaucenych||[]).concat(r.slovo + ' → ' + popisPole(r.pole, r.hodnota));
-    }
-  });
-  return u;
-}
-function popisPole(pole, hodnota){
-  const nazev = (POLE_UCENI.find(x=>x.pole===pole)||{}).nazev || pole;
-  if(pole === 'predavka'){
-    const p = D.predavky[+hodnota-1];
-    return nazev + ' ' + hodnota + (p ? ' ' + p.nazev : '');
-  }
-  return nazev + ' ' + hodnota;
-}
-
-function kresliNaucena(){
-  const cil = $('#tabNaucena'); if(!cil) return;
-  tabulka(cil, [
-    {nadpis:"Když je v textu", pole:"slovo", sirka:"200px",
-      napovedaSl:"Slovo, které pravidlo spouští. Porovnává se kmen, takže „fáborky\" chytí i „fáborků\"."},
-    {nadpis:"Doplní se", pole:"pole", typ:"select", sirka:"130px",
-      moznosti:POLE_UCENI.map(x=>x.pole)},
-    {nadpis:"Hodnota", pole:"hodnota", sirka:"200px"},
-    {nadpis:"Použito", pole:"pouzito", jenCist:true, sirka:"90px", trida:"stred"},
-    {nadpis:"Vzniklo", pole:"vzniklo", jenCist:true, sirka:"120px", trida:"stred"},
-    {nadpis:"Aktivní", pole:"aktivni", typ:"select", moznosti:["ano","ne"], sirka:"100px"}
-  ], D.naucena, ()=>{oznacZmenu();kresliNaucena();}, true, false, D.naucena);
-  const aktivnich = D.naucena.filter(r=>r.aktivni!=='ne').length;
-  $('#stavNaucena').textContent = D.naucena.length
-    ? (aktivnich + ' aktivních z ' + D.naucena.length)
-    : 'Zatím žádné. Vzniknou tím, že opravíte návrh a dáte Zapamatovat.';
-}
-
 /* ---------- 0. TO-DO: rozbor nadiktovaného textu ---------- */
 const TODO_STAVY = ["nové","zadáno","čeká","hotovo","zrušeno"];
 
@@ -1745,19 +1620,33 @@ function najdiVazby(veta){
       if(v[e.pole] != null) return;
     }
 
+    // Název bývá víceslovný a v textu skloněný — „Starých Hamrech", „Starého
+    // Hrozenkova". Porovnává se proto začátek slova: ze slova v názvu se vezme
+    // předpona (nejméně čtyři znaky) a hledá se slovo v textu, které jí začíná.
+    // Sedět musí všechna slova názvu, jinak by „Staré Hamry" chytilo i „Starého
+    // Hrozenkova". U noclehů stačí jedno slovo, názvy jsou tam popisné.
     const min = e.min_delka_slova || 4;
+    const slovaTextu = t.split(/[^a-z0-9]+/).filter(Boolean);
+    const sediSlovo = w => {
+      const z = bezDiakritiky(w).replace(/[^a-z0-9]/g,'');
+      if(z.length < 3) return false;
+      const predpona = z.slice(0, Math.max(4, z.length - 2));
+      return slovaTextu.some(x => x.indexOf(predpona) === 0);
+    };
+
     const shody = radky.filter(r=>{
       const slova = String(r[e.sloupec]||'').split(/[\s,]+/).filter(x=>x.length>=min);
       if(!slova.length) return false;
-      return e.pole === 'nocleh'
-        ? slova.some(s=>t.indexOf(kmen(s))>=0)
-        : slova.every(s=>t.indexOf(kmen(s))>=0);
+      return e.pole === 'nocleh' ? slova.some(sediSlovo) : slova.every(sediSlovo);
     });
+
     const klic = e.klic || e.sloupec;
     if(shody.length === 1) v[e.pole] = shody[0][klic];
-    else if(shody.length > 1 && e.pole !== 'nocleh'){
+    else if(shody.length > 1){
       v[e.pole] = shody[0][klic];
-      v.nejiste.push('místo: ' + shody.map(r=>r[klic]+' '+r[e.sloupec]).join(' / '));
+      if(e.pole !== 'nocleh'){
+        v.nejiste.push('místo: ' + shody.map(r=>r[klic]+' '+r[e.sloupec]).join(' / '));
+      }
     }
   });
 
@@ -1858,11 +1747,7 @@ function rozeberDiktat(){
     return;
   }
   const dnes = new Date();
-  navrhyTodo = vety.map(v=>{
-    const u = uplatniNaucena(rozeberVetu(v, dnes));
-    u.puvodni = {druh:u.druh, kdo:u.kdo, predavka:u.predavka, grupa:u.grupa, priorita:u.priorita};
-    return u;
-  });
+  navrhyTodo = vety.map(v=>rozeberVetu(v, dnes));
   $('#stavDiktat').textContent = 'nalezeno ' + navrhyTodo.length
     + (navrhyTodo.length===1 ? ' úkol' : (navrhyTodo.length<5 ? ' úkoly' : ' úkolů'));
   kresliNavrhy();
@@ -1872,26 +1757,23 @@ function kresliNavrhy(){
   const cil = $('#navrhy');
   if(!navrhyTodo.length){ cil.innerHTML = ''; return; }
   let h = '<p class="popisek" style="margin-top:16px">Zkontrolujte, co z toho web vyčetl. '
-    + 'Cokoli jde přepsat. Uloží se až tlačítkem <b>Uložit do to-do</b>.</p>'
+    + 'Cokoli jde přepsat. Když je v jednom řádku víc úkolů, napište do sloupce '
+    + '<b>Rozdělit na</b> jejich počet a klepněte na <b>Rozdělit</b>. '
+    + 'Uloží se až tlačítkem <b>Uložit do to-do</b>.</p>'
     + '<div class="obal-tab"><table class="tab"><thead><tr>'
-    + '<th style="width:34px"></th><th>Co se má udělat</th>'
-    + '<th style="width:120px" title="Sloveso, které web ve větě našel.">Druh</th>'
-    + '<th style="width:150px" title="Jméno člověka z tabulky členů grup.">Kdo</th>'
+    + '<th style="width:34px"></th>'
+    + '<th style="min-width:460px">Co se má udělat</th>'
     + '<th style="width:135px" title="Termín, do kdy to má být hotové.">Termín</th>'
     + '<th style="width:180px" title="Ke které předávce se to váže.">Předávka</th>'
     + '<th style="width:110px">Grupa</th><th style="width:110px">Priorita</th>'
-    + '<th style="width:120px" title="Uloží opravu jako pravidlo pro příště.">Naučit</th>'
+    + '<th style="width:150px" title="Rozseká tenhle řádek na zadaný počet úkolů. '
+      + 'Web zkusí najít dělicí místa sám, zbytek dopíšete.">Rozdělit na</th>'
     + '</tr></thead><tbody>';
   navrhyTodo.forEach((n,i)=>{
     h += '<tr' + (n.nejiste.length?' style="background:#FFF8E8"':'') + '>'
       + '<td class="stred"><input type="checkbox" data-vzit="'+i+'"'+(n.vzit===false?'':' checked')+' title="Odškrtnutím úkol zahodíte."></td>'
-      + '<td><input data-n="'+i+'" data-p="text" value="'+esc(n.text)+'"></td>'
-      + '<td><select data-n="'+i+'" data-p="druh"><option value=""></option>'
-        + PRAV.druhy.map(d=>`<option value="${d.kod}"${d.kod===n.druh?' selected':''}>${d.nazev}</option>`).join('')
-      + '</select></td>'
-      + '<td><select data-n="'+i+'" data-p="kdo"><option value=""></option>'
-        + D.clenove.map(c=>`<option${c.jmeno===n.kdo?' selected':''}>${esc(c.jmeno)}</option>`).join('')
-      + '</select></td>'
+      + '<td><textarea rows="1" data-n="'+i+'" data-p="text"'
+        + ' style="overflow:hidden;resize:none;white-space:pre-wrap">'+esc(n.text)+'</textarea></td>'
       + '<td><input type="date" data-n="'+i+'" data-p="termin" value="'+esc(n.termin)+'"></td>'
       + '<td><select data-n="'+i+'" data-p="predavka"><option value="">—</option>'
         + D.predavky.map(p=>`<option value="${p.cislo}"${p.cislo===n.predavka?' selected':''}>${p.cislo} ${esc(p.nazev)}</option>`).join('')
@@ -1902,34 +1784,15 @@ function kresliNavrhy(){
       + '<td><select data-n="'+i+'" data-p="priorita">'
         + ["běžná","vysoká"].map(p=>`<option${p===n.priorita?' selected':''}>${p}</option>`).join('')
       + '</select></td>'
-      + '<td class="stred">' + (zmenenaPole(n).length
-          ? '<button class="tl" style="padding:3px 9px;font-size:11.5px" data-uceni="'+i+'"'
-            + ' title="Zapamatuje si tuhle opravu jako pravidlo pro příště.">Zapamatovat</button>'
-          : '') + '</td></tr>';
-    if(n.zNaucenych && n.zNaucenych.length){
-      h += '<tr style="background:#F1F5EA"><td></td><td colspan="8" class="popisek" style="padding:4px 8px">'
-        + 'Z naučených pravidel: ' + esc(n.zNaucenych.join('; ')) + '</td></tr>';
-    }
-    if(uciSe === i){
-      const zmeny = zmenenaPole(n);
-      h += '<tr id="panelUceni" style="background:#F1F5EA"><td></td><td colspan="8" style="padding:9px">'
-        + '<div class="popisek" style="margin-bottom:7px">Podle kterého slova to mám poznat příště? '
-        + 'Zaškrtněte jedno nebo víc.</div>';
-      zmeny.forEach(z=>{
-        h += '<div style="margin-bottom:7px"><b style="font-size:12.5px">' + esc(popisPole(z.pole, n[z.pole])) + '</b><br>'
-          + kandidatiNaSpoust(n.dikt || n.text).map(w=>
-              '<label style="display:inline-flex;align-items:center;gap:5px;margin:4px 12px 0 0;font-size:13px">'
-              + '<input type="checkbox" data-slovo="'+esc(w)+'" data-pole="'+z.pole+'" style="width:17px;height:17px;accent-color:var(--zelena)">'
-              + esc(w) + '</label>').join('')
-          + '</div>';
-      });
-      h += '<div style="margin-top:9px">'
-        + '<button class="tl hlavni" style="padding:5px 12px;font-size:12.5px" onclick="ulozNaucene('+i+')">Zapamatovat</button> '
-        + '<button class="tl" style="padding:5px 12px;font-size:12.5px" onclick="otevriUceni('+i+')">Zpět</button>'
-        + '</div></td></tr>';
-    }
+      + '<td style="white-space:nowrap;padding:4px 6px">'
+        + '<input type="number" min="2" max="12" data-pocet="'+i+'" value="'+(n.rozdelitNa||'')+'"'
+          + ' title="Na kolik úkolů se má řádek rozdělit." '
+          + 'style="width:52px;padding:5px 6px;border:1px solid var(--linka);border-radius:7px;text-align:center">'
+        + ' <button class="tl" style="padding:4px 9px;font-size:11.5px" data-rozdel="'+i+'"'
+          + ' title="Rozdělí řádek na zadaný počet úkolů.">Rozdělit</button>'
+      + '</td></tr>';
     if(n.nejiste.length){
-      h += '<tr style="background:#FFF8E8"><td></td><td colspan="8" class="popisek" style="padding:4px 8px">'
+      h += '<tr style="background:#FFF8E8"><td></td><td colspan="6" class="popisek" style="padding:4px 8px">'
         + 'Web si nebyl jistý — ' + esc(n.nejiste.join('; ')) + '. Vyberte správnou možnost výš.</td></tr>';
     }
   });
@@ -1940,26 +1803,91 @@ function kresliNavrhy(){
     + '</div>';
   cil.innerHTML = h;
 
+  const dorovnej = el=>{ el.style.height='auto'; el.style.height=(el.scrollHeight+2)+'px'; };
+  cil.querySelectorAll('textarea').forEach(el=>{ dorovnej(el); el.addEventListener('input',()=>dorovnej(el)); });
+
   cil.querySelectorAll('[data-n]').forEach(el=>{
     el.onchange = ()=>{
       const n = navrhyTodo[+el.dataset.n], p = el.dataset.p;
       n[p] = (p==='predavka') ? (el.value===''?null:+el.value) : el.value;
-      if(p !== 'text') kresliNavrhy();
     };
   });
   cil.querySelectorAll('[data-vzit]').forEach(el=>{
     el.onchange = ()=>{ navrhyTodo[+el.dataset.vzit].vzit = el.checked; };
   });
-  cil.querySelectorAll('[data-uceni]').forEach(b=>{
-    b.onclick = ()=>otevriUceni(+b.dataset.uceni);
+  cil.querySelectorAll('[data-pocet]').forEach(el=>{
+    el.onchange = ()=>{ navrhyTodo[+el.dataset.pocet].rozdelitNa = el.value; };
   });
+  cil.querySelectorAll('[data-rozdel]').forEach(b=>{
+    b.onclick = ()=>rozdelRadek(+b.dataset.rozdel);
+  });
+}
+
+/* ---------- ruční rozdělení jednoho řádku na víc úkolů ----------
+   Diktovaná věta často nese výčet míst pod jedním slovesem („dal pak do Popova,
+   Starého Hrozenkova a Bojkovic"). Rozbor to sám neuřízne, protože sloveso je
+   jen jedno. Tohle to udělá na povel: text se rozseká na čárkách a spojce „a",
+   sloveso z první části se doplní tam, kde chybí, a u každého kusu se znovu
+   dohledá místo a termín. */
+function rozdelRadek(i){
+  const n = navrhyTodo[i];
+  const pocet = Math.max(2, Math.min(12, parseInt(n.rozdelitNa, 10) || 0));
+  if(!pocet || pocet < 2){ hlaska('Napište, na kolik úkolů to rozdělit'); return; }
+
+  let casti = String(n.text).split(/\s*,\s*|\s+a\s+|\s+nebo\s+/).map(x=>x.trim()).filter(Boolean);
+  if(!casti.length) return;
+
+  // víc kusů než je potřeba — přebytek se přilepí k poslednímu
+  while(casti.length > pocet){
+    const posledni = casti.pop();
+    casti[casti.length-1] += ', ' + posledni;
+  }
+  // míň kusů — dorovná se opakováním celého textu, ať je co upravit
+  while(casti.length < pocet) casti.push(n.text);
+
+  // úvod s prvním slovesem se zopakuje tam, kde vlastní sloveso chybí
+  const maSloveso = t => {
+    const R = PRAV.rozdeleni;
+    return String(t).split(/\s+/).some(w=>{
+      const c = w.toLowerCase().replace(/[^a-zá-žčďěňřšťůýž]/gi,'');
+      return c && (R.slovesa.some(v=>v.toLowerCase()===c)
+                   || (c.length>=R.infinitiv_min_delka && R.re_infinitiv.test(c)));
+    });
+  };
+  let uvod = '';
+  const prvniSlova = casti[0].split(/\s+/);
+  for(let k=0;k<prvniSlova.length;k++){
+    if(maSloveso(prvniSlova[k])){ uvod = prvniSlova.slice(0, k+1).join(' '); break; }
+  }
+
+  const dnes = new Date();
+  const nove = casti.map(cast0=>{
+    let cast = cast0.replace(PRAV.rozdeleni.re_spojky_zacatek, '').trim();
+    // zbytky typu „dal pak" na začátku části nemají v úkolu co dělat
+    cast = cast.replace(/^(dal|dál|pak|potom|ještě|taky|také)\s+/i, '').trim() || cast0;
+    const text = (uvod && !maSloveso(cast)) ? (uvod + ' ' + cast) : cast;
+    const u = rozeberVetu(text, dnes);
+    // co bylo na původním řádku vyplněné a v části se nenašlo, se přebere
+    if(u.predavka == null) u.predavka = n.predavka;
+    if(!u.termin)  u.termin  = n.termin;
+    if(!u.grupa)   u.grupa   = n.grupa;
+    if(!u.kdo)     u.kdo     = n.kdo;
+    u.priorita = n.priorita;
+    u.dikt = n.dikt || n.text;
+    return u;
+  });
+
+  navrhyTodo.splice(i, 1, ...nove);
+  kresliNavrhy();
+  $('#stavDiktat').textContent = 'nyní ' + navrhyTodo.length + ' úkolů';
+  hlaska('Rozděleno na ' + nove.length);
 }
 
 function ulozNavrhy(){
   const vzit = navrhyTodo.filter(n=>n.vzit!==false);
   if(!vzit.length){ hlaska('Nic není zaškrtnuté'); return; }
   vzit.forEach(n=>{
-    const {nejiste, vzit:_v, puvodni, zNaucenych, ...cisty} = n;
+    const {nejiste, vzit:_v, ...cisty} = n;
     D.todo.push(cisty);
   });
   navrhyTodo = []; kresliNavrhy();
@@ -1991,18 +1919,14 @@ function todoNaUkol(t){
    z napsaného textu se zkusí doplnit druh, termín a místo, ale jen do políček,
    kterých se uživatel sám nedotkl — jakmile do některého sáhne, přestane se
    přepisovat. */
-const RUCNE_POLE = ['druh','kdo','termin','predavka','grupa','priorita'];
+const RUCNE_POLE = ['termin','predavka','grupa','priorita'];
 let rucneSahnuto = {};
 
 function naplnRucne(){
   const v = (PRAV && PRAV.vychozi) || {};
   const el = id => $('#r_' + id);
-  if(!el('druh')) return;
+  if(!el('predavka')) return;
 
-  el('druh').innerHTML = '<option value=""></option>'
-    + PRAV.druhy.map(d=>`<option value="${d.kod}">${d.nazev}</option>`).join('');
-  el('kdo').innerHTML = '<option value=""></option>'
-    + D.clenove.map(c=>`<option${c.jmeno===v.kdo?' selected':''}>${esc(c.jmeno)}</option>`).join('');
   el('predavka').innerHTML = '<option value="">—</option>'
     + D.predavky.map(p=>`<option value="${p.cislo}">${p.cislo} ${esc(p.nazev)}</option>`).join('');
   el('grupa').innerHTML = '<option value=""></option>'
@@ -2022,18 +1946,16 @@ function naplnRucne(){
 function predvyplnRucne(){
   const text = $('#r_text').value.trim();
   if(text.length < 4){ ukazStavRucne(); return; }
-  const u = uplatniNaucena(rozeberVetu(text, new Date()));
+  const u = rozeberVetu(text, new Date());
   const nastav = (pole, hodnota)=>{
     if(rucneSahnuto[pole]) return;
     const e = $('#r_' + pole); if(!e) return;
     e.value = (hodnota==null) ? '' : String(hodnota);
   };
-  nastav('druh', u.druh);
   nastav('termin', u.termin);
   nastav('predavka', u.predavka);
   nastav('grupa', u.grupa);
   nastav('priorita', u.priorita);
-  if(u.kdo) nastav('kdo', u.kdo);
   ukazStavRucne();
 }
 
@@ -2051,8 +1973,8 @@ function pridejRucne(){
   const cislo = $('#r_predavka').value;
   D.todo.push({
     text: text,
-    druh: $('#r_druh').value,
-    kdo: $('#r_kdo').value,
+    druh: "",
+    kdo: (PRAV.vychozi||{}).kdo || "",
     grupa: $('#r_grupa').value,
     predavka: cislo === '' ? null : +cislo,
     nocleh: "",
@@ -2078,26 +2000,19 @@ function vycistiRucne(){
 }
 
 function kresliTodo(){
-  const fs = $('#todoStav'), fk = $('#todoKdo');
-  const ds = fs.value, dk = fk.value;
+  const fs = $('#todoStav');
+  const ds = fs.value;
   fs.innerHTML = '<option value="">všechny stavy</option>'
     + TODO_STAVY.map(s=>`<option${s===ds?' selected':''}>${esc(s)}</option>`).join('');
-  const lide = [...new Set(D.todo.map(t=>t.kdo).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'cs'));
-  fk.innerHTML = '<option value="">všichni</option>'
-    + lide.map(j=>`<option${j===dk?' selected':''}>${esc(j)}</option>`).join('');
 
   const dnesIso = new Date().toISOString().slice(0,10);
   const jenPo = $('#todoPoTerminu').checked;
   const videt = D.todo.filter(t =>
-       (!ds || t.stav===ds) && (!dk || t.kdo===dk)
+       (!ds || t.stav===ds)
     && (!jenPo || (t.termin && t.termin<=dnesIso && t.stav!=='hotovo' && t.stav!=='zrušeno')));
 
   tabulka('#tabTodo', [
-    {nadpis:"Co se má udělat", pole:"text"},
-    {nadpis:"Druh", pole:"druh", typ:"select", sirka:"115px",
-      moznosti:()=>[""].concat(PRAV.druhy.map(d=>d.kod))},
-    {nadpis:"Kdo", pole:"kdo", typ:"select", sirka:"150px",
-      moznosti:()=>[""].concat(D.clenove.map(c=>c.jmeno))},
+    {nadpis:"Co se má udělat", pole:"text", sirka:"460px", viceradkove:true},
     {nadpis:"Termín", pole:"termin", typ:"date", sirka:"140px"},
     {nadpis:"Předávka", pole:"predavka", typ:"select", sirka:"170px",
       moznosti:()=>[""].concat(D.predavky.map(p=>p.cislo))},
@@ -3110,7 +3025,7 @@ function nactiSoubor(vstup){
 
 /* ---------- start ---------- */
 function vseKresli(){
-  kresliTodo(); kresliNaucena(); naplnRucne();
+  kresliTodo(); naplnRucne();
   kresliNastaveni(); kresliTymy(); naplnFiltrPart(); kresliClenove();
   kresliPredavky(); kresliNocMista(); kresliNocLide(); kresliPlan(); kresliPodrobny();
   kresliPristupy(); kresliTricka(); uplatniPrava();

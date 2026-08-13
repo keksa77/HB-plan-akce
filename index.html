@@ -988,7 +988,7 @@ const NAPOVEDA = {
 const nap = t => NAPOVEDA[t] ? ' title="'+esc(NAPOVEDA[t])+'"' : '';
 
 /* ---------- generická editovatelná tabulka ---------- */
-function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky){
+function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj){
   const t = (typeof cil==='string') ? $(cil) : cil;
   const maOdznak = odznaky !== false;
   let h = '<thead><tr>' + (maOdznak?'<th style="width:52px"></th>':'')
@@ -1028,8 +1028,9 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky){
   t.querySelectorAll('[data-del]').forEach(b=>{
     b.onclick = ()=>{
       const r = radky[+b.dataset.del];
-      const k = D.ukoly.indexOf(r);
-      if(k>=0) D.ukoly.splice(k,1); else radky.splice(+b.dataset.del,1);
+      // radky bývají jen profiltrovaná kopie, tak se maže z pole, odkud data pocházejí
+      const pole = [zdroj, D.ukoly, radky].find(x=>Array.isArray(x) && x.indexOf(r)>=0);
+      if(pole) pole.splice(pole.indexOf(r), 1);
       if(poZmene) poZmene();
     };
   });
@@ -1229,6 +1230,42 @@ const TODO_DRUHY = [
   {kod:"zjistit",  nazev:"zjistit",  slova:["zjistit","ověřit","zkontrolovat","podívat se","spočítat","projít"]}
 ];
 
+// slovesa, kterými začíná nový úkol. Diktování z telefonu často nedá jedinou tečku,
+// tak se řez hledá podle nich. Schválně jen infinitivy a rozkazy — „zajistí" uvnitř
+// vedlejší věty tím pádem nový úkol nezaloží.
+const SLOVESA_UKOLU = [
+  "zavolat","zavolej","volat","telefonovat","brnknout","ozvat",
+  "napsat","napiš","mailnout","odepsat",
+  "objednat","objednej","koupit","kup","nakoupit","pořídit","zajistit","zajisti","sehnat","dodat",
+  "zaplatit","zaplať","uhradit","fakturovat","proplatit",
+  "domluvit","domluv","dohodnout","potvrdit","potvrď","zamluvit","rezervovat",
+  "zjistit","zjisti","ověřit","ověř","zkontrolovat","zkontroluj","spočítat","projít","obvolat",
+  "připravit","priprav","nachystat","vytisknout","vyřešit","zařídit","zařiď","dovézt","poslat","pošli"
+];
+// spojky, kterými diktovaná věta nový úkol uvádí, a zbytky visící na konci
+const SPOJKY_PRED_UKOLEM = /^(a|pak|potom|ještě|jeste|taky|také|dál|dále|no|jo|tak)\s+/i;
+const SPOJKY_NA_KONCI = /[\s,]+(a|a\s+pak|a\s+potom|a\s+ještě|a\s+jeste|a\s+taky|a\s+také|pak|potom|ještě|jeste|taky|také)$/i;
+
+// řadové číslovky ve 2. pádě — v diktátu bývá „do patnáctého srpna" místo „do 15. 8."
+const RADOVE = {
+  "prvniho":1,"druheho":2,"tretiho":3,"ctvrteho":4,"pateho":5,"sesteho":6,"sedmeho":7,
+  "osmeho":8,"devateho":9,"desateho":10,"jedenacteho":11,"dvanacteho":12,"trinacteho":13,
+  "ctrnacteho":14,"patnacteho":15,"sestnacteho":16,"sedmnacteho":17,"osmnacteho":18,
+  "devatenacteho":19,"dvacateho":20,"jednadvacateho":21,"dvaadvacateho":22,"triadvacateho":23,
+  "ctyriadvacateho":24,"petadvacateho":25,"sestadvacateho":26,"sedmadvacateho":27,
+  "osmadvacateho":28,"devetadvacateho":29,"tricateho":30,"jednatricateho":31
+};
+
+// české číslovky do 31 — v diktátu bývá „na předávce šest" místo „6"
+const CISLOVKY = {
+  "jedna":1,"jednu":1,"prvni":1,"dva":2,"dve":2,"druhe":2,"tri":3,"treti":3,"ctyri":4,"ctvrte":4,
+  "pet":5,"pate":5,"sest":6,"seste":6,"sedm":7,"sedme":7,"osm":8,"osme":8,"devet":9,"devate":9,
+  "deset":10,"desate":10,"jedenact":11,"dvanact":12,"trinact":13,"ctrnact":14,"patnact":15,
+  "sestnact":16,"sedmnact":17,"osmnact":18,"devatenact":19,"dvacet":20,"dvacetjedna":21,
+  "dvacetdva":22,"dvacettri":23,"dvacetctyri":24,"dvacetpet":25,"dvacetsest":26,"dvacetsedm":27,
+  "dvacetosm":28,"dvacetdevet":29,"tricet":30,"tricetjedna":31
+};
+
 // bez diakritiky a malými písmeny — čeština skloňuje, tak porovnáváme kmeny
 const bezDiakritiky = s => (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 // kmen slova: uřízne koncovku, aby „Bumbálka" našla „na Bumbálce"
@@ -1270,6 +1307,13 @@ function najdiTermin(veta, dnes){
   if(m){ const x = new Date(d.getFullYear(), MESICE.indexOf(m[2]), +m[1]);
          if(x < d) x.setFullYear(x.getFullYear()+1);
          return {datum:iso(x), slovy:m[1]+'. '+m[2]}; }
+  // „do patnáctého srpna" / „patnáctého osmý"
+  m = t.match(/([a-z]+eho)\s*\.?\s*(ledna|unora|brezna|dubna|kvetna|cervna|cervence|srpna|zari|rijna|listopadu|prosince)/);
+  if(m && RADOVE[m[1]]){
+    const x = new Date(d.getFullYear(), MESICE.indexOf(m[2]), RADOVE[m[1]]);
+    if(x < d) x.setFullYear(x.getFullYear()+1);
+    return {datum:iso(x), slovy:RADOVE[m[1]]+'. '+m[2]};
+  }
   m = t.match(/do konce (ledna|unora|brezna|dubna|kvetna|cervna|cervence|srpna|zari|rijna|listopadu|prosince)/);
   if(m){ const i = MESICE.indexOf(m[1]);
          const x = new Date(d.getFullYear(), i+1, 0);
@@ -1307,8 +1351,17 @@ function najdiVazby(veta){
   else if(shodyJmen.length>1){ v.kdo = shodyJmen[0]; v.nejiste.push('jméno: ' + shodyJmen.join(' / ')); }
 
   // předávka podle čísla („předávka 6", „na šestce" neřešíme) nebo podle názvu
-  let m = t.match(/predavk\w*\s*(?:c\.?|cislo)?\s*(\d{1,2})/) || t.match(/etap\w*\s*(?:c\.?|cislo)?\s*(\d{1,2})/);
+  let m = t.match(/(?:predav|etap)\w*\s*(?:c\.?|cislo)?\s*(\d{1,2})/);
   if(m && +m[1]>=1 && +m[1]<=31) v.predavka = +m[1];
+  if(v.predavka===null){                      // „na předávce šest" — číslovka slovem
+    const ms = t.match(/(?:predav|etap)\w*\s*(?:c\.?|cislo)?\s*([a-z]+(?:\s+[a-z]+)?)/);
+    if(ms){
+      const spolu = ms[1].replace(/\s+/g,'');
+      const prvni = ms[1].split(/\s+/)[0];
+      if(CISLOVKY[spolu]) v.predavka = CISLOVKY[spolu];
+      else if(CISLOVKY[prvni]) v.predavka = CISLOVKY[prvni];
+    }
+  }
   if(v.predavka===null){
     const shody = D.predavky.filter(p=>{
       const slova = String(p.nazev||'').split(/[\s,]+/).filter(x=>x.length>=4);
@@ -1349,22 +1402,54 @@ function rozeberVetu(veta, dnes){
 // Tečky uvnitř data (15. 8., 3. září) se nesmí splést s koncem věty, tak je schováme.
 function rozdelDiktat(text){
   const S = '\u0001';                       // dočasná náhrada za tečku uvnitř data
-  const MES = 'ledna|\u00fanora|b\u0159ezna|dubna|kv\u011btna|\u010dervna|\u010dervence|srpna|z\u00e1\u0159\u00ed|\u0159\u00edjna|listopadu|prosince';
-  return String(text||'')
-    // 15. 8. nebo 15.8. — obě tečky patří k datu
+  const MES = 'ledna|února|března|dubna|května|června|července|srpna|září|října|listopadu|prosince';
+  const hrube = String(text||'')
     .replace(/(\d{1,2})\s*\.\s*(\d{1,2})\s*(\.?)/g, (m,a,b,tecka,pos,cely)=>{
-      // „do 15. 8. Zjistit…" — druhá tečka je zároveň konec věty, tu necháme být
       const dal = cely.slice(pos+m.length).replace(/^\s+/,'');
       const konecVety = tecka && (dal==='' || /^[A-ZÁ-Ž]/.test(dal));
       return a+S+' '+b+(konecVety ? '.' : (tecka?S:''));
     })
-    // 15. srpna — tečka patří k datu
     .replace(new RegExp('(\\d{1,2})\\s*\\.\\s*(' + MES + ')', 'gi'), (m,a,b)=>a+S+' '+b)
-    .replace(/\b(a pak|dal[s\u0161][i\u00ed] [u\u00fa]kol|jo a je[s\u0161]t[e\u011b]|a je[s\u0161]t[e\u011b])\b/gi, '.')
+    .replace(/\b(a pak|další úkol|dalsi ukol|jo a ještě|a ještě)\b/gi, '.')
     .split(/[.!?;\n]+/)
     .map(x=>x.split(S).join('.').trim())
     .filter(x=>x.length>=4);
+
+  // Druhý průchod: diktování z telefonu často nedá jedinou tečku, takže v jednom
+  // kuse leží víc úkolů. Řeže se před každým dalším slovesem, kterým úkol začíná.
+  const vysledek = [];
+  hrube.forEach(kus=>{
+    const rezy = [];
+    let pozice = 0;
+    kus.split(/(\s+)/).forEach(w=>{
+      const ciste = w.toLowerCase().replace(/[^a-zá-žčďěňřšťůýž]/gi,'');
+      if(ciste && SLOVESA_UKOLU.some(v=>v.toLowerCase()===ciste)) rezy.push(pozice);
+      pozice += w.length;
+    });
+    if(rezy.length < 2){ vysledek.push(kus); return; }
+
+    for(let i=0;i<rezy.length;i++){
+      const od = rezy[i], az = (i+1<rezy.length) ? rezy[i+1] : kus.length;
+      let cast = kus.slice(od, az).trim().replace(/[\s,]+$/,'');
+      if(i===0 && rezy[0] > 0){                 // co stálo před prvním slovesem
+        cast = (kus.slice(0, rezy[0]).trim() + ' ' + cast).trim();
+      }
+      if(cast.length >= 8) vysledek.push(cast);
+      else if(vysledek.length) vysledek[vysledek.length-1] += ' ' + cast;
+    }
+  });
+
+  // uklidit úvodní spojky, které řez odkrojil („a objednat…" → „objednat…")
+  return vysledek
+    .map(x=>{
+      let y = x.replace(SPOJKY_PRED_UKOLEM,'').trim();
+      let d;                                   // spojek může viset víc za sebou
+      do { d = y; y = y.replace(SPOJKY_NA_KONCI,'').trim(); } while(y !== d);
+      return y.replace(/[\s,]+$/,'');
+    })
+    .filter(x=>x.length>=4);
 }
+
 
 
 let navrhyTodo = [];
@@ -1499,7 +1584,7 @@ function kresliTodo(){
     {nadpis:"Do plánu", sirka:"120px", html:(r,i)=>
       '<button class="tl" style="padding:3px 9px;font-size:11.5px" data-doplanu="'+i+'"'
       + ' title="Udělá z téhle položky úkol v závodním plánu u vybrané grupy.">→ úkol</button>'}
-  ], videt, ()=>kresliTodo(), true, false);
+  ], videt, ()=>kresliTodo(), true, false, D.todo);
 
   $('#tabTodo').querySelectorAll('[data-doplanu]').forEach(b=>{
     b.onclick = ()=>todoNaUkol(videt[+b.dataset.doplanu]);
@@ -1600,7 +1685,7 @@ function kresliPodrobny(){
     {nadpis:"Do",   pole:"kdy_do", typ:"time", sirka:"100px"},
     {nadpis:"Co se dělá", pole:"popis"},
     {nadpis:"Stav", pole:"stav", typ:"select", moznosti:STAVY, sirka:"128px"}
-  ], u, ()=>{kresliPodrobny();kresliPlan();}, true);
+  ], u, ()=>{kresliPodrobny();kresliPlan();}, true, undefined, D.ukoly);
 
   // tenká linka tam, kde začíná jiná grupa — ať se to pořád čte po grupách
   const radky = tab.querySelectorAll('tbody tr');
@@ -1683,7 +1768,7 @@ function kresliClenove(){
     }
     kresliClenove(); kresliPaletu(); kresliPlan();
     if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
-  }, true);
+  }, true, undefined, D.clenove);
   $('#stavClenove').textContent = videt.length + ' z ' + vsichni.length + ' lidí';
 }
 
@@ -2468,10 +2553,19 @@ function prepniZvyrazneni(){ zvyraznit=!zvyraznit; kresliPlan();
 function ulozSoubor(){
   const kopie = Object.assign({}, D); delete kopie.vzorHB25;
   const b = new Blob([JSON.stringify(kopie,null,1)], {type:'application/json'});
+  const url = URL.createObjectURL(b);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(b);
-  a.download = 'hb_planovani_' + D.nastaveni.aktivni_rok + '.json';
-  a.click(); URL.revokeObjectURL(a.href);
+  a.href = url;
+  a.download = 'hb_planovani_' + D.nastaveni.aktivni_rok + '_'
+             + new Date().toISOString().slice(0,16).replace(/[-:T]/g,'').replace(/(\d{8})/,'$1_')
+             + '.json';
+  a.style.display = 'none';
+  // odkaz musí být v dokumentu, jinak ho část prohlížečů ignoruje, a adresa blobu
+  // se smí zrušit až potom, co si ji prohlížeč stihne přečíst — dřív se stahování
+  // někdy nedokončilo
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 4000);
   hlaska('Uloženo do složky Stažené');
 }
 function nactiSoubor(vstup){

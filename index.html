@@ -270,13 +270,15 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
     <div class="karta">
       <h2>Nadiktovat úkoly</h2>
       <div class="telo">
-        <p class="popisek">Na telefonu klepněte do pole, na klávesnici zmáčkněte mikrofon a mluvte.
-          Můžete nadiktovat i víc úkolů za sebou — každou větu web bere jako jeden úkol.
-          Pomůže, když řeknete jméno, místo a termín: „zavolat Lukášovi na Bumbálku do pátku".</p>
+        <p class="popisek">Nadiktujte klidně víc úkolů za sebou — každý se založí zvlášť.
+          Pomůže, když řeknete jméno, místo a termín: „zavolat Lukášovi na Bumbálku do pátku".
+          Interpunkci diktovat nemusíte.</p>
+        <div class="popisek" id="jakDiktovat" style="margin:-4px 0 10px"></div>
         <textarea id="diktat" rows="4" placeholder="Například: Zavolat Lukášovi na Bumbálku, jestli letos zase zajistí předávku, do pátku. Objednat 300 fáborků do konce srpna. Domluvit s obcí Bílá záchody na předávce 6."
           title="Sem se diktuje. Nic se nikam neposílá, dokud úkoly nepotvrdíte."
           style="width:100%;padding:11px 12px;border:1px solid var(--linka);border-radius:10px;font:inherit;font-size:16px;resize:vertical"></textarea>
         <div class="nastroje" style="margin-top:10px">
+          <button class="tl" id="tlDiktovat" title="Zapne poslech mikrofonu a co řeknete, píše rovnou do pole. Poprvé se prohlížeč zeptá na povolení mikrofonu." onclick="prepniDiktovani()">🎤 Diktovat</button>
           <button class="tl hlavni" title="Rozebere nadiktovaný text na jednotlivé úkoly a u každého zkusí najít termín, člověka a místo." onclick="rozeberDiktat()">Rozebrat na úkoly</button>
           <button class="tl" title="Vymaže obsah diktovacího pole." onclick="$('#diktat').value='';$('#navrhy').innerHTML='';hlaska('Pole vyprázdněno')">Vymazat pole</button>
           <span class="stav" id="stavDiktat"></span>
@@ -1218,6 +1220,96 @@ function smazZEditoru(){
   hlaska('Úkol smazán');
 }
 function zavriEditor(){ edUkol=null; $('#editor').classList.remove('videt'); }
+
+/* ---------- 0. TO-DO: diktování mikrofonem ---------- */
+// Rozpoznávání řeči umí Chrome a Edge; Firefox zatím ne. Na počítači je to jediná
+// cesta, jak diktovat přímo do stránky — systémová klávesnice s mikrofonem tam není.
+const RozpoznavaniReci = window.SpeechRecognition || window.webkitSpeechRecognition;
+let posluchac = null, poslouchame = false, textPredDiktatem = '';
+
+function jeApple(){ return /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent); }
+function jeMobil(){ return /Android|iPad|iPhone|iPod/.test(navigator.userAgent); }
+
+function napisJakDiktovat(){
+  const el = $('#jakDiktovat'); if(!el) return;
+  const tl = $('#tlDiktovat');
+  const naSouboru = location.protocol === 'file:';
+
+  if(RozpoznavaniReci && !naSouboru){
+    el.innerHTML = jeMobil()
+      ? 'Klepněte na <b>Diktovat</b> a mluvte. Druhá možnost: klepnout do pole '
+        + 'a použít mikrofon na klávesnici telefonu.'
+      : 'Klepněte na <b>Diktovat</b> a mluvte. Ve Windows funguje i systémové '
+        + 'diktování — klepněte do pole a zmáčkněte <b>Win + H</b>.';
+    return;
+  }
+
+  if(tl){ tl.disabled = true; tl.style.opacity = '.45'; }
+  if(naSouboru){
+    el.innerHTML = '<b>Mikrofon tady nefunguje</b>, protože je stránka otevřená jako '
+      + 'soubor z disku — prohlížeč v tomhle režimu mikrofon nepouští. Otevřete '
+      + '<a href="https://keksa77.github.io/hb-planovani/" target="_blank" rel="noopener">'
+      + 'verzi na webu</a>, nebo diktujte do pole systémem: ve Windows <b>Win + H</b>, '
+      + 'na telefonu mikrofonem na klávesnici.';
+  } else if(jeApple()){
+    el.innerHTML = '<b>Tenhle prohlížeč rozpoznávání řeči neumí.</b> Klepněte do pole '
+      + 'a použijte diktování systému — na iPhonu mikrofon na klávesnici, na Macu '
+      + 'dvakrát <b>Ctrl</b>.';
+  } else {
+    el.innerHTML = '<b>Tenhle prohlížeč rozpoznávání řeči neumí</b> (Firefox ho nemá). '
+      + 'Klepněte do pole a diktujte systémem: ve Windows <b>Win + H</b>, na telefonu '
+      + 'mikrofonem na klávesnici. Nebo použijte Chrome či Edge.';
+  }
+}
+
+function prepniDiktovani(){
+  if(!RozpoznavaniReci){ hlaska('Tenhle prohlížeč rozpoznávání řeči neumí'); return; }
+  if(poslouchame){ posluchac && posluchac.stop(); return; }
+
+  posluchac = new RozpoznavaniReci();
+  posluchac.lang = 'cs-CZ';
+  posluchac.continuous = true;        // ať se poslech nevypne po první větě
+  posluchac.interimResults = true;    // text naskakuje průběžně, je vidět, že to jede
+
+  const pole = $('#diktat');
+  textPredDiktatem = pole.value ? pole.value.replace(/\s+$/,'') + ' ' : '';
+
+  posluchac.onstart = ()=>{
+    poslouchame = true;
+    const tl = $('#tlDiktovat');
+    tl.textContent = '⏹ Zastavit'; tl.classList.add('cerv');
+    $('#stavDiktat').textContent = 'poslouchám…';
+  };
+  posluchac.onresult = e=>{
+    let hotovo = '', rozdelane = '';
+    for(let i=0;i<e.results.length;i++){
+      const kus = e.results[i][0].transcript;
+      if(e.results[i].isFinal) hotovo += kus + ' '; else rozdelane += kus;
+    }
+    pole.value = textPredDiktatem + hotovo + rozdelane;
+    pole.scrollTop = pole.scrollHeight;
+  };
+  posluchac.onerror = e=>{
+    const duvody = {
+      'not-allowed':   'Mikrofon je zakázaný. Povolte ho v adresním řádku u ikonky zámku.',
+      'service-not-allowed': 'Mikrofon je zakázaný v nastavení prohlížeče.',
+      'no-speech':     'Nic jsem neslyšel.',
+      'audio-capture': 'Nenašel se žádný mikrofon.',
+      'network':       'Rozpoznávání řeči se nedovolalo na server.'
+    };
+    hlaska(duvody[e.error] || ('Diktování selhalo: ' + e.error));
+  };
+  posluchac.onend = ()=>{
+    poslouchame = false;
+    const tl = $('#tlDiktovat');
+    tl.textContent = '🎤 Diktovat'; tl.classList.remove('cerv');
+    const slov = ($('#diktat').value.trim().match(/\S+/g)||[]).length;
+    $('#stavDiktat').textContent = slov ? ('nadiktováno ' + slov + ' slov') : '';
+  };
+
+  try{ posluchac.start(); }
+  catch(e){ hlaska('Diktování se nepodařilo spustit'); }
+}
 
 /* ---------- 0. TO-DO: rozbor nadiktovaného textu ---------- */
 const TODO_STAVY = ["nové","zadáno","čeká","hotovo","zrušeno"];
@@ -2610,6 +2702,7 @@ window.addEventListener('resize', zmerHlavicku);
 
 kresliNav();
 vseKresli();
+napisJakDiktovat();
 prepni('s-ukoly');
 zmerHlavicku();
 </script>

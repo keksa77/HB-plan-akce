@@ -305,6 +305,50 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
     <div class="karta">
       <h2>Seznam to-do</h2>
       <div class="telo">
+
+        <div id="rucne" style="border:1px solid var(--linka);border-radius:10px;
+             padding:11px 13px;margin-bottom:14px;background:#FCFAF7">
+          <p class="popisek" style="margin:0 0 8px">Přidat úkol ručně. Jak píšete, web zkouší
+            sám doplnit druh, termín a místo — dokud do políčka sami nesáhnete. Enter úkol přidá.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+            <div style="flex:1 1 320px;min-width:240px">
+              <label class="popisek" style="display:block;margin-bottom:3px">Co se má udělat</label>
+              <input id="r_text" placeholder="například: zavolat na obec Bílá kvůli záchodům do pátku"
+                title="Text úkolu. Podle něj se zkusí předvyplnit ostatní políčka."
+                style="width:100%;font:inherit;padding:7px 9px;border:1px solid var(--linka);border-radius:8px">
+            </div>
+            <div>
+              <label class="popisek" style="display:block;margin-bottom:3px">Druh</label>
+              <select id="r_druh" style="font:inherit;padding:7px 9px;border:1px solid var(--linka);border-radius:8px"></select>
+            </div>
+            <div>
+              <label class="popisek" style="display:block;margin-bottom:3px">Kdo</label>
+              <select id="r_kdo" style="font:inherit;padding:7px 9px;border:1px solid var(--linka);border-radius:8px"></select>
+            </div>
+            <div>
+              <label class="popisek" style="display:block;margin-bottom:3px">Termín</label>
+              <input type="date" id="r_termin" style="font:inherit;padding:7px 9px;border:1px solid var(--linka);border-radius:8px">
+            </div>
+            <div>
+              <label class="popisek" style="display:block;margin-bottom:3px">Předávka</label>
+              <select id="r_predavka" style="font:inherit;padding:7px 9px;border:1px solid var(--linka);border-radius:8px"></select>
+            </div>
+            <div>
+              <label class="popisek" style="display:block;margin-bottom:3px">Grupa</label>
+              <select id="r_grupa" style="font:inherit;padding:7px 9px;border:1px solid var(--linka);border-radius:8px"></select>
+            </div>
+            <div>
+              <label class="popisek" style="display:block;margin-bottom:3px">Priorita</label>
+              <select id="r_priorita" style="font:inherit;padding:7px 9px;border:1px solid var(--linka);border-radius:8px"></select>
+            </div>
+            <div style="display:flex;gap:7px">
+              <button class="tl hlavni" title="Přidá úkol do seznamu níž." onclick="pridejRucne()">Přidat úkol</button>
+              <button class="tl" title="Vyprázdní formulář." onclick="vycistiRucne()">Vyčistit</button>
+            </div>
+          </div>
+          <div class="stav" id="stavRucne" style="margin-top:7px"></div>
+        </div>
+
         <div class="nastroje">
           <label class="stav">Stav:
             <select id="todoStav" title="Ukáže jen položky v jednom stavu." onchange="kresliTodo()"
@@ -317,7 +361,6 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
           <label class="stav" title="Ukáže jen položky, kterým vypršel termín nebo je dnes.">
             <input type="checkbox" id="todoPoTerminu" onchange="kresliTodo()"> jen po termínu
           </label>
-          <button class="tl" title="Přidá prázdnou položku, kterou si vyplníte ručně." onclick="pridejTodo()">+ Přidat ručně</button>
           <span class="stav" id="stavTodo"></span>
         </div>
         <div class="obal-tab"><table class="tab" id="tabTodo"></table></div>
@@ -1942,6 +1985,98 @@ function todoNaUkol(t){
   hlaska('Překlopeno do plánu, položka označená jako hotová');
 }
 
+
+/* ---------- ruční přidání úkolu ----------
+   Stejná políčka jako u diktátu, jen se vyplňují rukou. Rozbor běží i tady:
+   z napsaného textu se zkusí doplnit druh, termín a místo, ale jen do políček,
+   kterých se uživatel sám nedotkl — jakmile do některého sáhne, přestane se
+   přepisovat. */
+const RUCNE_POLE = ['druh','kdo','termin','predavka','grupa','priorita'];
+let rucneSahnuto = {};
+
+function naplnRucne(){
+  const v = (PRAV && PRAV.vychozi) || {};
+  const el = id => $('#r_' + id);
+  if(!el('druh')) return;
+
+  el('druh').innerHTML = '<option value=""></option>'
+    + PRAV.druhy.map(d=>`<option value="${d.kod}">${d.nazev}</option>`).join('');
+  el('kdo').innerHTML = '<option value=""></option>'
+    + D.clenove.map(c=>`<option${c.jmeno===v.kdo?' selected':''}>${esc(c.jmeno)}</option>`).join('');
+  el('predavka').innerHTML = '<option value="">—</option>'
+    + D.predavky.map(p=>`<option value="${p.cislo}">${p.cislo} ${esc(p.nazev)}</option>`).join('');
+  el('grupa').innerHTML = '<option value=""></option>'
+    + D.tymy.map(g=>`<option>${esc(g.kod)}</option>`).join('');
+  el('priorita').innerHTML = ["běžná","vysoká"]
+    .map(x=>`<option${x===(v.priorita||'běžná')?' selected':''}>${x}</option>`).join('');
+
+  RUCNE_POLE.forEach(pole=>{
+    const e = el(pole); if(!e) return;
+    e.onchange = ()=>{ rucneSahnuto[pole] = true; ukazStavRucne(); };
+  });
+  el('text').oninput = ()=>predvyplnRucne();
+  el('text').onkeydown = e=>{ if(e.key === 'Enter'){ e.preventDefault(); pridejRucne(); } };
+  ukazStavRucne();
+}
+
+function predvyplnRucne(){
+  const text = $('#r_text').value.trim();
+  if(text.length < 4){ ukazStavRucne(); return; }
+  const u = uplatniNaucena(rozeberVetu(text, new Date()));
+  const nastav = (pole, hodnota)=>{
+    if(rucneSahnuto[pole]) return;
+    const e = $('#r_' + pole); if(!e) return;
+    e.value = (hodnota==null) ? '' : String(hodnota);
+  };
+  nastav('druh', u.druh);
+  nastav('termin', u.termin);
+  nastav('predavka', u.predavka);
+  nastav('grupa', u.grupa);
+  nastav('priorita', u.priorita);
+  if(u.kdo) nastav('kdo', u.kdo);
+  ukazStavRucne();
+}
+
+function ukazStavRucne(){
+  const rucni = RUCNE_POLE.filter(x=>rucneSahnuto[x]);
+  $('#stavRucne').textContent = rucni.length
+    ? ('ručně nastavené a chráněné před přepsáním: ' + rucni.join(', '))
+    : '';
+}
+
+function pridejRucne(){
+  const text = $('#r_text').value.trim();
+  if(!text){ hlaska('Napište, co se má udělat'); $('#r_text').focus(); return; }
+  const v = (PRAV && PRAV.vychozi) || {};
+  const cislo = $('#r_predavka').value;
+  D.todo.push({
+    text: text,
+    druh: $('#r_druh').value,
+    kdo: $('#r_kdo').value,
+    grupa: $('#r_grupa').value,
+    predavka: cislo === '' ? null : +cislo,
+    nocleh: "",
+    termin: $('#r_termin').value,
+    priorita: $('#r_priorita').value || v.priorita || 'běžná',
+    stav: v.stav || 'nové',
+    zdroj: 'ručně',
+    dikt: ''
+  });
+  // text se vyprázdní, ostatní políčka zůstanou — víc podobných úkolů jde rychle za sebou
+  $('#r_text').value = '';
+  oznacZmenu(); kresliTodo();
+  hlaska('Přidáno, v seznamu je ' + D.todo.length);
+  $('#r_text').focus();
+}
+
+function vycistiRucne(){
+  rucneSahnuto = {};
+  $('#r_text').value = '';
+  $('#r_termin').value = '';
+  naplnRucne();
+  hlaska('Formulář vyprázdněn');
+}
+
 function kresliTodo(){
   const fs = $('#todoStav'), fk = $('#todoKdo');
   const ds = fs.value, dk = fk.value;
@@ -2975,7 +3110,7 @@ function nactiSoubor(vstup){
 
 /* ---------- start ---------- */
 function vseKresli(){
-  kresliTodo(); kresliNaucena();
+  kresliTodo(); kresliNaucena(); naplnRucne();
   kresliNastaveni(); kresliTymy(); naplnFiltrPart(); kresliClenove();
   kresliPredavky(); kresliNocMista(); kresliNocLide(); kresliPlan(); kresliPodrobny();
   kresliPristupy(); kresliTricka(); uplatniPrava();

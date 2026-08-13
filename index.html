@@ -3212,12 +3212,12 @@ const MAPA = {
           platba:'platba', rezervace:'rezervace', poznamka:'poznamka'}
   },
   nocLide: {
-    tabulka:'noclehy_lide', klic:['id'], konflikt:['id'], rok:true, jen:[],
+    tabulka:'noclehy_lide', klic:['id'], konflikt:['id'], rok:true, vzdyUkladat:true, jen:[],
     pole:{id:'id', noc:'noc', kod_noclehu:'kod_noclehu', clen_id:'clen_id',
           jmeno:'jmeno', kod_tymu:'kod_tymu', poznamka:'poznamka'}
   },
   todo: {
-    tabulka:'todo', klic:['id'], konflikt:['id'], rok:true, jen:['vzit','rozdelitNa','nejiste'],
+    tabulka:'todo', klic:['id'], konflikt:['id'], rok:true, vzdyUkladat:true, jen:['vzit','rozdelitNa','nejiste'],
     pole:{id:'id', text:'text', druh:'druh', kdo:'kdo', termin:'termin', priorita:'priorita',
           stav:'stav', predavka:'predavka_cislo', grupa:'kod_tymu', nocleh:'kod_noclehu',
           zdroj:'zdroj', dikt:'dikt'}
@@ -3405,11 +3405,14 @@ async function ulozDoDatabaze(){
   const tl = $('#tlUlozitDb');
   if(tl){ tl.disabled = true; tl.textContent = 'Ukládám…'; }
   const rok = D.nastaveni.aktivni_rok;
-  const hotovo = [], potize = [];
+  const hotovo = [], potize = [], preskoceno = [];
 
   for(const sada of Object.keys(MAPA)){
-    if(sadySChybou.indexOf(sada) >= 0){ potize.push(sada + ': přeskočeno, nenačetlo se'); continue; }
     const m = MAPA[sada];
+    // Ukládá se jen to, co se z databáze opravdu načetlo. Co v prohlížeči
+    // zůstalo zapečené ze souboru (nebo se nenačetlo kvůli chybě), by se
+    // zápisem mohlo do databáze dostat v ořezané nebo loňské podobě.
+    if(!m.vzdyUkladat && zDatabaze.indexOf(sada) < 0){ preskoceno.push(sada); continue; }
     const radky = D[sada] || [];
     try{
       // 1) zápis — nové řádky zvlášť, ať se vrátí jejich id
@@ -3462,11 +3465,14 @@ async function ulozDoDatabaze(){
   }catch(e){ potize.push('nastavení: ' + e.message); }
 
   if(tl){ tl.disabled = false; tl.textContent = 'Uložit do databáze'; }
+  const dovetek = preskoceno.length
+    ? ' · nepřeneseno (data nejsou z databáze): ' + preskoceno.join(', ') : '';
   if(potize.length){
-    hlaska('Uloženo částečně. Nepovedlo se: ' + potize.join(' · '));
+    // něco se opravdu nepovedlo — příznak neuložených změn zůstává
+    hlaska('Uloženo částečně. Nepovedlo se: ' + potize.join(' · ') + dovetek);
   }else{
     zmeneno = false; kresliStavUlozeni();
-    hlaska('Uloženo do databáze: ' + hotovo.join(', '));
+    hlaska('Uloženo do databáze: ' + (hotovo.join(', ') || 'nic ke změně') + dovetek);
   }
 }
 

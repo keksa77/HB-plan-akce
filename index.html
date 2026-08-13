@@ -65,7 +65,7 @@ button.tl.cerv{color:var(--vinova);border-color:#E4C6CA}
   padding:4px 4px;cursor:pointer}
 .grupaOdznak select option{color:var(--tmava);background:#fff;font-weight:600}
 .grupaJmeno{display:inline-block;margin-left:7px;font-size:12.5px;color:var(--tmava);
-  vertical-align:middle;max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  vertical-align:middle;max-width:112px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* filtry ať zůstanou nad tabulkou i při scrollování dlouhého plánu */
 #s-podrobny .nastroje{position:sticky;top:var(--hlavicka,92px);z-index:8;
   background:var(--papir);padding:9px 0;margin:0 0 12px;
@@ -96,7 +96,7 @@ aside p{margin:0 0 10px;font-size:11.5px;color:var(--pisek)}
 .chip:active{cursor:grabbing}
 .chip.cizi{border:1.5px dashed #fff}
 .chip .pocet{background:rgba(255,255,255,.28);border-radius:10px;padding:0 5px;font-size:10.5px}
-.chip .jmeno{font-weight:600;font-size:11.5px;opacity:.92;max-width:88px;overflow:hidden;
+.chip .jmeno{font-weight:600;font-size:11.5px;opacity:.92;max-width:112px;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
 .chip.zvyrazneno{outline:2.5px solid var(--hneda);outline-offset:1.5px}
 .detail{margin-top:13px;font-size:11.5px;color:var(--pisek);border-top:1px solid var(--linka);padding-top:9px}
@@ -265,6 +265,49 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
 
 
   <!-- 1b. PODROBNÝ PLÁN -->
+  <!-- 0. TO-DO -->
+  <section class="sekce" id="s-todo">
+    <div class="karta">
+      <h2>Nadiktovat úkoly</h2>
+      <div class="telo">
+        <p class="popisek">Na telefonu klepněte do pole, na klávesnici zmáčkněte mikrofon a mluvte.
+          Můžete nadiktovat i víc úkolů za sebou — každou větu web bere jako jeden úkol.
+          Pomůže, když řeknete jméno, místo a termín: „zavolat Lukášovi na Bumbálku do pátku".</p>
+        <textarea id="diktat" rows="4" placeholder="Například: Zavolat Lukášovi na Bumbálku, jestli letos zase zajistí předávku, do pátku. Objednat 300 fáborků do konce srpna. Domluvit s obcí Bílá záchody na předávce 6."
+          title="Sem se diktuje. Nic se nikam neposílá, dokud úkoly nepotvrdíte."
+          style="width:100%;padding:11px 12px;border:1px solid var(--linka);border-radius:10px;font:inherit;font-size:16px;resize:vertical"></textarea>
+        <div class="nastroje" style="margin-top:10px">
+          <button class="tl hlavni" title="Rozebere nadiktovaný text na jednotlivé úkoly a u každého zkusí najít termín, člověka a místo." onclick="rozeberDiktat()">Rozebrat na úkoly</button>
+          <button class="tl" title="Vymaže obsah diktovacího pole." onclick="$('#diktat').value='';$('#navrhy').innerHTML='';hlaska('Pole vyprázdněno')">Vymazat pole</button>
+          <span class="stav" id="stavDiktat"></span>
+        </div>
+        <div id="navrhy"></div>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Seznam to-do</h2>
+      <div class="telo">
+        <div class="nastroje">
+          <label class="stav">Stav:
+            <select id="todoStav" title="Ukáže jen položky v jednom stavu." onchange="kresliTodo()"
+              style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
+          </label>
+          <label class="stav">Kdo:
+            <select id="todoKdo" title="Ukáže jen položky jednoho člověka." onchange="kresliTodo()"
+              style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
+          </label>
+          <label class="stav" title="Ukáže jen položky, kterým vypršel termín nebo je dnes.">
+            <input type="checkbox" id="todoPoTerminu" onchange="kresliTodo()"> jen po termínu
+          </label>
+          <button class="tl" title="Přidá prázdnou položku, kterou si vyplníte ručně." onclick="pridejTodo()">+ Přidat ručně</button>
+          <span class="stav" id="stavTodo"></span>
+        </div>
+        <div class="obal-tab"><table class="tab" id="tabTodo"></table></div>
+      </div>
+    </div>
+  </section>
+
   <section class="sekce" id="s-podrobny">
     <div class="nastroje">
       <label class="stav">Grupa:
@@ -550,34 +593,34 @@ const D = {
 
   // tymy_org (HB25) + barva a doprava pro potřeby prototypu
   tymy: [
-    {kod:"G1",  nazev:"",                    poradi:1,  doprava:"osobní auto", barva:"#3F6B8A", poznamka:""},
-    {kod:"G2",  nazev:"",                    poradi:2,  doprava:"osobní auto", barva:"#C9A227", poznamka:""},
-    {kod:"G3",  nazev:"",                    poradi:3,  doprava:"osobní auto", barva:"#B4533A", poznamka:""},
-    {kod:"G4",  nazev:"Dolní Lomná — místní",poradi:4,  doprava:"",            barva:"#B07C3F", poznamka:"v prototypu v1 chyběla"},
-    {kod:"G5",  nazev:"",                    poradi:5,  doprava:"osobní auto", barva:"#C97B2C", poznamka:""},
-    {kod:"G6",  nazev:"",                    poradi:6,  doprava:"osobní auto", barva:"#4E9BA6", poznamka:""},
-    {kod:"G7",  nazev:"",                    poradi:7,  doprava:"osobní auto", barva:"#5E8C3A", poznamka:""},
-    {kod:"G8",  nazev:"",                    poradi:8,  doprava:"osobní auto", barva:"#8A6FA8", poznamka:""},
-    {kod:"IT",  nazev:"IT podpora",          poradi:9,  doprava:"",            barva:"#46586B", poznamka:""},
-    {kod:"G0A", nazev:"Vedení, dodávka A",   poradi:10, doprava:"dodávka",     barva:"#7B3F17", poznamka:""},
-    {kod:"G0B", nazev:"Vedení, dodávka B",   poradi:11, doprava:"dodávka",     barva:"#9A5A22", poznamka:""},
-    {kod:"G10", nazev:"",                    poradi:12, doprava:"osobní auto", barva:"#7A6A55", poznamka:""},
-    {kod:"G11", nazev:"",                    poradi:13, doprava:"osobní auto", barva:"#A63D4E", poznamka:""},
-    {kod:"G12", nazev:"",                    poradi:14, doprava:"osobní auto", barva:"#8E9A3C", poznamka:""},
-    {kod:"G13", nazev:"",                    poradi:15, doprava:"dodávka",     barva:"#5B4A8C", poznamka:""},
-    {kod:"G14", nazev:"",                    poradi:16, doprava:"dodávka",     barva:"#D08C3A", poznamka:""},
-    {kod:"G15", nazev:"",                    poradi:17, doprava:"osobní auto", barva:"#6E8FB5", poznamka:""},
-    {kod:"G16", nazev:"",                    poradi:18, doprava:"osobní auto", barva:"#4B7A5E", poznamka:""},
-    {kod:"G17", nazev:"",                    poradi:19, doprava:"osobní auto", barva:"#A8794F", poznamka:""},
-    {kod:"G18", nazev:"",                    poradi:20, doprava:"veřejná",     barva:"#3E7C6B", poznamka:""},
-    {kod:"FOTO",  nazev:"Fotografové",       poradi:21, doprava:"",            barva:"#8C4E6B", poznamka:""},
-    {kod:"ZVUK",  nazev:"Zvuk a moderace",   poradi:22, doprava:"dodávka",     barva:"#5A5A6E", poznamka:""},
-    {kod:"VIDEO", nazev:"Video",             poradi:23, doprava:"",            barva:"#6B5B8C", poznamka:""},
-    {kod:"GASTRO",nazev:"Občerstvení",       poradi:24, doprava:"",            barva:"#A2733C", poznamka:""},
+    {kod:"G1",  nazev:"",                    poradi:1,  doprava:"osobní auto", barva:"#3F6B8A", vedouci:"", poznamka:""},
+    {kod:"G2",  nazev:"",                    poradi:2,  doprava:"osobní auto", barva:"#C9A227", vedouci:"", poznamka:""},
+    {kod:"G3",  nazev:"",                    poradi:3,  doprava:"osobní auto", barva:"#B4533A", vedouci:"", poznamka:""},
+    {kod:"G4",  nazev:"Dolní Lomná — místní",poradi:4,  doprava:"",            barva:"#B07C3F", vedouci:"", poznamka:"v prototypu v1 chyběla"},
+    {kod:"G5",  nazev:"",                    poradi:5,  doprava:"osobní auto", barva:"#C97B2C", vedouci:"", poznamka:""},
+    {kod:"G6",  nazev:"",                    poradi:6,  doprava:"osobní auto", barva:"#4E9BA6", vedouci:"", poznamka:""},
+    {kod:"G7",  nazev:"",                    poradi:7,  doprava:"osobní auto", barva:"#5E8C3A", vedouci:"", poznamka:""},
+    {kod:"G8",  nazev:"",                    poradi:8,  doprava:"osobní auto", barva:"#8A6FA8", vedouci:"", poznamka:""},
+    {kod:"IT",  nazev:"IT podpora",          poradi:9,  doprava:"",            barva:"#46586B", vedouci:"", poznamka:""},
+    {kod:"G0A", nazev:"Vedení, dodávka A",   poradi:10, doprava:"dodávka",     barva:"#7B3F17", vedouci:"", poznamka:""},
+    {kod:"G0B", nazev:"Vedení, dodávka B",   poradi:11, doprava:"dodávka",     barva:"#9A5A22", vedouci:"", poznamka:""},
+    {kod:"G10", nazev:"",                    poradi:12, doprava:"osobní auto", barva:"#7A6A55", vedouci:"", poznamka:""},
+    {kod:"G11", nazev:"",                    poradi:13, doprava:"osobní auto", barva:"#A63D4E", vedouci:"", poznamka:""},
+    {kod:"G12", nazev:"",                    poradi:14, doprava:"osobní auto", barva:"#8E9A3C", vedouci:"", poznamka:""},
+    {kod:"G13", nazev:"",                    poradi:15, doprava:"dodávka",     barva:"#5B4A8C", vedouci:"", poznamka:""},
+    {kod:"G14", nazev:"",                    poradi:16, doprava:"dodávka",     barva:"#D08C3A", vedouci:"", poznamka:""},
+    {kod:"G15", nazev:"",                    poradi:17, doprava:"osobní auto", barva:"#6E8FB5", vedouci:"", poznamka:""},
+    {kod:"G16", nazev:"",                    poradi:18, doprava:"osobní auto", barva:"#4B7A5E", vedouci:"", poznamka:""},
+    {kod:"G17", nazev:"",                    poradi:19, doprava:"osobní auto", barva:"#A8794F", vedouci:"", poznamka:""},
+    {kod:"G18", nazev:"",                    poradi:20, doprava:"veřejná",     barva:"#3E7C6B", vedouci:"", poznamka:""},
+    {kod:"FOTO",  nazev:"Fotografové",       poradi:21, doprava:"",            barva:"#8C4E6B", vedouci:"", poznamka:""},
+    {kod:"ZVUK",  nazev:"Zvuk a moderace",   poradi:22, doprava:"dodávka",     barva:"#5A5A6E", vedouci:"", poznamka:""},
+    {kod:"VIDEO", nazev:"Video",             poradi:23, doprava:"",            barva:"#6B5B8C", vedouci:"", poznamka:""},
+    {kod:"GASTRO",nazev:"Občerstvení",       poradi:24, doprava:"",            barva:"#A2733C", vedouci:"", poznamka:""},
     {kod:"ZDRAV", nazev:"Zdravotní dohled",
-                                             poradi:25, doprava:"",            barva:"#8C3A3A", poznamka:"ZZS Zlín, dodavatel — bez jmen v tabulce"},
+                                             poradi:25, doprava:"",            barva:"#8C3A3A", vedouci:"", poznamka:"ZZS Zlín, dodavatel — bez jmen v tabulce"},
     {kod:"domácí",nazev:"Místní pořadatelé",
-                                             poradi:26, doprava:"",            barva:"#96907F", poznamka:"místní grupy na předávkách, vedou se bez jmen"}
+                                             poradi:26, doprava:"",            barva:"#96907F", vedouci:"", poznamka:"místní grupy na předávkách, vedou se bez jmen"}
   ],
 
   // clenove_tymu (HB25)
@@ -726,6 +769,8 @@ const D = {
     "HOST":    {ukoly:"čtení", tymy_org:"čtení", clenove_tymu:"žádné", kontakty:"žádné",
                 predavky:"čtení", nastaveni:"žádné", noclehy_adresy:"žádné", noclehy_lide:"žádné", pristupy:"žádné"}
   },
+  todo: [],
+
   uzivatele: [
     {email:"", jmeno:"Keksa", uroven:"SPRAVCE", kod_tymu:"G0A", aktivni:"ano", heslo_hash:"", poznamka:""}
   ],
@@ -750,6 +795,7 @@ const DOPRAVY = ["","osobní auto","dodávka","veřejná","kolo","pěšky"];
 const NOCI = ["pátek","sobota"];
 const PRAVA = ["zápis","čtení","žádné"];
 const OBLASTI = [
+  {kod:"todo",           nazev:"To-do — přípravné úkoly",    sekce:["s-todo"]},
   {kod:"ukoly",          nazev:"Plán úkolů a podrobný plán", sekce:["s-ukoly","s-podrobny"]},
   {kod:"tymy_org",       nazev:"Grupy",                      sekce:["s-tymy"]},
   {kod:"clenove_tymu",   nazev:"Členové grup",               sekce:["s-clenove"]},
@@ -781,10 +827,22 @@ const prvniClen = k => {
   const c = D.clenove.find(x=>x.kod_tymu===k);
   return c ? c.jmeno : "";
 };
-// na štítek se vejde jen první slovo jména, celé je v bublině
+// celé jméno, které se u grupy ukazuje: vedoucí, a když není zadaný, první člen
+const jmenoGrupy = k => {
+  const t = parta(k);
+  return (t && t.vedouci) ? t.vedouci : prvniClen(k);
+};
+// spolky a sbory nejsou lidé, těm se písmeno nepřidává
+const SPOLEK = /^(sdh|tj|sk|sbor|obec|hasic|zzs)/;
+// na štítek jde jméno a první písmeno příjmení — „Martin B.".
+// Jednoslovné jméno (přezdívka, nebo křestní bez příjmení) zůstane samo.
 const prvniJmeno = k => {
-  const j = prvniClen(k).replace(/\s*\(.*?\)\s*/g,' ').trim();
-  return j ? j.split(/\s+/)[0] : "";
+  const cele = jmenoGrupy(k).replace(/\s*\(.*?\)\s*/g,' ').trim();
+  if(!cele) return "";
+  const c = cele.split(/\s+/);
+  if(SPOLEK.test(bezDiakritiky(c[0]))) return c[0];
+  if(c.length < 2 || !c[1]) return c[0];
+  return c[0] + ' ' + c[1][0].toUpperCase() + '.';
 };
 const jePartaVDb = k => !!parta(k) && MIMO_DB.indexOf(k)<0;
 const hlaska = t => {const h=$('#hlaska');h.textContent=t;h.classList.add('videt');
@@ -809,6 +867,7 @@ const najdi = (typ, cislo) => D.ukoly.find(u=>u.typ===typ && u.cislo===cislo);
 
 /* ---------- záložky ---------- */
 const ZALOZKY = [
+  {id:"s-todo",          nazev:"To-do",              napoveda:"Přípravné úkoly přes celý rok. Nadiktujete je do pole a web z nich udělá položky s termínem, odpovědným člověkem a vazbou na předávku nebo grupu."},
   {id:"s-ukoly",         nazev:"Plán úkolů",         napoveda:"Mřížka etap a rolí — kdo trasuje, uklízí a obsluhuje které předávky."},
   {id:"s-podrobny",      nazev:"Podrobný plán",      napoveda:"Všechny úkoly po grupách, včetně přejezdů, noclehů, startu a cíle."},
   {id:"s-tymy",          nazev:"Grupy",              napoveda:"Seznam grup, jejich barvy a způsob dopravy."},
@@ -832,6 +891,7 @@ function prepni(id){
     document.querySelector(`#nav button[data-id="${z.id}"]`).classList.toggle('aktivni', z.id===id);
   });
   zavriEditor();
+  if(id==="s-todo") kresliTodo();
   if(id==="s-podrobny") kresliPodrobny();
   if(id==="s-pristupy") kresliPristupy();
   if(id==="s-tricka") kresliTricka();
@@ -943,7 +1003,7 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky){
       } else if(s.jenCist){
         h += `<td class="${s.trida||''}" style="padding:7px 8px;font-size:13px;color:var(--pisek)">${esc(v)}</td>`;
       } else if(s.typ==='select'){
-        const moznosti = (typeof s.moznosti==='function'? s.moznosti() : s.moznosti);
+        const moznosti = (typeof s.moznosti==='function'? s.moznosti(r) : s.moznosti);
         h += `<td class="${s.trida||''}"><select data-i="${i}" data-p="${s.pole}">`
           + moznosti.map(m=>`<option${String(m)===String(v==null?'':v)?' selected':''}>${esc(m)}</option>`).join('')
           + '</select></td>';
@@ -989,7 +1049,8 @@ function kresliPaletu(){
       + (jm ? '<span class="jmeno">'+esc(jm)+'</span>' : '')
       + '<span class="pocet">'+(poc[t.kod]||0)+'</span>';
     const vsichni = D.clenove.filter(x=>x.kod_tymu===t.kod).map(x=>x.jmeno).join(', ');
-    c.title = (t.nazev||t.kod) + (vsichni?' — '+vsichni:'') + (t.doprava?' · '+t.doprava:'');
+    c.title = (t.nazev||t.kod) + (t.vedouci?' · vedoucí: '+t.vedouci:'')
+            + (vsichni?' — '+vsichni:'') + (t.doprava?' · '+t.doprava:'');
     c.ondragstart = e=>e.dataTransfer.setData('text/plain', t.kod);
     c.onclick = ()=>{ vybrany = vybrany===t.kod?null:t.kod; kresliPlan(); };
     el.appendChild(c);
@@ -1001,6 +1062,7 @@ function kresliPaletu(){
     const lidi = BEZ_JMEN.indexOf(vybrany)>=0 ? [] : D.clenove.filter(c=>c.kod_tymu===vybrany).map(c=>c.jmeno);
     d.innerHTML = '<b>'+esc(vybrany)+'</b>'+(t.nazev?' — '+esc(t.nazev):'')
       + '<br>doprava: '+esc(t.doprava||'neurčeno')
+      + (t.vedouci ? '<br>vedoucí: '+esc(t.vedouci) : '')
       + '<br>lidé: '+(lidi.length?esc(lidi.join(', ')):(BEZ_JMEN.indexOf(vybrany)>=0?'místní grupa, jména se nevedou':'nikdo v clenove_tymu'))
       + '<br>úkolů celkem: '+(poc[vybrany]||0)
       + (MIMO_DB.indexOf(t.kod)>=0?'<br><b style="color:var(--vinova)">Není v tabulce tymy_org.</b>':'');
@@ -1017,7 +1079,8 @@ function slotChip(u){
   const jm = prvniJmeno(u.parta);
   if(jm){ const n = document.createElement('span'); n.className='jmeno'; n.textContent = jm; c.appendChild(n); }
   const vsichni = D.clenove.filter(x=>x.kod_tymu===u.parta).map(x=>x.jmeno).join(', ');
-  c.title = u.kod + (vsichni?' — '+vsichni:'');
+  const ved = (parta(u.parta)||{}).vedouci;
+  c.title = u.kod + (ved?' · vedoucí: '+ved:'') + (vsichni?' — '+vsichni:'');
   const x = document.createElement('span'); x.className='smaz'; x.textContent='×'; x.title='Odebere úkol z tohoto políčka. Vrátit se to nedá.';
   x.onclick = e=>{ e.stopPropagation(); D.ukoly.splice(D.ukoly.indexOf(u),1); kresliPlan(); };
   c.appendChild(x);
@@ -1153,6 +1216,306 @@ function smazZEditoru(){
 }
 function zavriEditor(){ edUkol=null; $('#editor').classList.remove('videt'); }
 
+/* ---------- 0. TO-DO: rozbor nadiktovaného textu ---------- */
+const TODO_STAVY = ["nové","zadáno","čeká","hotovo","zrušeno"];
+const TODO_DRUHY = [
+  {kod:"hovor",    nazev:"zavolat",  slova:["zavolat","zavolej","volat","telefonovat","brnknout","ozvat"]},
+  {kod:"mail",     nazev:"napsat",   slova:["napsat","poslat mail","poslat e-mail","mailnout","odepsat","poslat zprávu"]},
+  {kod:"objednat", nazev:"objednat", slova:["objednat","objednej","koupit","nakoupit","pořídit","zajistit","sehnat","dodat"]},
+  {kod:"platba",   nazev:"zaplatit", slova:["zaplatit","uhradit","poslat peníze","fakturovat","proplatit","záloha"]},
+  {kod:"domluva",  nazev:"domluvit", slova:["domluvit","domluv","dohodnout","potvrdit","zamluvit","rezervovat"]},
+  {kod:"zjistit",  nazev:"zjistit",  slova:["zjistit","ověřit","zkontrolovat","podívat se","spočítat","projít"]}
+];
+
+// bez diakritiky a malými písmeny — čeština skloňuje, tak porovnáváme kmeny
+const bezDiakritiky = s => (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+// kmen slova: uřízne koncovku, aby „Bumbálka" našla „na Bumbálce"
+const kmen = s => { const z = bezDiakritiky(s).replace(/[^a-z0-9]/g,'');
+  return z.length>5 ? z.slice(0, z.length-2) : z; };
+
+// kmeny dnů, ať se chytí i „do pátku", „v úterý", „přes víkend"
+const DNY_TYDNE = [
+  {re:/\bnedel/,            nazev:"neděle"},
+  {re:/\bpondel/,           nazev:"pondělí"},
+  {re:/\buter/,             nazev:"úterý"},
+  {re:/\bstred[auyo]/,      nazev:"středa"},
+  {re:/\bctvrt[ekua]/,      nazev:"čtvrtek"},
+  {re:/\bpat(ek|ku|ka|ecn)/,nazev:"pátek"},
+  {re:/\bsobot/,            nazev:"sobota"}
+];
+
+// „do pátku", „zítra", „15. 8.", „do konce srpna" → datum ve tvaru RRRR-MM-DD
+function najdiTermin(veta, dnes){
+  const t = bezDiakritiky(veta);
+  const d = new Date(dnes.getFullYear(), dnes.getMonth(), dnes.getDate());
+  const posun = n => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+  const iso = x => x.getFullYear() + '-' + String(x.getMonth()+1).padStart(2,'0')
+                 + '-' + String(x.getDate()).padStart(2,'0');
+
+  if(/\bdnes\b/.test(t))     return {datum:iso(d),        slovy:"dnes"};
+  if(/\bzitra\b/.test(t))    return {datum:iso(posun(1)), slovy:"zítra"};
+  if(/\bpozitri\b/.test(t))  return {datum:iso(posun(2)), slovy:"pozítří"};
+  if(/za tyden|pristi tyden/.test(t)) return {datum:iso(posun(7)), slovy:"za týden"};
+  if(/do konce tydne/.test(t)){ const k = posun((7 - d.getDay()) % 7 || 7); return {datum:iso(k), slovy:"do konce týdne"}; }
+
+  // konkrétní datum: 15.8. / 15. 8. / 15. srpna
+  const MESICE = ["ledna","unora","brezna","dubna","kvetna","cervna","cervence","srpna","zari","rijna","listopadu","prosince"];
+  let m = t.match(/(\d{1,2})\s*\.\s*(\d{1,2})\s*\.?/);
+  if(m){ const x = new Date(d.getFullYear(), +m[2]-1, +m[1]);
+         if(x < d) x.setFullYear(x.getFullYear()+1);
+         return {datum:iso(x), slovy:m[1]+'. '+m[2]+'.'}; }
+  m = t.match(/(\d{1,2})\s*\.?\s*(ledna|unora|brezna|dubna|kvetna|cervna|cervence|srpna|zari|rijna|listopadu|prosince)/);
+  if(m){ const x = new Date(d.getFullYear(), MESICE.indexOf(m[2]), +m[1]);
+         if(x < d) x.setFullYear(x.getFullYear()+1);
+         return {datum:iso(x), slovy:m[1]+'. '+m[2]}; }
+  m = t.match(/do konce (ledna|unora|brezna|dubna|kvetna|cervna|cervence|srpna|zari|rijna|listopadu|prosince)/);
+  if(m){ const i = MESICE.indexOf(m[1]);
+         const x = new Date(d.getFullYear(), i+1, 0);
+         if(x < d) x.setFullYear(x.getFullYear()+1);
+         return {datum:iso(x), slovy:"do konce "+m[1]}; }
+
+  // den v týdnu — nejbližší příští
+  for(let i=0;i<DNY_TYDNE.length;i++){
+    if(DNY_TYDNE[i].re.test(t)){
+      let rozdil = (i - d.getDay() + 7) % 7; if(rozdil===0) rozdil = 7;
+      return {datum:iso(posun(rozdil)), slovy:DNY_TYDNE[i].nazev};
+    }
+  }
+  return {datum:"", slovy:""};
+}
+
+// hledá v textu jméno člověka, kód grupy, předávku a nocleh
+function najdiVazby(veta){
+  const t = bezDiakritiky(veta);
+  const v = {kdo:"", grupa:"", predavka:null, nocleh:"", nejiste:[]};
+
+  // kód grupy zapsaný přímo — G1, G0A, ZDRAV
+  D.tymy.forEach(g=>{
+    const k = bezDiakritiky(g.kod);
+    if(k.length>=2 && new RegExp('(^|[^a-z0-9])'+k+'([^a-z0-9]|$)').test(t)) v.grupa = g.kod;
+  });
+
+  // jméno člověka — porovnáváme kmen křestního jména
+  const jmena = D.clenove.map(c=>c.jmeno).filter(Boolean);
+  const shodyJmen = jmena.filter(j=>{
+    const k = kmen(j.split(/\s+/)[0]);
+    return k.length>=3 && t.indexOf(k)>=0;
+  });
+  if(shodyJmen.length===1) v.kdo = shodyJmen[0];
+  else if(shodyJmen.length>1){ v.kdo = shodyJmen[0]; v.nejiste.push('jméno: ' + shodyJmen.join(' / ')); }
+
+  // předávka podle čísla („předávka 6", „na šestce" neřešíme) nebo podle názvu
+  let m = t.match(/predavk\w*\s*(?:c\.?|cislo)?\s*(\d{1,2})/) || t.match(/etap\w*\s*(?:c\.?|cislo)?\s*(\d{1,2})/);
+  if(m && +m[1]>=1 && +m[1]<=31) v.predavka = +m[1];
+  if(v.predavka===null){
+    const shody = D.predavky.filter(p=>{
+      const slova = String(p.nazev||'').split(/[\s,]+/).filter(x=>x.length>=4);
+      return slova.length && slova.every(s=>t.indexOf(kmen(s))>=0);
+    });
+    if(shody.length===1) v.predavka = shody[0].cislo;
+    else if(shody.length>1){ v.predavka = shody[0].cislo;
+      v.nejiste.push('místo: ' + shody.map(p=>p.cislo+' '+p.nazev).join(' / ')); }
+  }
+
+  // nocleh podle názvu
+  const nocShody = D.nocMista.filter(n=>{
+    const slova = String(n.nazev||'').split(/[\s,]+/).filter(x=>x.length>=5);
+    return slova.some(s=>t.indexOf(kmen(s))>=0);
+  });
+  if(nocShody.length===1) v.nocleh = nocShody[0].kod;
+
+  return v;
+}
+
+function rozeberVetu(veta, dnes){
+  const t = bezDiakritiky(veta);
+  const druh = (TODO_DRUHY.find(d=>d.slova.some(s=>t.indexOf(bezDiakritiky(s))>=0))||{}).kod || "";
+  const term = najdiTermin(veta, dnes);
+  const vaz = najdiVazby(veta);
+  const dulezite = /\burgent|\bhori\b|dulezit|co nejdriv|hned/.test(t);
+  return {
+    text: veta.trim().replace(/^[\s,;.]+|[\s,;.]+$/g,''),
+    druh, kdo: vaz.kdo, grupa: vaz.grupa, predavka: vaz.predavka, nocleh: vaz.nocleh,
+    termin: term.datum, terminSlovy: term.slovy,
+    priorita: dulezite ? "vysoká" : "běžná",
+    stav: "nové", zdroj: "diktát", dikt: veta.trim(),
+    nejiste: vaz.nejiste
+  };
+}
+
+// rozdělení diktátu na věty — tečka, nový řádek, nebo spojka „a pak / další úkol".
+// Tečky uvnitř data (15. 8., 3. září) se nesmí splést s koncem věty, tak je schováme.
+function rozdelDiktat(text){
+  const S = '\u0001';                       // dočasná náhrada za tečku uvnitř data
+  const MES = 'ledna|\u00fanora|b\u0159ezna|dubna|kv\u011btna|\u010dervna|\u010dervence|srpna|z\u00e1\u0159\u00ed|\u0159\u00edjna|listopadu|prosince';
+  return String(text||'')
+    // 15. 8. nebo 15.8. — obě tečky patří k datu
+    .replace(/(\d{1,2})\s*\.\s*(\d{1,2})\s*(\.?)/g, (m,a,b,tecka,pos,cely)=>{
+      // „do 15. 8. Zjistit…" — druhá tečka je zároveň konec věty, tu necháme být
+      const dal = cely.slice(pos+m.length).replace(/^\s+/,'');
+      const konecVety = tecka && (dal==='' || /^[A-ZÁ-Ž]/.test(dal));
+      return a+S+' '+b+(konecVety ? '.' : (tecka?S:''));
+    })
+    // 15. srpna — tečka patří k datu
+    .replace(new RegExp('(\\d{1,2})\\s*\\.\\s*(' + MES + ')', 'gi'), (m,a,b)=>a+S+' '+b)
+    .replace(/\b(a pak|dal[s\u0161][i\u00ed] [u\u00fa]kol|jo a je[s\u0161]t[e\u011b]|a je[s\u0161]t[e\u011b])\b/gi, '.')
+    .split(/[.!?;\n]+/)
+    .map(x=>x.split(S).join('.').trim())
+    .filter(x=>x.length>=4);
+}
+
+
+let navrhyTodo = [];
+function rozeberDiktat(){
+  const text = $('#diktat').value;
+  const vety = rozdelDiktat(text);
+  if(!vety.length){
+    $('#navrhy').innerHTML = '';
+    $('#stavDiktat').textContent = 'V poli nic není.';
+    return;
+  }
+  const dnes = new Date();
+  navrhyTodo = vety.map(v=>rozeberVetu(v, dnes));
+  $('#stavDiktat').textContent = 'nalezeno ' + navrhyTodo.length
+    + (navrhyTodo.length===1 ? ' úkol' : (navrhyTodo.length<5 ? ' úkoly' : ' úkolů'));
+  kresliNavrhy();
+}
+
+function kresliNavrhy(){
+  const cil = $('#navrhy');
+  if(!navrhyTodo.length){ cil.innerHTML = ''; return; }
+  let h = '<p class="popisek" style="margin-top:16px">Zkontrolujte, co z toho web vyčetl. '
+    + 'Cokoli jde přepsat. Uloží se až tlačítkem <b>Uložit do to-do</b>.</p>'
+    + '<div class="obal-tab"><table class="tab"><thead><tr>'
+    + '<th style="width:34px"></th><th>Co se má udělat</th>'
+    + '<th style="width:120px" title="Sloveso, které web ve větě našel.">Druh</th>'
+    + '<th style="width:150px" title="Jméno člověka z tabulky členů grup.">Kdo</th>'
+    + '<th style="width:135px" title="Termín, do kdy to má být hotové.">Termín</th>'
+    + '<th style="width:180px" title="Ke které předávce se to váže.">Předávka</th>'
+    + '<th style="width:110px">Grupa</th><th style="width:110px">Priorita</th>'
+    + '</tr></thead><tbody>';
+  navrhyTodo.forEach((n,i)=>{
+    h += '<tr' + (n.nejiste.length?' style="background:#FFF8E8"':'') + '>'
+      + '<td class="stred"><input type="checkbox" data-vzit="'+i+'"'+(n.vzit===false?'':' checked')+' title="Odškrtnutím úkol zahodíte."></td>'
+      + '<td><input data-n="'+i+'" data-p="text" value="'+esc(n.text)+'"></td>'
+      + '<td><select data-n="'+i+'" data-p="druh"><option value=""></option>'
+        + TODO_DRUHY.map(d=>`<option value="${d.kod}"${d.kod===n.druh?' selected':''}>${d.nazev}</option>`).join('')
+      + '</select></td>'
+      + '<td><select data-n="'+i+'" data-p="kdo"><option value=""></option>'
+        + D.clenove.map(c=>`<option${c.jmeno===n.kdo?' selected':''}>${esc(c.jmeno)}</option>`).join('')
+      + '</select></td>'
+      + '<td><input type="date" data-n="'+i+'" data-p="termin" value="'+esc(n.termin)+'"></td>'
+      + '<td><select data-n="'+i+'" data-p="predavka"><option value="">—</option>'
+        + D.predavky.map(p=>`<option value="${p.cislo}"${p.cislo===n.predavka?' selected':''}>${p.cislo} ${esc(p.nazev)}</option>`).join('')
+      + '</select></td>'
+      + '<td><select data-n="'+i+'" data-p="grupa"><option value=""></option>'
+        + D.tymy.map(g=>`<option${g.kod===n.grupa?' selected':''}>${esc(g.kod)}</option>`).join('')
+      + '</select></td>'
+      + '<td><select data-n="'+i+'" data-p="priorita">'
+        + ["běžná","vysoká"].map(p=>`<option${p===n.priorita?' selected':''}>${p}</option>`).join('')
+      + '</select></td></tr>';
+    if(n.nejiste.length){
+      h += '<tr style="background:#FFF8E8"><td></td><td colspan="7" class="popisek" style="padding:4px 8px">'
+        + 'Web si nebyl jistý — ' + esc(n.nejiste.join('; ')) + '. Vyberte správnou možnost výš.</td></tr>';
+    }
+  });
+  h += '</tbody></table></div>'
+    + '<div class="nastroje" style="margin-top:10px">'
+    + '<button class="tl hlavni" title="Zaškrtnuté úkoly přidá do seznamu to-do a vyprázdní diktovací pole." onclick="ulozNavrhy()">Uložit do to-do</button>'
+    + '<button class="tl" title="Zahodí návrhy, diktovaný text v poli zůstane." onclick="navrhyTodo=[];kresliNavrhy();$(\'#stavDiktat\').textContent=\'\'">Zahodit návrhy</button>'
+    + '</div>';
+  cil.innerHTML = h;
+
+  cil.querySelectorAll('[data-n]').forEach(el=>{
+    el.onchange = ()=>{
+      const n = navrhyTodo[+el.dataset.n], p = el.dataset.p;
+      n[p] = (p==='predavka') ? (el.value===''?null:+el.value) : el.value;
+    };
+  });
+  cil.querySelectorAll('[data-vzit]').forEach(el=>{
+    el.onchange = ()=>{ navrhyTodo[+el.dataset.vzit].vzit = el.checked; };
+  });
+}
+
+function ulozNavrhy(){
+  const vzit = navrhyTodo.filter(n=>n.vzit!==false);
+  if(!vzit.length){ hlaska('Nic není zaškrtnuté'); return; }
+  vzit.forEach(n=>{
+    const {nejiste, vzit:_v, ...cisty} = n;
+    D.todo.push(cisty);
+  });
+  navrhyTodo = []; kresliNavrhy();
+  $('#diktat').value = ''; $('#stavDiktat').textContent = '';
+  kresliTodo();
+  hlaska(vzit.length + (vzit.length===1?' úkol uložen':' úkolů uloženo'));
+}
+
+function pridejTodo(){
+  D.todo.push({text:"", druh:"", kdo:"", grupa:"", predavka:null, nocleh:"",
+    termin:"", priorita:"běžná", stav:"nové", zdroj:"ručně", dikt:""});
+  kresliTodo();
+}
+
+// překlopení to-do položky na skutečný úkol v závodním plánu
+function todoNaUkol(t){
+  if(!t.grupa){ hlaska('Nejdřív vyberte grupu — bez ní se úkol nemá kam zařadit'); return; }
+  D.ukoly.push({parta:t.grupa, typ:"A", kod:"A", cislo:t.predavka||null,
+    kdy_text:"", popis:t.text, stav:"plán", zdroj:"z to-do"});
+  t.stav = "hotovo";
+  kresliTodo(); kresliPlan();
+  hlaska('Překlopeno do plánu, položka označená jako hotová');
+}
+
+function kresliTodo(){
+  const fs = $('#todoStav'), fk = $('#todoKdo');
+  const ds = fs.value, dk = fk.value;
+  fs.innerHTML = '<option value="">všechny stavy</option>'
+    + TODO_STAVY.map(s=>`<option${s===ds?' selected':''}>${esc(s)}</option>`).join('');
+  const lide = [...new Set(D.todo.map(t=>t.kdo).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'cs'));
+  fk.innerHTML = '<option value="">všichni</option>'
+    + lide.map(j=>`<option${j===dk?' selected':''}>${esc(j)}</option>`).join('');
+
+  const dnesIso = new Date().toISOString().slice(0,10);
+  const jenPo = $('#todoPoTerminu').checked;
+  const videt = D.todo.filter(t =>
+       (!ds || t.stav===ds) && (!dk || t.kdo===dk)
+    && (!jenPo || (t.termin && t.termin<=dnesIso && t.stav!=='hotovo' && t.stav!=='zrušeno')));
+
+  tabulka('#tabTodo', [
+    {nadpis:"Co se má udělat", pole:"text"},
+    {nadpis:"Druh", pole:"druh", typ:"select", sirka:"115px",
+      moznosti:[""].concat(TODO_DRUHY.map(d=>d.kod))},
+    {nadpis:"Kdo", pole:"kdo", typ:"select", sirka:"150px",
+      moznosti:()=>[""].concat(D.clenove.map(c=>c.jmeno))},
+    {nadpis:"Termín", pole:"termin", typ:"date", sirka:"140px"},
+    {nadpis:"Předávka", pole:"predavka", typ:"select", sirka:"170px",
+      moznosti:()=>[""].concat(D.predavky.map(p=>p.cislo))},
+    {nadpis:"Grupa", pole:"grupa", typ:"select", sirka:"105px",
+      moznosti:()=>[""].concat(D.tymy.map(g=>g.kod))},
+    {nadpis:"Priorita", pole:"priorita", typ:"select", sirka:"105px", moznosti:["běžná","vysoká"]},
+    {nadpis:"Stav", pole:"stav", typ:"select", sirka:"120px", moznosti:TODO_STAVY},
+    {nadpis:"Do plánu", sirka:"120px", html:(r,i)=>
+      '<button class="tl" style="padding:3px 9px;font-size:11.5px" data-doplanu="'+i+'"'
+      + ' title="Udělá z téhle položky úkol v závodním plánu u vybrané grupy.">→ úkol</button>'}
+  ], videt, ()=>kresliTodo(), true, false);
+
+  $('#tabTodo').querySelectorAll('[data-doplanu]').forEach(b=>{
+    b.onclick = ()=>todoNaUkol(videt[+b.dataset.doplanu]);
+  });
+
+  // zvýraznění propadlých termínů
+  $('#tabTodo').querySelectorAll('tbody tr').forEach((tr,i)=>{
+    const t = videt[i]; if(!t) return;
+    if(t.stav==='hotovo' || t.stav==='zrušeno'){ tr.style.opacity = '.5'; return; }
+    if(t.termin && t.termin < dnesIso) tr.style.background = '#FBECEE';
+    else if(t.termin === dnesIso) tr.style.background = '#FFF8E8';
+  });
+
+  const po = D.todo.filter(t=>t.termin && t.termin<dnesIso && t.stav!=='hotovo' && t.stav!=='zrušeno').length;
+  $('#stavTodo').textContent = 'zobrazeno ' + videt.length + ' z ' + D.todo.length
+    + (po ? ' · po termínu: ' + po : '');
+}
+
 /* ---------- 1b. podrobný plán ---------- */
 function naplnFiltryPodrobny(){
   const fp = $('#filtrPodrobny'), ft = $('#filtrTyp'), fs = $('#filtrStav');
@@ -1268,7 +1631,8 @@ function grupaBunka(r, i){
   const kody = D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99)).map(x=>x.kod);
   if(kody.indexOf(r.parta)<0 && r.parta) kody.unshift(r.parta);
   return '<span class="grupaOdznak" style="background:' + esc(t.barva||'#8A8371') + '">'
-    + '<select data-i="' + i + '" data-p="parta" title="Přehodí úkol jiné grupě.">'
+    + '<select data-i="' + i + '" data-p="parta" title="' + esc((t.nazev||r.parta)
+      + (t.vedouci?' — vedoucí '+t.vedouci:'')) + '. Přehodí úkol jiné grupě.">'
     + kody.map(k=>`<option${k===r.parta?' selected':''}>${esc(k)}</option>`).join('')
     + '</select></span>'
     + (jm ? '<span class="grupaJmeno">' + esc(jm) + '</span>' : '');
@@ -1276,14 +1640,25 @@ function grupaBunka(r, i){
 
 /* ---------- 2. grupy ---------- */
 function kresliTymy(){
+  // seznam se drží pořadí, aby seděl s paletou u plánu i s podrobným plánem
+  D.tymy.sort((a,b)=>(a.poradi||99)-(b.poradi||99) || String(a.kod).localeCompare(String(b.kod),'cs'));
   tabulka('#tabTymy', [
     {nadpis:"Kód", pole:"kod", sirka:"110px"},
     {nadpis:"Název", pole:"nazev"},
+    {nadpis:"Vedoucí", pole:"vedouci", typ:"select", sirka:"190px",
+      napovedaSl:"Kdo grupu vede. Jeho jméno se ukazuje na všech odznacích grupy. "
+        + "Na výběr jsou členové téhle grupy z tabulky Členové grup.",
+      moznosti:(r)=>{
+        const lide = D.clenove.filter(c=>c.kod_tymu===r.kod).map(c=>c.jmeno);
+        if(r.vedouci && lide.indexOf(r.vedouci)<0) lide.unshift(r.vedouci);
+        return [""].concat(lide);
+      }},
     {nadpis:"Pořadí", pole:"poradi", typ:"number", sirka:"90px", trida:"stred"},
     {nadpis:"Doprava", pole:"doprava", typ:"select", moznosti:DOPRAVY, sirka:"150px"},
     {nadpis:"Barva", pole:"barva", typ:"color", sirka:"80px"},
     {nadpis:"Poznámka", pole:"poznamka"}
-  ], D.tymy, ()=>{kresliTymy();kresliPaletu();naplnFiltrPart();}, true);
+  ], D.tymy, ()=>{kresliTymy();kresliPaletu();naplnFiltrPart();kresliPlan();
+                  if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();}, true);
 }
 
 /* ---------- 3. členové ---------- */
@@ -2112,6 +2487,7 @@ function nactiSoubor(vstup){
 
 /* ---------- start ---------- */
 function vseKresli(){
+  kresliTodo();
   kresliNastaveni(); kresliTymy(); naplnFiltrPart(); kresliClenove();
   kresliPredavky(); kresliNocMista(); kresliNocLide(); kresliPlan(); kresliPodrobny();
   kresliPristupy(); kresliTricka(); uplatniPrava();

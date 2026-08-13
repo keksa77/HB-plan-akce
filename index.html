@@ -1847,8 +1847,9 @@ function kresliNavrhy(){
   const cil = $('#navrhy');
   if(!navrhyTodo.length){ cil.innerHTML = ''; return; }
   let h = '<p class="popisek" style="margin-top:16px">Zkontrolujte, co z toho web vyčetl. '
-    + 'Cokoli jde přepsat. Když je v jednom řádku víc úkolů, napište do sloupce '
-    + '<b>Rozdělit na</b> jejich počet a klepněte na <b>Rozdělit</b>. '
+    + 'Cokoli jde přepsat. Když je v jednom řádku víc úkolů, klepněte na '
+    + '<b>Rozdělit</b> — web to zkusí rozebrat stejně jako diktát. Kdyby si '
+    + 'nevěděl rady, napište do sloupce <b>Rozdělit na</b>, kolik úkolů to má být. '
     + 'Uloží se až tlačítkem <b>Uložit do to-do</b>.</p>'
     + '<div class="obal-tab"><table class="tab"><thead><tr>'
     + '<th style="width:34px"></th>'
@@ -1856,8 +1857,8 @@ function kresliNavrhy(){
     + '<th style="width:135px" title="Termín, do kdy to má být hotové.">Termín</th>'
     + '<th style="width:180px" title="Ke které předávce se to váže.">Předávka</th>'
     + '<th style="width:110px">Grupa</th><th style="width:110px">Priorita</th>'
-    + '<th style="width:150px" title="Rozseká tenhle řádek na zadaný počet úkolů. '
-      + 'Web zkusí najít dělicí místa sám, zbytek dopíšete.">Rozdělit na</th>'
+    + '<th style="width:150px" title="Rozdělí tenhle řádek na víc úkolů. Číslo je '
+      + 'nepovinné — vyplňte ho, jen když má vyjít přesný počet.">Rozdělit</th>'
     + '</tr></thead><tbody>';
   navrhyTodo.forEach((n,i)=>{
     h += '<tr' + (n.nejiste.length?' style="background:#FFF8E8"':'') + '>'
@@ -1876,10 +1877,10 @@ function kresliNavrhy(){
       + '</select></td>'
       + '<td style="white-space:nowrap;padding:4px 6px">'
         + '<input type="number" min="2" max="12" data-pocet="'+i+'" value="'+(n.rozdelitNa||'')+'"'
-          + ' title="Na kolik úkolů se má řádek rozdělit." '
+          + ' title="Nepovinné — na kolik úkolů se má řádek rozdělit." '
           + 'style="width:52px;padding:5px 6px;border:1px solid var(--linka);border-radius:7px;text-align:center">'
         + ' <button class="tl" style="padding:4px 9px;font-size:11.5px" data-rozdel="'+i+'"'
-          + ' title="Rozdělí řádek na zadaný počet úkolů.">Rozdělit</button>'
+          + ' title="Rozebere řádek stejnými pravidly jako diktát.">Rozdělit</button>'
       + '</td></tr>';
     if(n.nejiste.length){
       h += '<tr style="background:#FFF8E8"><td></td><td colspan="6" class="popisek" style="padding:4px 8px">'
@@ -1914,26 +1915,41 @@ function kresliNavrhy(){
 }
 
 /* ---------- ruční rozdělení jednoho řádku na víc úkolů ----------
-   Diktovaná věta často nese výčet míst pod jedním slovesem („dal pak do Popova,
-   Starého Hrozenkova a Bojkovic"). Rozbor to sám neuřízne, protože sloveso je
-   jen jedno. Tohle to udělá na povel: text se rozseká na čárkách a spojce „a",
-   sloveso z první části se doplní tam, kde chybí, a u každého kusu se znovu
-   dohledá místo a termín. */
+   Nejdřív se na text pustí stejný rozbor jako na diktát (rozdelDiktat) — ať
+   platí jedna a tatáž pravidla, rozdělovací slova i „druhá předávka = nové
+   téma". Teprve když z toho vyjde jediný kus (typicky výčet pod jedním
+   slovesem — „dal pak do Popova, Starého Hrozenkova a Bojkovic"), řeže se
+   natvrdo na čárkách a spojce „a". Číslo ve sloupci Rozdělit na je nepovinné:
+   když ho vyplníte, výsledek se na ten počet dorovná. */
 function rozdelRadek(i){
   const n = navrhyTodo[i];
-  const pocet = Math.max(2, Math.min(12, parseInt(n.rozdelitNa, 10) || 0));
-  if(!pocet || pocet < 2){ hlaska('Napište, na kolik úkolů to rozdělit'); return; }
+  const zadano = parseInt(n.rozdelitNa, 10) || 0;
+  const pocet = (zadano >= 2) ? Math.min(12, zadano) : 0;
 
-  let casti = String(n.text).split(/\s*,\s*|\s+a\s+|\s+nebo\s+/).map(x=>x.trim()).filter(Boolean);
-  if(!casti.length) return;
-
-  // víc kusů než je potřeba — přebytek se přilepí k poslednímu
-  while(casti.length > pocet){
-    const posledni = casti.pop();
-    casti[casti.length-1] += ', ' + posledni;
+  // 1) stejná logika jako u diktovaného textu
+  let casti = rozdelDiktat(String(n.text)).map(x=>x.trim()).filter(Boolean);
+  let hrube = false;
+  // 2) rozbor našel míň, než je potřeba — rozseká se výčet na čárkách a spojkách
+  const chceVic = pocet ? (casti.length < pocet) : (casti.length < 2);
+  if(chceVic){
+    const vycet = String(n.text).split(/\s*,\s*|\s+a\s+|\s+nebo\s+/).map(x=>x.trim()).filter(Boolean);
+    if(vycet.length > casti.length){ casti = vycet; hrube = true; }
   }
-  // míň kusů — dorovná se opakováním celého textu, ať je co upravit
-  while(casti.length < pocet) casti.push(n.text);
+  if(!casti.length) return;
+  if(casti.length < 2 && !pocet){
+    hlaska('Rozbor tu žádné další úkoly nenašel — napište, na kolik je rozdělit');
+    return;
+  }
+
+  if(pocet){
+    // víc kusů než je potřeba — přebytek se přilepí k poslednímu
+    while(casti.length > pocet){
+      const posledni = casti.pop();
+      casti[casti.length-1] += ', ' + posledni;
+    }
+    // míň kusů — dorovná se opakováním celého textu, ať je co upravit
+    while(casti.length < pocet) casti.push(n.text);
+  }
 
   // úvod s prvním slovesem se zopakuje tam, kde vlastní sloveso chybí
   const maSloveso = t => {
@@ -1945,16 +1961,21 @@ function rozdelRadek(i){
     });
   };
   let uvod = '';
-  const prvniSlova = casti[0].split(/\s+/);
-  for(let k=0;k<prvniSlova.length;k++){
-    if(maSloveso(prvniSlova[k])){ uvod = prvniSlova.slice(0, k+1).join(' '); break; }
+  if(hrube){                       // rozdelDiktat si sloveso doplní sám
+    const prvniSlova = casti[0].split(/\s+/);
+    for(let k=0;k<prvniSlova.length;k++){
+      if(maSloveso(prvniSlova[k])){ uvod = prvniSlova.slice(0, k+1).join(' '); break; }
+    }
   }
 
   const dnes = new Date();
   const nove = casti.map(cast0=>{
-    let cast = cast0.replace(PRAV.rozdeleni.re_spojky_zacatek, '').trim();
-    // zbytky typu „dal pak" na začátku části nemají v úkolu co dělat
-    cast = cast.replace(/^(dal|dál|pak|potom|ještě|taky|také)\s+/i, '').trim() || cast0;
+    let cast = cast0;
+    if(hrube){
+      cast = cast0.replace(PRAV.rozdeleni.re_spojky_zacatek, '').trim();
+      // zbytky typu „dal pak" na začátku části nemají v úkolu co dělat
+      cast = cast.replace(/^(dal|dál|pak|potom|ještě|taky|také)\s+/i, '').trim() || cast0;
+    }
     const text = (uvod && !maSloveso(cast)) ? (uvod + ' ' + cast) : cast;
     const u = rozeberVetu(text, dnes);
     // co bylo na původním řádku vyplněné a v části se nenašlo, se přebere

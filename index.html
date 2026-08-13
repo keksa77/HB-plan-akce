@@ -272,7 +272,8 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
       <div class="telo">
         <p class="popisek">Nadiktujte klidně víc úkolů za sebou — každý se založí zvlášť.
           Pomůže, když řeknete jméno, místo a termín: „zavolat Lukášovi na Bumbálku do pátku".
-          Interpunkci diktovat nemusíte.</p>
+          Interpunkci diktovat nemusíte — rozdělení se pozná podle sloves. Když si chcete
+          být jistí, dejte každý úkol na vlastní řádek; řádek se nikdy neslučuje.</p>
         <div class="popisek" id="jakDiktovat" style="margin:-4px 0 10px"></div>
         <textarea id="diktat" rows="4" placeholder="Například: Zavolat Lukášovi na Bumbálku, jestli letos zase zajistí předávku, do pátku. Objednat 300 fáborků do konce srpna. Domluvit s obcí Bílá záchody na předávce 6."
           title="Sem se diktuje. Nic se nikam neposílá, dokud úkoly nepotvrdíte."
@@ -1327,12 +1328,15 @@ const TODO_DRUHY = [
 // vedlejší věty tím pádem nový úkol nezaloží.
 const SLOVESA_UKOLU = [
   "zavolat","zavolej","volat","telefonovat","brnknout","ozvat",
-  "napsat","napiš","mailnout","odepsat",
-  "objednat","objednej","koupit","kup","nakoupit","pořídit","zajistit","zajisti","sehnat","dodat",
+  "napsat","napiš","mailnout","odepsat","rozeslat","zaslat","poslat","pošli",
+  "objednat","objednej","doobjednat","koupit","kup","nakoupit","pořídit","zajistit","zajisti",
+  "sehnat","dodat","poptat","oslovit",
   "zaplatit","zaplať","uhradit","fakturovat","proplatit",
-  "domluvit","domluv","dohodnout","potvrdit","potvrď","zamluvit","rezervovat",
+  "domluvit","domluv","dohodnout","potvrdit","potvrď","zamluvit","rezervovat","pozvat","svolat",
   "zjistit","zjisti","ověřit","ověř","zkontrolovat","zkontroluj","spočítat","projít","obvolat",
-  "připravit","priprav","nachystat","vytisknout","vyřešit","zařídit","zařiď","dovézt","poslat","pošli"
+  "připravit","priprav","nachystat","vytisknout","dotisknout","vyřešit","vyřídit","zařídit","zařiď",
+  "vyzvednout","dovézt","odvézt","roznést","nahlásit","připomenout","poděkovat",
+  "natočit","vyfotit","doplnit","zrušit","přeložit","zkusit"
 ];
 // spojky, kterými diktovaná věta nový úkol uvádí, a zbytky visící na konci
 const SPOJKY_PRED_UKOLEM = /^(a|pak|potom|ještě|jeste|taky|také|dál|dále|no|jo|tak)\s+/i;
@@ -1513,9 +1517,23 @@ function rozdelDiktat(text){
   hrube.forEach(kus=>{
     const rezy = [];
     let pozice = 0;
+    let predchoziSlovo = '', predchoziZnak = '';
+    // slovo vypadá na infinitiv: dělat, koupit, vidět, vyzvednout…
+    const jeInfinitiv = w => w.length >= 5 && /(at|át|it|ít|et|ět|out)$/.test(w);
+    // po těchhle slovech (a po čárce) často začíná další úkol
+    const jeSpojka = w => ['a','pak','potom','ještě','jeste','taky','také','nebo','dál','dále']
+                            .indexOf(w) >= 0;
     kus.split(/(\s+)/).forEach(w=>{
       const ciste = w.toLowerCase().replace(/[^a-zá-žčďěňřšťůýž]/gi,'');
-      if(ciste && SLOVESA_UKOLU.some(v=>v.toLowerCase()===ciste)) rezy.push(pozice);
+      if(ciste){
+        const vSeznamu = SLOVESA_UKOLU.some(v=>v.toLowerCase()===ciste);
+        // sloveso mimo seznam bere jako začátek úkolu jen tehdy, když stojí
+        // na začátku nebo za spojkou či čárkou — jinak by se sekaly vedlejší věty
+        const naHranici = pozice === 0 || jeSpojka(predchoziSlovo) || predchoziZnak === ',';
+        if(vSeznamu || (naHranici && jeInfinitiv(ciste))) rezy.push(pozice);
+        predchoziSlovo = ciste;
+        predchoziZnak = w.trim().slice(-1);
+      }
       pozice += w.length;
     });
     if(rezy.length < 2){ vysledek.push(kus); return; }

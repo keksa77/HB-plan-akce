@@ -1418,8 +1418,18 @@ const PRAVIDLA = {
       infinitiv_koncovky: ["at","át","it","ít","et","ět","out"],
       infinitiv_min_delka: 5,
       min_delka_useku: 8,
-      // obraty, které v diktátu uvozují další úkol
-      fraze_novy_ukol: ["a pak","další úkol","dalsi ukol","jo a ještě","a ještě"],
+      // druhá a každá další zmínka o předávce zakládá nový úkol
+      predavka_deli: true,
+      // …kromě vazeb, kde dvě místa patří k jedné cestě
+      prejezd_vazby: ["z (.+?) do ", "ze (.+?) do ", "mezi (.+?) a ", "od (.+?) k "],
+      // obraty, které samy o sobě uvozují další úkol — vybráno 13. 8. 2026.
+      // Delší varianty musí stát před kratšími, jinak by „a pak" uřízlo „a pak ještě".
+      fraze_novy_ukol: [
+        "a pak ještě","jo a ještě","a ještě","a pak","a potom","a nakonec",
+        "a taky","a také","dalším úkolem","další úkol","dalsi ukol","další věc",
+        "kromě toho","mimo to","za druhé","za třetí","no a","jo a",
+        "nakonec","potom","dále","zároveň","současně"
+      ],
       spojky_na_zacatku: "^(a|pak|potom|ještě|jeste|taky|také|dál|dále|no|jo|tak)\\s+",
       spojky_na_konci:   "[\\s,]+(a|a\\s+pak|a\\s+potom|a\\s+ještě|a\\s+jeste|a\\s+taky|a\\s+také|pak|potom|ještě|jeste|taky|také)$"
     },
@@ -1672,6 +1682,50 @@ function rozeberVetu(veta, dnes){
   };
 }
 
+
+// pozice všech zmínek o předávce v textu (podle názvu i podle čísla)
+function najdiPoziceMist(text){
+  const t = bezDiakritiky(text);
+  const slovaTextu = [...t.matchAll(/[a-z0-9]+/g)];
+  const poz = [];
+
+  (D.predavky||[]).forEach(p=>{
+    const slova = String(p.nazev||'').split(/[\s,]+/).filter(x=>x.length>=4);
+    if(!slova.length) return;
+    const trefy = slova.map(w=>{
+      const z = bezDiakritiky(w).replace(/[^a-z0-9]/g,'');
+      const predpona = z.slice(0, Math.max(4, z.length-2));
+      const m = slovaTextu.find(x=>x[0].indexOf(predpona)===0);
+      return m ? m.index : -1;
+    });
+    if(trefy.every(x=>x>=0)) poz.push(Math.min(...trefy));
+  });
+
+  // „na předávce 6", „etapa 12"
+  const re = /(?:predav|etap)\w*\s*(?:c\.?|cislo)?\s*\d{1,2}/g;
+  let m; while((m = re.exec(t)) !== null) poz.push(m.index);
+
+  return [...new Set(poz)].sort((a,b)=>a-b);
+}
+
+// začátek větného celku, ve kterém ta zmínka leží — řeže se před spojkou nebo čárkou
+function zacatekVetnehoCelku(text, poz){
+  const pred = text.slice(0, poz);
+  const hranice = Math.max(
+    pred.lastIndexOf(','),
+    ...['" a "','" nebo "','" pak "','" potom "','" ještě "','" taky "','" také "']
+      .map(x=>pred.lastIndexOf(x.slice(1,-1)))
+  );
+  if(hranice < 0) return 0;
+  let i = hranice;
+  while(i < text.length && /[\s,]/.test(text[i])) i++;
+  // přeskočit samotnou spojku
+  const zbytek = text.slice(i);
+  const sp = zbytek.match(/^(a|nebo|pak|potom|ještě|taky|také)\s+/i);
+  if(sp) i += sp[0].length;
+  return i;
+}
+
 // rozdělení diktátu na věty — tečka, nový řádek, nebo obrat „a pak / další úkol".
 // Tečky uvnitř data (15. 8., 3. září) se nesmí splést s koncem věty, tak je schováme.
 function rozdelDiktat(text){
@@ -1713,6 +1767,24 @@ function rozdelDiktat(text){
       }
       pozice += w.length;
     });
+    // druhá zmínka o předávce je nové téma — ale ne u přejezdů „z X do Y"
+    if(R.predavka_deli){
+      const bezDia = bezDiakritiky(kus);
+      const chranene = [];              // úseky, kde dvě místa patří k sobě
+      (R.prejezd_vazby||[]).forEach(v=>{
+        const re = new RegExp(v, 'g');
+        let m; while((m = re.exec(bezDia)) !== null) chranene.push([m.index, m.index + m[0].length + 25]);
+      });
+      const chraneno = i => chranene.some(([a,b]) => i >= a && i <= b);
+      const mista = najdiPoziceMist(kus);
+      mista.slice(1).forEach(poz=>{      // první zmínka řez nezakládá
+        if(chraneno(poz)) return;
+        const zacatek = zacatekVetnehoCelku(kus, poz);
+        if(zacatek > 0 && rezy.indexOf(zacatek) < 0) rezy.push(zacatek);
+      });
+      rezy.sort((a,b)=>a-b);
+    }
+
     if(rezy.length < 2){ vysledek.push(kus); return; }
 
     for(let i=0;i<rezy.length;i++){
@@ -1727,7 +1799,7 @@ function rozdelDiktat(text){
   });
 
   // uklidit spojky, které řez nechal viset na okrajích
-  return vysledek
+  const ciste = vysledek
     .map(x=>{
       let y = x.replace(R.re_spojky_zacatek,'').trim();
       let d;                                   // spojek může viset víc za sebou
@@ -1735,6 +1807,24 @@ function rozdelDiktat(text){
       return y.replace(/[\s,]+$/,'');
     })
     .filter(x=>x.length>=4);
+
+  // Řez umí uříznout kus bez slovesa („a taky na předávce 12"). Z takového úkolu
+  // není poznat, co se má dělat, tak si půjčí sloveso z předchozího úkolu.
+  const maSlvs = t => String(t).split(/\s+/).some(w=>{
+    const c = w.toLowerCase().replace(/[^a-zá-žčďěňřšťůýž]/gi,'');
+    return c && (R.slovesa.some(v=>v.toLowerCase()===c)
+                 || (c.length>=R.infinitiv_min_delka && R.re_infinitiv.test(c)));
+  });
+  const uvodZ = t => {
+    const w = String(t).split(/\s+/);
+    for(let k=0;k<w.length;k++) if(maSlvs(w[k])) return w.slice(0, k+1).join(' ');
+    return '';
+  };
+  return ciste.map((x,i)=>{
+    if(i === 0 || maSlvs(x)) return x;
+    const uvod = uvodZ(ciste[i-1]);
+    return uvod ? (uvod + ' ' + x) : x;
+  });
 }
 
 let navrhyTodo = [];

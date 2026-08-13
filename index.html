@@ -191,10 +191,33 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   <div class="hlava">
     <h1>Hory Bory — plánování</h1>
     <span class="rok" id="odznakRok">HB26</span>
-    <span class="pozn">Veřejná ukázka bez osobních údajů · data jen v paměti prohlížeče</span>
+    <span class="pozn" id="poznHlavicka">Veřejná ukázka bez osobních údajů · data jen v paměti prohlížeče</span>
+    <span id="stavPrihlaseni" style="margin-left:auto;display:flex;align-items:center;gap:8px"></span>
   </div>
   <nav id="nav"></nav>
 </header>
+
+<div id="prihlaseni" style="display:none;position:fixed;inset:0;z-index:60;
+     background:rgba(43,38,32,.55);align-items:center;justify-content:center">
+  <form id="formPrihlaseni" onsubmit="return prihlas(event)"
+        style="background:#fff;border-radius:14px;padding:26px 28px;width:340px;
+               box-shadow:0 18px 50px rgba(0,0,0,.28)">
+    <h2 style="margin:0 0 4px;font-size:19px">Přihlášení</h2>
+    <p class="popisek" style="margin:0 0 16px">
+      Bez přihlášení vidíte jen ukázku bez kontaktů a nic se neukládá.</p>
+    <label class="popisek" for="prihEmail">E-mail</label>
+    <input id="prihEmail" type="email" autocomplete="username" required
+           style="width:100%;margin:4px 0 12px">
+    <label class="popisek" for="prihHeslo">Heslo</label>
+    <input id="prihHeslo" type="password" autocomplete="current-password" required
+           style="width:100%;margin:4px 0 16px">
+    <div id="prihChyba" class="popisek" style="color:#A4443A;min-height:18px;margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="tl hlavni" type="submit" id="prihTlacitko">Přihlásit</button>
+      <button class="tl" type="button" onclick="zavriPrihlaseni()">Zpět do ukázky</button>
+    </div>
+  </form>
+</div>
 
 <div class="nahledLista" id="nahledLista">
   <span>Prohlížíte web jako <b id="nahledNazev"></b></span>
@@ -848,7 +871,9 @@ const OBLASTI = [
 let nahledUroven = "";
 const VEREJNA = false;   // veřejná verze pro GitHub Pages = true
 const CITLIVE = ["Telefon","E-mail","Číslo účtu","Kontakt","Cena","Rezervace","Poznámka","Adresa","Mapa"];
-const bezCitlivych = sl => VEREJNA ? sl.filter(x=>CITLIVE.indexOf(x.nadpis)<0) : sl;
+// Ve veřejném buildu jsou citlivé sloupce schované — dokud se člověk nepřihlásí.
+// Po přihlášení se data načtou z databáze a sloupce se objeví.
+const bezCitlivych = sl => (VEREJNA && !prihlasen) ? sl.filter(x=>CITLIVE.indexOf(x.nadpis)<0) : sl;
 const NERESI = "neřeší se";
 const volbyNoclehu = () => ["", NERESI].concat(D.nocMista.map(m=>m.kod));
 
@@ -1267,8 +1292,9 @@ function zavriEditor(){ edUkol=null; $('#editor').classList.remove('videt'); }
 
 
 /* ---------- hlídač neuložených změn ----------
-   Plánovač zatím nikde neukládá — data žijí jen v paměti prohlížeče. Dokud
-   nebude napojení na Supabase, aspoň nesmí jít o práci přijít obnovením stránky. */
+   Přihlášený ukládá tlačítkem do databáze, nepřihlášený jen do souboru.
+   V obou případech platí, že obnovením stránky se neuložená práce ztratí,
+   tak na to okno upozorní. */
 let zmeneno = false;
 function oznacZmenu(){
   if(zmeneno) return;
@@ -1277,10 +1303,13 @@ function oznacZmenu(){
 }
 function kresliStavUlozeni(){
   const el = $('#stavUlozeni'); if(!el) return;
-  el.innerHTML = zmeneno
-    ? '<b>Neuloženo.</b> Změny žijí jen v tomhle okně. Uložte je tlačítkem '
-      + '<b>Uložit do souboru</b> v Plánu úkolů, jinak o ně obnovením stránky přijdete.'
-    : '';
+  el.innerHTML = !zmeneno ? '' : (prihlasen
+    ? '<b>Neuloženo.</b> Změny zatím žijí jen v tomhle okně. '
+      + '<button class="tl hlavni" id="tlUlozitDb" style="padding:3px 10px;font-size:11.5px;margin-left:6px" '
+      + 'onclick="ulozDoDatabaze()">Uložit do databáze</button>'
+    : '<b>Neuloženo.</b> Změny žijí jen v tomhle okně a nikam se neukládají — '
+      + 'k tomu se musíte přihlásit. Do té doby si je můžete stáhnout tlačítkem '
+      + '<b>Uložit do souboru</b> v Plánu úkolů.');
   el.style.display = zmeneno ? '' : 'none';
 }
 window.addEventListener('beforeunload', e=>{
@@ -3134,6 +3163,313 @@ function nactiSoubor(vstup){
   r.readAsText(f);
 }
 
+
+/* ============================================================
+   PŘIPOJENÍ K DATABÁZI (Supabase)
+   ------------------------------------------------------------
+   Stránka mluví s databází přímo přes její REST rozhraní, žádná
+   cizí knihovna se nestahuje. Veřejný klíč níž sám o sobě nic
+   neotevře — do tabulek pouští až pravidla, která platí pro
+   přihlášeného uživatele. Nepřihlášený nevidí nic.
+   ============================================================ */
+const SB = {
+  url:  'https://rjuxqlyckikuxfaeaozf.supabase.co',
+  klic: 'sb_publishable_wsSsZ1hCLbrRThr8Co4xbg_W9yAucb6',
+  ulozKlic: 'hb_relace'
+};
+let relace = null;          // {token, obnova, platiDo, email}
+let prihlasen = false;
+let zDatabaze = [];         // které sady se opravdu načetly z databáze
+let sadySChybou = [];       // a které se načíst nepovedly — ty se nesmí ukládat
+
+/* ---------- co odkud a jak se jmenuje ----------
+   klic  = podle čeho se řádek pozná v databázi
+   rok   = tabulka se vede po ročnících, filtruje se aktivním rokem
+   pole  = název v prohlížeči : název sloupce v databázi
+   jen   = pole, která databáze nezná a při načtení se musí zachovat */
+const MAPA = {
+  tymy: {
+    tabulka:'tymy_org', klic:['kod'], konflikt:['rok','kod'], rok:true, jen:['barva','zRocniku'],
+    pole:{kod:'kod', nazev:'nazev', poradi:'poradi', doprava:'doprava', poznamka:'poznamka'}
+  },
+  clenove: {
+    tabulka:'clenove_tymu', klic:['id'], konflikt:['id'], rok:true, jen:['zRocniku'],
+    pole:{id:'id', kod_tymu:'kod_tymu', jmeno:'jmeno', telefon:'telefon', email:'email',
+          nocleh_patek:'nocleh_patek', nocleh_sobota:'nocleh_sobota',
+          cislo_uctu:'cislo_uctu', poznamka:'poznamka', sef:'sef'},
+    naJs:  r => ({...r, sef: r.sef ? 'ano' : 'ne'}),
+    naDb:  r => ({...r, sef: r.sef === 'ano'})
+  },
+  predavky: {
+    tabulka:'predavky', klic:['cislo'], konflikt:['rok','cislo'], rok:true, jen:['prvni','posledni','_km'],
+    pole:{cislo:'cislo', nazev:'nazev', lat:'gps_lat', lon:'gps_lon', typ:'typ_zajisteni',
+          pozn:'poznamka', gpx:'gpx_soubor', km:'delka_km'}
+  },
+  nocMista: {
+    tabulka:'noclehy_adresy', klic:['kod'], konflikt:['rok','kod'], rok:true, jen:[],
+    pole:{kod:'kod', nazev:'nazev', adresa:'adresa', mapa_url:'mapa_url', kapacita:'kapacita',
+          pokoje:'pokoje', kontakt:'kontakt', telefon:'telefon', cena:'cena',
+          platba:'platba', rezervace:'rezervace', poznamka:'poznamka'}
+  },
+  nocLide: {
+    tabulka:'noclehy_lide', klic:['id'], konflikt:['id'], rok:true, jen:[],
+    pole:{id:'id', noc:'noc', kod_noclehu:'kod_noclehu', clen_id:'clen_id',
+          jmeno:'jmeno', kod_tymu:'kod_tymu', poznamka:'poznamka'}
+  },
+  todo: {
+    tabulka:'todo', klic:['id'], konflikt:['id'], rok:true, jen:['vzit','rozdelitNa','nejiste'],
+    pole:{id:'id', text:'text', druh:'druh', kdo:'kdo', termin:'termin', priorita:'priorita',
+          stav:'stav', predavka:'predavka_cislo', grupa:'kod_tymu', nocleh:'kod_noclehu',
+          zdroj:'zdroj', dikt:'dikt'}
+  }
+};
+
+/* ---------- relace ---------- */
+function relaceUloz(){
+  try{ localStorage.setItem(SB.ulozKlic, JSON.stringify(relace)); }catch(e){}
+}
+function relaceNacti(){
+  try{ relace = JSON.parse(localStorage.getItem(SB.ulozKlic) || 'null'); }catch(e){ relace = null; }
+}
+function relaceZahod(){
+  relace = null; prihlasen = false; zDatabaze = [];
+  try{ localStorage.removeItem(SB.ulozKlic); }catch(e){}
+}
+
+async function sbToken(telo){
+  const o = await fetch(SB.url + '/auth/v1/token?grant_type=' + telo.grant, {
+    method:'POST',
+    headers:{'apikey':SB.klic, 'Content-Type':'application/json'},
+    body: JSON.stringify(telo.data)
+  });
+  const v = await o.json();
+  if(!o.ok) throw new Error(v.error_description || v.msg || v.error || 'přihlášení selhalo');
+  relace = { token:v.access_token, obnova:v.refresh_token, email:(v.user||{}).email,
+             platiDo: Date.now() + (v.expires_in || 3600)*1000 - 60000 };
+  relaceUloz();
+  return relace;
+}
+
+// zavolá se před každým dotazem — vypršelý token si sám obnoví
+async function sbPlatnyToken(){
+  if(!relace) throw new Error('nepřihlášeno');
+  if(Date.now() < relace.platiDo) return relace.token;
+  await sbToken({grant:'refresh_token', data:{refresh_token: relace.obnova}});
+  return relace.token;
+}
+
+async function sbDotaz(cesta, volby){
+  const token = await sbPlatnyToken();
+  const o = await fetch(SB.url + '/rest/v1/' + cesta, Object.assign({
+    headers: Object.assign({
+      'apikey': SB.klic,
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    }, (volby||{}).headers || {})
+  }, volby || {}));
+  const txt = await o.text();
+  if(!o.ok) throw new Error('databáze odmítla dotaz (' + o.status + '): ' + txt.slice(0,200));
+  return txt ? JSON.parse(txt) : [];
+}
+
+/* ---------- převod mezi tvarem v prohlížeči a v databázi ---------- */
+function zDb(sada, r){
+  const m = MAPA[sada], v = {};
+  Object.keys(m.pole).forEach(js => { v[js] = r[m.pole[js]]; });
+  return m.naJs ? m.naJs(v) : v;
+}
+function doDb(sada, r, rok){
+  const m = MAPA[sada], v = {};
+  Object.keys(m.pole).forEach(js => {
+    if(js === 'id' && (r.id === undefined || r.id === null)) return;   // nový řádek
+    let h = r[js];
+    if(h === '' && js !== 'text' && js !== 'jmeno' && js !== 'nazev') h = null;
+    v[m.pole[js]] = h;
+  });
+  if(m.rok) v.rok = rok;
+  return m.naDb ? m.naDb(v) : v;
+}
+
+/* ---------- načtení ---------- */
+async function nactiZDatabaze(){
+  const rok = D.nastaveni.aktivni_rok;
+  const hlaseni = [];
+  zDatabaze = []; sadySChybou = [];
+  for(const sada of Object.keys(MAPA)){
+    const m = MAPA[sada];
+    const filtr = m.rok ? ('&rok=eq.' + encodeURIComponent(rok)) : '';
+    let radky;
+    try{
+      radky = await sbDotaz(m.tabulka + '?select=*' + filtr);
+    }catch(e){
+      hlaseni.push(sada + ': ' + e.message);
+      sadySChybou.push(sada);          // co se nenačetlo, to se nesmí ani přepsat
+      continue;
+    }
+    // Prázdná tabulka neznamená „smaž, co máš" — data zapečená v souboru
+    // zůstanou a při prvním uložení se do databáze pošlou.
+    if(!radky.length){ hlaseni.push(sada + ': v databázi zatím nic, nechávám co je'); continue; }
+
+    const stare = {};
+    (D[sada] || []).forEach(r => { stare[klicRadku(sada, r)] = r; });
+    D[sada] = radky.map(r => {
+      const novy = zDb(sada, r);
+      const puvodni = stare[klicRadku(sada, novy)];
+      (m.jen || []).forEach(k => { if(puvodni && puvodni[k] !== undefined) novy[k] = puvodni[k]; });
+      return novy;
+    });
+    zDatabaze.push(sada);
+  }
+  // nastavení je jediný řádek, jde mimo mapu
+  try{
+    const n = await sbDotaz('nastaveni?select=*&id=eq.1');
+    if(n.length){ D.nastaveni.aktivni_rok = n[0].aktivni_rok; D.nastaveni.datum_zavodu = n[0].datum_zavodu || ''; }
+  }catch(e){ hlaseni.push('nastavení: ' + e.message); }
+  return hlaseni;
+}
+const klicRadku = (sada, r) => MAPA[sada].klic.map(k => r[k]).join('|');
+
+/* ---------- přihlášení a odhlášení ---------- */
+async function prihlas(ev){
+  ev.preventDefault();
+  const tl = $('#prihTlacitko'), chyba = $('#prihChyba');
+  chyba.textContent = ''; tl.disabled = true; tl.textContent = 'Přihlašuji…';
+  try{
+    await sbToken({grant:'password', data:{email:$('#prihEmail').value.trim(), password:$('#prihHeslo').value}});
+    $('#prihHeslo').value = '';
+    await poPrihlaseni();
+  }catch(e){
+    chyba.textContent = (String(e.message).indexOf('credentials')>=0)
+      ? 'Špatný e-mail nebo heslo.' : ('Nepovedlo se: ' + e.message);
+  }
+  tl.disabled = false; tl.textContent = 'Přihlásit';
+  return false;
+}
+
+async function poPrihlaseni(){
+  prihlasen = true;
+  zavriPrihlaseni();
+  kresliStavPrihlaseni();
+  hlaska('Načítám data z databáze…');
+  const potize = await nactiZDatabaze();
+  vseKresli(); kresliNav();
+  zmeneno = false; kresliStavUlozeni();
+  kresliStavPrihlaseni();
+  hlaska(potize.length
+    ? ('Načteno, ale s výhradami: ' + potize.join(' · '))
+    : ('Načteno z databáze: ' + zDatabaze.join(', ')));
+}
+
+function odhlas(){
+  if(zmeneno && !confirm('Máte neuložené změny. Opravdu se odhlásit?')) return;
+  relaceZahod();
+  location.reload();
+}
+
+function otevriPrihlaseni(){
+  $('#prihlaseni').style.display = 'flex';
+  setTimeout(()=>$('#prihEmail').focus(), 50);
+}
+function zavriPrihlaseni(){ $('#prihlaseni').style.display = 'none'; }
+
+function kresliStavPrihlaseni(){
+  const c = $('#stavPrihlaseni'); if(!c) return;
+  c.innerHTML = prihlasen
+    ? '<span class="pozn">přihlášen: ' + esc(relace && relace.email || '') + '</span>'
+      + '<button class="tl" style="padding:3px 10px;font-size:11.5px" onclick="odhlas()">Odhlásit</button>'
+    : '<button class="tl hlavni" style="padding:3px 10px;font-size:11.5px" onclick="otevriPrihlaseni()">Přihlásit</button>';
+  const pozn = $('#poznHlavicka');
+  if(pozn) pozn.textContent = prihlasen
+    ? 'data z databáze · změny se ukládají tlačítkem'
+    : 'ukázka bez kontaktů · nic se neukládá';
+}
+
+// po načtení stránky: platnou relaci obnovíme, ať se nemusí hlásit pořád dokola
+async function obnovRelaci(){
+  relaceNacti();
+  if(!relace || !relace.obnova) return;
+  try{
+    await sbPlatnyToken();
+    await poPrihlaseni();
+  }catch(e){ relaceZahod(); kresliStavPrihlaseni(); }
+}
+
+
+/* ---------- uložení do databáze ----------
+   Sad je málo a řádků v nich pár set, takže se neřeší, co přesně se změnilo:
+   pošle se celá sada. Řádky s klíčem se přepíšou, nové se založí a databáze
+   vrátí jejich id. Co v prohlížeči není a v databázi zůstalo, se smaže —
+   proto se sada, která se nepovedla načíst, radši přeskočí. */
+async function ulozDoDatabaze(){
+  if(!prihlasen){ hlaska('Nejste přihlášen, ukládat není kam'); return; }
+  const tl = $('#tlUlozitDb');
+  if(tl){ tl.disabled = true; tl.textContent = 'Ukládám…'; }
+  const rok = D.nastaveni.aktivni_rok;
+  const hotovo = [], potize = [];
+
+  for(const sada of Object.keys(MAPA)){
+    if(sadySChybou.indexOf(sada) >= 0){ potize.push(sada + ': přeskočeno, nenačetlo se'); continue; }
+    const m = MAPA[sada];
+    const radky = D[sada] || [];
+    try{
+      // 1) zápis — nové řádky zvlášť, ať se vrátí jejich id
+      const sKlicem = radky.filter(r => m.klic.every(k => r[k] !== undefined && r[k] !== null && r[k] !== ''));
+      const nove    = radky.filter(r => sKlicem.indexOf(r) < 0);
+
+      if(sKlicem.length){
+        // on_conflict musí sedět na klíč v databázi, ne na to, podle čeho
+        // se řádek pozná v prohlížeči — u tabulek s id je to samotné id
+        await sbDotaz(m.tabulka + '?on_conflict=' + (m.konflikt || m.klic).join(','), {
+          method:'POST',
+          headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+          body: JSON.stringify(sKlicem.map(r => doDb(sada, r, rok)))
+        });
+      }
+      if(nove.length){
+        const vratene = await sbDotaz(m.tabulka, {
+          method:'POST',
+          headers:{'Prefer':'return=representation'},
+          body: JSON.stringify(nove.map(r => doDb(sada, r, rok)))
+        });
+        vratene.forEach((v,i)=>{ m.klic.forEach(k=>{ nove[i][k] = v[m.pole[k]]; }); });
+      }
+
+      // 2) smazání toho, co uživatel v prohlížeči zahodil
+      const zbyle = radky.map(r => r[m.klic[0]]).filter(x => x !== undefined && x !== null && x !== '');
+      const sloupec = m.pole[m.klic[0]];
+      let filtr = (m.rok ? 'rok=eq.' + encodeURIComponent(rok) + '&' : '');
+      if(zbyle.length){
+        const seznam = zbyle.map(x => typeof x === 'string' ? '"' + String(x).replace(/"/g,'') + '"' : x).join(',');
+        filtr += sloupec + '=not.in.(' + encodeURIComponent(seznam) + ')';
+      }else{
+        filtr += sloupec + '=not.is.null';
+      }
+      await sbDotaz(m.tabulka + '?' + filtr, {method:'DELETE', headers:{'Prefer':'return=minimal'}});
+
+      hotovo.push(sada + ' (' + radky.length + ')');
+    }catch(e){
+      potize.push(sada + ': ' + e.message);
+    }
+  }
+
+  // nastavení ročníku
+  try{
+    await sbDotaz('nastaveni?on_conflict=id', {
+      method:'POST',
+      headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body: JSON.stringify([{id:1, aktivni_rok:D.nastaveni.aktivni_rok, datum_zavodu:D.nastaveni.datum_zavodu || null}])
+    });
+  }catch(e){ potize.push('nastavení: ' + e.message); }
+
+  if(tl){ tl.disabled = false; tl.textContent = 'Uložit do databáze'; }
+  if(potize.length){
+    hlaska('Uloženo částečně. Nepovedlo se: ' + potize.join(' · '));
+  }else{
+    zmeneno = false; kresliStavUlozeni();
+    hlaska('Uloženo do databáze: ' + hotovo.join(', '));
+  }
+}
+
 /* ---------- start ---------- */
 function vseKresli(){
   kresliTodo(); naplnRucne();
@@ -3163,6 +3499,8 @@ window.addEventListener('resize', zmerHlavicku);
 PRAV = slozPravidla('HB');
 kresliNav();
 vseKresli();
+kresliStavPrihlaseni();
+obnovRelaci();
 napisJakDiktovat();
 prepni('s-ukoly');
 zmerHlavicku();

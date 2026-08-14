@@ -938,6 +938,17 @@ const prvniJmeno = k => {
   if(c.length < 2 || !c[1]) return c[0];
   return c[0] + ' ' + c[1][0].toUpperCase() + '.';
 };
+// Kód grupy se nikde neukazuje sám — vždycky se za něj připíše šéf grupy
+// ve zkráceném tvaru (křestní + písmeno příjmení, přezdívka celá). Když šéf
+// není označený, nastoupí první člen.
+const popisGrupy = k => { const j = prvniJmeno(k); return j ? (k + ' · ' + j) : k; };
+// volby do rozbalovacích seznamů: hodnota zůstává kód, vidět je i jméno
+const volbyGrup = (sPrazdnou, seradit) => {
+  const t = seradit ? D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99)) : D.tymy;
+  const v = t.map(x=>({v:x.kod, t:popisGrupy(x.kod)}));
+  return sPrazdnou ? [{v:"", t:(typeof sPrazdnou === 'string' ? sPrazdnou : "")}].concat(v) : v;
+};
+
 const jePartaVDb = k => !!parta(k) && MIMO_DB.indexOf(k)<0;
 const hlaska = t => {const h=$('#hlaska');h.textContent=t;h.classList.add('videt');
   clearTimeout(h._t);h._t=setTimeout(()=>h.classList.remove('videt'),1900);};
@@ -1098,8 +1109,14 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
         h += `<td class="${s.trida||''}" style="padding:7px 8px;font-size:13px;color:var(--pisek)">${esc(v)}</td>`;
       } else if(s.typ==='select'){
         const moznosti = (typeof s.moznosti==='function'? s.moznosti(r) : s.moznosti);
+        // volba může být holá hodnota, nebo dvojice {v: hodnota, t: co je vidět}
         h += `<td class="${s.trida||''}"><select data-i="${i}" data-p="${s.pole}">`
-          + moznosti.map(m=>`<option${String(m)===String(v==null?'':v)?' selected':''}>${esc(m)}</option>`).join('')
+          + moznosti.map(m=>{
+              const hod = (m && typeof m === 'object') ? m.v : m;
+              const vid = (m && typeof m === 'object') ? m.t : m;
+              const vyb = String(hod)===String(v==null?'':v) ? ' selected' : '';
+              return `<option value="${esc(hod)}"${vyb}>${esc(vid)}</option>`;
+            }).join('')
           + '</select></td>';
       } else if(s.viceradkove){
         h += `<td class="${s.trida||''}"><textarea rows="1" data-i="${i}" data-p="${s.pole}"
@@ -1300,7 +1317,8 @@ function otevriEditor(u){
   $('#edNadpis').textContent = u.kod;
   const misto = u.cislo ? (D.predavky[u.cislo-1] ? (' · ' + u.cislo + ' ' + D.predavky[u.cislo-1].nazev) : '') : '';
   $('#edKde').textContent = (NAZVY_TYPU[u.typ]||u.typ) + misto;
-  $('#edParta').innerHTML = D.tymy.map(t=>`<option${t.kod===u.parta?' selected':''}>${esc(t.kod)}</option>`).join('');
+  $('#edParta').innerHTML = D.tymy.map(t=>
+    `<option value="${esc(t.kod)}"${t.kod===u.parta?' selected':''}>${esc(popisGrupy(t.kod))}</option>`).join('');
   $('#edKdy').value = u.kdy_text||'';
   $('#edStav').value = u.stav||'plán';
   $('#edPopis').value = u.popis||'';
@@ -1949,7 +1967,7 @@ function kresliNavrhy(){
         + D.predavky.map(p=>`<option value="${p.cislo}"${p.cislo===n.predavka?' selected':''}>${p.cislo} ${esc(p.nazev)}</option>`).join('')
       + '</select></td>'
       + '<td><select data-n="'+i+'" data-p="grupa"><option value=""></option>'
-        + D.tymy.map(g=>`<option${g.kod===n.grupa?' selected':''}>${esc(g.kod)}</option>`).join('')
+        + D.tymy.map(g=>`<option value="${esc(g.kod)}"${g.kod===n.grupa?' selected':''}>${esc(popisGrupy(g.kod))}</option>`).join('')
       + '</select></td>'
       + '<td><select data-n="'+i+'" data-p="priorita">'
         + ["běžná","vysoká"].map(p=>`<option${p===n.priorita?' selected':''}>${p}</option>`).join('')
@@ -2120,7 +2138,7 @@ function naplnRucne(){
   el('predavka').innerHTML = '<option value="">—</option>'
     + D.predavky.map(p=>`<option value="${p.cislo}">${p.cislo} ${esc(p.nazev)}</option>`).join('');
   el('grupa').innerHTML = '<option value=""></option>'
-    + D.tymy.map(g=>`<option>${esc(g.kod)}</option>`).join('');
+    + D.tymy.map(g=>`<option value="${esc(g.kod)}">${esc(popisGrupy(g.kod))}</option>`).join('');
   el('priorita').innerHTML = ["běžná","vysoká"]
     .map(x=>`<option${x===(v.priorita||'běžná')?' selected':''}>${x}</option>`).join('');
 
@@ -2207,7 +2225,7 @@ function kresliTodo(){
     {nadpis:"Předávka", pole:"predavka", typ:"select", sirka:"170px",
       moznosti:()=>[""].concat(D.predavky.map(p=>p.cislo))},
     {nadpis:"Grupa", pole:"grupa", typ:"select", sirka:"105px",
-      moznosti:()=>[""].concat(D.tymy.map(g=>g.kod))},
+      moznosti:()=>volbyGrup(true)},
     {nadpis:"Priorita", pole:"priorita", typ:"select", sirka:"105px", moznosti:["běžná","vysoká"]},
     {nadpis:"Stav", pole:"stav", typ:"select", sirka:"120px", moznosti:TODO_STAVY},
     {nadpis:"Odkaz", sirka:"78px", trida:"stred",
@@ -2264,7 +2282,7 @@ function naplnFiltryPodrobny(){
   const dp = fp.value, dt = ft.value, ds = fs.value;
   fp.innerHTML = '<option value="">všechny grupy</option>' +
     D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))
-      .map(t=>`<option${t.kod===dp?' selected':''}>${esc(t.kod)}</option>`).join('');
+      .map(t=>`<option value="${esc(t.kod)}"${t.kod===dp?' selected':''}>${esc(popisGrupy(t.kod))}</option>`).join('');
   ft.innerHTML = '<option value="">všechny typy</option>' +
     TYPY.map(t=>`<option${t===dt?' selected':''} value="${t}">${t} — ${NAZVY_TYPU[t]}</option>`).join('');
   fs.innerHTML = '<option value="">všechny stavy</option>' +
@@ -2399,14 +2417,14 @@ function kresliTymy(){
 function naplnFiltrPart(){
   const f = $('#filtrParty'); const drive = f.value;
   f.innerHTML = '<option value="">všechny grupy</option>' +
-    D.tymy.map(t=>`<option${t.kod===drive?' selected':''}>${esc(t.kod)}</option>`).join('');
+    D.tymy.map(t=>`<option value="${esc(t.kod)}"${t.kod===drive?' selected':''}>${esc(popisGrupy(t.kod))}</option>`).join('');
 }
 function kresliClenove(){
   const f = $('#filtrParty').value;
   const vsichni = zivi();
   const videt = f ? vsichni.filter(c=>c.kod_tymu===f) : vsichni;
   tabulka('#tabClenove', bezCitlivych([
-    {nadpis:"Grupa", pole:"kod_tymu", typ:"select", moznosti:()=>D.tymy.map(t=>t.kod), sirka:"110px"},
+    {nadpis:"Grupa", pole:"kod_tymu", typ:"select", moznosti:()=>volbyGrup(false), sirka:"165px"},
     {nadpis:"Jméno", pole:"jmeno", sirka:"210px"},
     {nadpis:"Šéf grupy", pole:"sef", typ:"select", moznosti:["ne","ano"], sirka:"110px",
       napovedaSl:"Kdo grupu vede. Jeho jméno se ukazuje na všech odznacích grupy. "
@@ -2497,12 +2515,12 @@ function kresliHistorii(){
     return;
   }
   cil.innerHTML = '<div class="obal-tab"><table class="tab"><thead><tr>'
-    + '<th style="width:90px">Grupa</th><th style="width:210px">Jméno</th>'
+    + '<th style="width:150px">Grupa</th><th style="width:210px">Jméno</th>'
     + '<th>Předávky, kde grupa byla</th><th style="width:120px"></th>'
     + '</tr></thead><tbody>'
     + nalezeni.map(x=>{
         const pr = predavkyGrupy(x.c.kod_tymu);
-        return '<tr><td style="padding:6px 8px">' + esc(x.c.kod_tymu) + '</td>'
+        return '<tr><td style="padding:6px 8px">' + esc(popisGrupy(x.c.kod_tymu)) + '</td>'
           + '<td style="padding:6px 8px">' + esc(x.c.jmeno) + '</td>'
           + '<td style="padding:6px 8px;font-size:12.5px;color:var(--pisek)">'
           + (pr.length ? esc(pr.map(q=>q.cislo + (q.nazev?' '+q.nazev:'')).join(' · ')) : '—')
@@ -2672,7 +2690,7 @@ function kresliNocLide(){
     {nadpis:"Noc", pole:"noc", typ:"select", moznosti:NOCI, sirka:"120px"},
     {nadpis:"Místo", pole:"kod_noclehu", typ:"select", moznosti:volbyNoclehu, sirka:"150px"},
     {nadpis:"Jméno", pole:"jmeno", sirka:"230px"},
-    {nadpis:"Grupa", pole:"kod_tymu", typ:"select", moznosti:()=>[""].concat(D.tymy.map(t=>t.kod)), sirka:"120px"},
+    {nadpis:"Grupa", pole:"kod_tymu", typ:"select", moznosti:()=>volbyGrup(true), sirka:"165px"},
     {nadpis:"Poznámka", pole:"poznamka"}
   ], D.nocLide, ()=>kresliNocLide(), true);
 
@@ -3177,7 +3195,7 @@ function kresliUzivatele(){
     {nadpis:"Úroveň", pole:"uroven", typ:"select",
       moznosti:()=>D.urovne.map(u=>u.kod), sirka:"150px"},
     {nadpis:"Grupa", pole:"kod_tymu", typ:"select",
-      moznosti:()=>[""].concat(D.tymy.map(t=>t.kod)), sirka:"120px"},
+      moznosti:()=>volbyGrup(true), sirka:"165px"},
     {nadpis:"Aktivní", pole:"aktivni", typ:"select", moznosti:["ano","ne"], sirka:"100px"},
     {nadpis:"Heslo", pole:"_heslo", jenCist:true, sirka:"110px"},
     {nadpis:"Poznámka", pole:"poznamka"}

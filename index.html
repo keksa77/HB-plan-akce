@@ -412,6 +412,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
           grupy ukazují v paletě u plánu. Barva je jen pro rozlišení v mřížce.</p>
         <div class="obal-tab"><table class="tab" id="tabTymy"></table></div>
         <button class="tl" style="margin-top:10px" title="Přidá do tabulky prázdný řádek pro novou grupu." onclick="pridej('tymy')">+ Přidat grupu</button>
+        <button class="tl" style="margin-top:10px" title="Všem grupám bez štítku doplní kód a jméno šéfa." onclick="doplnStitkyZeSefu()">Doplnit chybějící štítky ze šéfů</button>
       </div>
     </div>
   </section>
@@ -938,10 +939,15 @@ const prvniJmeno = k => {
   if(c.length < 2 || !c[1]) return c[0];
   return c[0] + ' ' + c[1][0].toUpperCase() + '.';
 };
-// Kód grupy se nikde neukazuje sám — vždycky se za něj připíše šéf grupy
-// ve zkráceném tvaru (křestní + písmeno příjmení, přezdívka celá). Když šéf
-// není označený, nastoupí první člen.
-const popisGrupy = k => { const j = prvniJmeno(k); return j ? (k + ' · ' + j) : k; };
+// Místo holého kódu se všude ukazuje štítek grupy — vlastní pole u grupy,
+// obvykle kód a šéf („G1 Martin B."). Když štítek vyplněný není, zůstane kód.
+const popisGrupy = k => {
+  const t = parta(k);
+  const st = t && t.stitek ? String(t.stitek).trim() : '';
+  return st || k;
+};
+// návrh štítku podle šéfa grupy — nabízí se tlačítkem, nepřepisuje se sám
+const navrhStitku = k => { const j = prvniJmeno(k); return j ? (k + ' ' + j) : k; };
 // volby do rozbalovacích seznamů: hodnota zůstává kód, vidět je i jméno
 const volbyGrup = (sPrazdnou, seradit) => {
   const t = seradit ? D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99)) : D.tymy;
@@ -2404,11 +2410,12 @@ function kresliTymy(){
   D.tymy.sort((a,b)=>(a.poradi||99)-(b.poradi||99) || String(a.kod).localeCompare(String(b.kod),'cs'));
   tabulka('#tabTymy', [
     {nadpis:"Kód", pole:"kod", sirka:"110px"},
-    {nadpis:"Šéf grupy", sirka:"160px", jenCist:true,
-      napovedaSl:"Šéf grupy. Nastavuje se příznakem u člena v Členech grup. "
-        + "Když nikdo označený není, ukáže se první člen.",
-      html:(r)=>{ const j = prvniJmeno(r.kod);
-        return j ? esc(j) : '<span style="color:var(--pisek)">—</span>'; }},
+    {nadpis:"Štítek", pole:"stitek", sirka:"190px",
+      napovedaSl:"Co se místo kódu ukáže všude jinde v plánovači — obvykle kód a šéf "
+        + "grupy, například „G1 Martin B.\". Když ho necháte prázdný, ukazuje se kód."},
+    {nadpis:"", sirka:"110px", jenCist:true,
+      html:(r,i)=>'<button class="tl" style="padding:3px 9px;font-size:11.5px" data-stitek="'+i+'"'
+        + ' title="Doplní štítek podle aktuálního šéfa grupy.">z šéfa</button>'},
     {nadpis:"Název", pole:"nazev"},
     {nadpis:"Pořadí", pole:"poradi", typ:"number", sirka:"90px", trida:"stred"},
     {nadpis:"Doprava", pole:"doprava", typ:"select", moznosti:DOPRAVY, sirka:"150px"},
@@ -2416,6 +2423,28 @@ function kresliTymy(){
     {nadpis:"Poznámka", pole:"poznamka"}
   ], D.tymy, ()=>{kresliTymy();kresliPaletu();naplnFiltrPart();kresliPlan();
                   if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();}, true);
+
+  $('#tabTymy').querySelectorAll('[data-stitek]').forEach(b=>{
+    b.onclick = ()=>{
+      const t = D.tymy[+b.dataset.stitek];
+      t.stitek = navrhStitku(t.kod);
+      zrevidovano(t); oznacZmenu();
+      kresliTymy(); kresliPaletu(); naplnFiltrPart(); kresliPlan();
+      if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
+      hlaska('Štítek: ' + t.stitek);
+    };
+  });
+}
+
+// doplní štítek všem grupám, které ho nemají
+function doplnStitkyZeSefu(){
+  let n = 0;
+  D.tymy.forEach(t=>{ if(!t.stitek || !String(t.stitek).trim()){ t.stitek = navrhStitku(t.kod); n++; } });
+  if(!n){ hlaska('Všechny grupy už štítek mají'); return; }
+  oznacZmenu();
+  kresliTymy(); kresliPaletu(); naplnFiltrPart(); kresliPlan();
+  if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
+  hlaska('Doplněno štítků: ' + n);
 }
 
 /* ---------- 3. členové ---------- */
@@ -3376,7 +3405,8 @@ let sadySChybou = [];       // a které se načíst nepovedly — ty se nesmí u
 const MAPA = {
   tymy: {
     tabulka:'tymy_org', klic:['kod'], konflikt:['rok','kod'], rok:true, jen:['barva','zRocniku'],
-    pole:{kod:'kod', nazev:'nazev', poradi:'poradi', doprava:'doprava', poznamka:'poznamka'}
+    pole:{kod:'kod', nazev:'nazev', poradi:'poradi', doprava:'doprava',
+          poznamka:'poznamka', stitek:'stitek'}
   },
   clenove: {
     tabulka:'clenove_tymu', klic:['id'], konflikt:['id'], rok:true, jen:['zRocniku'],

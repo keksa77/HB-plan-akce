@@ -2404,6 +2404,11 @@ function kresliTymy(){
   D.tymy.sort((a,b)=>(a.poradi||99)-(b.poradi||99) || String(a.kod).localeCompare(String(b.kod),'cs'));
   tabulka('#tabTymy', [
     {nadpis:"Kód", pole:"kod", sirka:"110px"},
+    {nadpis:"Šéf grupy", sirka:"160px", jenCist:true,
+      napovedaSl:"Šéf grupy. Nastavuje se příznakem u člena v Členech grup. "
+        + "Když nikdo označený není, ukáže se první člen.",
+      html:(r)=>{ const j = prvniJmeno(r.kod);
+        return j ? esc(j) : '<span style="color:var(--pisek)">—</span>'; }},
     {nadpis:"Název", pole:"nazev"},
     {nadpis:"Pořadí", pole:"poradi", typ:"number", sirka:"90px", trida:"stred"},
     {nadpis:"Doprava", pole:"doprava", typ:"select", moznosti:DOPRAVY, sirka:"150px"},
@@ -2439,7 +2444,7 @@ function kresliClenove(){
     if(r && r.sef==='ano'){                     // šéf smí být v grupě jen jeden
       D.clenove.forEach(c=>{ if(c!==r && c.kod_tymu===r.kod_tymu) c.sef = 'ne'; });
     }
-    kresliClenove(); kresliPaletu(); kresliPlan();
+    kresliClenove(); kresliPaletu(); kresliPlan(); kresliTymy(); naplnFiltrPart();
     if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
   }, true, undefined, D.clenove, odlozDoHistorie);
   const vHistorii = D.clenove.length - vsichni.length;

@@ -3542,7 +3542,7 @@ async function poPrihlaseni(){
   hlaska('Načítám data z databáze…');
   const potize = await nactiZDatabaze();
   vseKresli(); kresliNav();
-  zmeneno = false; kresliStavUlozeni();
+  zmeneno = false; posledniUlozeno = Date.now(); kresliStavUlozeni();
   kresliStavPrihlaseni();
   hlaska(potize.length
     ? ('Načteno, ale s výhradami: ' + potize.join(' · '))
@@ -3563,6 +3563,10 @@ function otevriPrihlaseni(){
 function zavriPrihlaseni(){ $('#prihlaseni').style.display = 'none'; }
 
 function kresliStavPrihlaseni(){
+  // hláška o tom, že se nic neukládá, platí jen pro nepřihlášenou ukázku
+  document.querySelectorAll('.varovani').forEach(v=>{
+    if(v.textContent.indexOf('Veřejná ukázka') >= 0) v.style.display = prihlasen ? 'none' : '';
+  });
   const c = $('#stavPrihlaseni'); if(!c) return;
   c.innerHTML = prihlasen
     ? '<span class="pozn">přihlášen: ' + esc(relace && relace.email || '') + '</span>'
@@ -3677,15 +3681,28 @@ let pripominkaBezi = null;
 
 function kresliPlovouciUlozit(){
   const el = $('#plovouciUlozit'); if(!el) return;
-  if(!zmeneno){ el.style.display = 'none'; el.classList.remove('pripominka'); return; }
+
+  // Přihlášenému je tlačítko na očích pořád — po úkonu svítí, jinak jen tiše
+  // hlásí, že je uloženo. Nepřihlášenému nemá co nabízet, dokud něco nezmění.
+  if(!prihlasen && !zmeneno){ el.style.display = 'none'; el.classList.remove('pripominka'); return; }
   el.style.display = '';
-  el.innerHTML = prihlasen
-    ? '<div class="popisek" style="margin:0 0 7px"><b>Máte neuložené změny.</b></div>'
-      + '<button class="tl hlavni" id="tlUlozitPlovouci" style="padding:5px 12px" '
-      + 'title="Zapíše změny do databáze." onclick="ulozDoDatabaze()">Uložit do databáze</button>'
-    : '<div class="popisek" style="margin:0"><b>Máte neuložené změny.</b><br>'
+
+  if(!prihlasen){
+    el.classList.remove('pripominka');
+    el.style.opacity = '1';
+    el.innerHTML = '<div class="popisek" style="margin:0"><b>Máte neuložené změny.</b><br>'
       + 'Ukládat je kam až po přihlášení. Do té doby si je stáhněte tlačítkem '
       + '<b>Uložit do souboru</b> v Plánu úkolů.</div>';
+    return;
+  }
+
+  el.style.opacity = zmeneno ? '1' : '.72';
+  if(!zmeneno) el.classList.remove('pripominka');
+  el.innerHTML = '<div class="popisek" style="margin:0 0 7px">'
+      + (zmeneno ? '<b>Máte neuložené změny.</b>' : 'Všechno je uložené.') + '</div>'
+    + '<button class="tl' + (zmeneno ? ' hlavni' : '') + '" id="tlUlozitPlovouci" style="padding:5px 12px"'
+    + (zmeneno ? '' : ' disabled')
+    + ' title="Zapíše změny do databáze." onclick="ulozDoDatabaze()">Uložit do databáze</button>';
 }
 
 function pripomenUlozeni(){

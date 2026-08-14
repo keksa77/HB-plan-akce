@@ -431,6 +431,16 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
         </div>
         <div class="obal-tab"><table class="tab" id="tabClenove"></table></div>
         <button class="tl" style="margin-top:10px" title="Přidá do tabulky prázdný řádek pro nového člena grupy." onclick="pridej('clenove')">+ Přidat člověka</button>
+
+        <h3 style="margin:26px 0 6px;font-size:15px">Historie — kdo už v seznamu není</h3>
+        <p class="popisek" style="margin:0 0 10px">Křížek u řádku člověka nesmaže. Odloží ho sem
+          i s kontakty, aby se dal kdykoli vyvolat zpátky. Hledá se přes kód grupy, jméno
+          i příjmení a přes číslo nebo název kterékoli předávky, na které ta grupa byla.</p>
+        <input id="hledejHistorii" type="search" oninput="kresliHistorii()"
+               placeholder="např. G7, Novák nebo Bumbálka"
+               title="Hledá v odložených členech podle grupy, jména nebo předávky."
+               style="width:340px;padding:7px 10px;border:1px solid var(--linka);border-radius:8px;font:inherit">
+        <div id="historieClenu" style="margin-top:10px"></div>
       </div>
     </div>
   </section>
@@ -890,13 +900,15 @@ const barva = k => (parta(k)||{}).barva || "#96907F";
 const MIMO_DB = [];
 // místní grupy a dodavatelé se vedou bez jmen lidí
 const BEZ_JMEN = [];   // jména part se zachovávají všude
+// Odložený člen (historie) se nikde nenabízí — ani na odznacích, ani v součtech.
+const zivi = () => D.clenove.filter(c=>!c.historie);
 const prvniClen = k => {
-  const c = D.clenove.find(x=>x.kod_tymu===k);
+  const c = zivi().find(x=>x.kod_tymu===k);
   return c ? c.jmeno : "";
 };
 // celé jméno, které se u grupy ukazuje: šéf grupy, a když není označený, první člen
 const sefGrupy = k => {
-  const c = D.clenove.find(x=>x.kod_tymu===k && x.sef==='ano');
+  const c = zivi().find(x=>x.kod_tymu===k && x.sef==='ano');
   return c ? c.jmeno : "";
 };
 const jmenoGrupy = k => sefGrupy(k) || prvniClen(k);
@@ -1055,7 +1067,7 @@ const NAPOVEDA = {
 const nap = t => NAPOVEDA[t] ? ' title="'+esc(NAPOVEDA[t])+'"' : '';
 
 /* ---------- generická editovatelná tabulka ---------- */
-function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj){
+function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat){
   const t = (typeof cil==='string') ? $(cil) : cil;
   const maOdznak = odznaky !== false;
   let h = '<thead><tr>' + (maOdznak?'<th style="width:52px"></th>':'')
@@ -1102,9 +1114,13 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj){
   t.querySelectorAll('[data-del]').forEach(b=>{
     b.onclick = ()=>{
       const r = radky[+b.dataset.del];
-      // radky bývají jen profiltrovaná kopie, tak se maže z pole, odkud data pocházejí
-      const pole = [zdroj, D.ukoly, radky].find(x=>Array.isArray(x) && x.indexOf(r)>=0);
-      if(pole) pole.splice(pole.indexOf(r), 1);
+      if(smazat){                       // některé tabulky řádek jen odkládají, nemažou
+        smazat(r);
+      }else{
+        // radky bývají jen profiltrovaná kopie, tak se maže z pole, odkud data pocházejí
+        const pole = [zdroj, D.ukoly, radky].find(x=>Array.isArray(x) && x.indexOf(r)>=0);
+        if(pole) pole.splice(pole.indexOf(r), 1);
+      }
       oznacZmenu();
       if(poZmene) poZmene();
     };
@@ -1125,7 +1141,7 @@ function kresliPaletu(){
     c.innerHTML = '<span>'+esc(t.kod)+'</span>'
       + (jm ? '<span class="jmeno">'+esc(jm)+'</span>' : '')
       + '<span class="pocet">'+(poc[t.kod]||0)+'</span>';
-    const vsichni = D.clenove.filter(x=>x.kod_tymu===t.kod).map(x=>x.jmeno).join(', ');
+    const vsichni = zivi().filter(x=>x.kod_tymu===t.kod).map(x=>x.jmeno).join(', ');
     const sef = sefGrupy(t.kod);
     c.title = (t.nazev||t.kod) + (sef?' · šéf: '+sef:'')
             + (vsichni?' — '+vsichni:'') + (t.doprava?' · '+t.doprava:'');
@@ -1451,6 +1467,10 @@ const PRAVIDLA = {
       infinitiv_koncovky: ["at","át","it","ít","et","ět","out"],
       infinitiv_min_delka: 5,
       min_delka_useku: 8,
+      // Odkaz a e-mail jsou jeden kus, uvnitř se nikdy neřeže. Vzor je text,
+      // ne hotový regulární výraz — pravidla se kopírují přes JSON a ten by
+      // regulární výraz cestou zahodil.
+      odkaz_vzor: "[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}|https?://[^\\s]+|www\\.[^\\s]+|[a-z0-9-]+\\.(?:cz|sk|com|net|org|eu|io|dev|app|info)(?:/[^\\s]*)?",
       // druhá a každá další zmínka o předávce zakládá nový úkol
       predavka_deli: true,
       // …kromě vazeb, kde dvě místa patří k jedné cestě
@@ -1551,6 +1571,7 @@ function slozPravidla(vrstva){
   p.rozdeleni.re_spojky_zacatek = new RegExp(p.rozdeleni.spojky_na_zacatku, 'i');
   p.rozdeleni.re_spojky_konec   = new RegExp(p.rozdeleni.spojky_na_konci, 'i');
   p.rozdeleni.re_infinitiv      = new RegExp('(' + p.rozdeleni.infinitiv_koncovky.join('|') + ')$');
+  if(p.rozdeleni.odkaz_vzor) p.rozdeleni.re_odkaz = new RegExp(p.rozdeleni.odkaz_vzor, 'gi');
   p.cas.relativni.forEach(x=>{ x.re = new RegExp(x.vzor); });
   p.cas.dny.forEach(x=>{ x.re = new RegExp(x.vzor); });
   p.entity.forEach(e=>{ if(e.cislem) e.re_cislem = new RegExp(e.cislem + '(\\d{1,2})'); });
@@ -1765,7 +1786,16 @@ function rozdelDiktat(text){
   const S = '';                       // dočasná náhrada za tečku uvnitř data
   const R = PRAV.rozdeleni;
   const MES = PRAV.cas.mesice.join('|') + '|ledna|února|března|dubna|května|června|července|srpna|září|října|listopadu|prosince';
-  const hrube = String(text||'')
+  // Odkazy se před řezáním schovají za zástupku a na konci vrátí zpátky.
+  // Jinak by „a dále" v adrese nebo tečka v doméně rozsekly odkaz vejpůl.
+  const odkazy = [];
+  const ZAST = c => '\u0002' + c + '\u0003';
+  const schovej = t => R.re_odkaz
+    ? String(t||'').replace(R.re_odkaz, m => { odkazy.push(m); return ZAST(odkazy.length-1); })
+    : String(t||'');
+  const vrat = t => String(t||'').replace(/\u0002(\d+)\u0003/g, (m,i) => odkazy[+i] != null ? odkazy[+i] : m);
+
+  const hrube = schovej(text)
     .replace(/(\d{1,2})\s*\.\s*(\d{1,2})\s*(\.?)/g, (m,a,b,tecka,pos,cely)=>{
       // „do 15. 8. Zjistit…" — druhá tečka je zároveň konec věty, tu necháme být
       const dal = cely.slice(pos+m.length).replace(/^\s+/,'');
@@ -1857,7 +1887,7 @@ function rozdelDiktat(text){
     if(i === 0 || maSlvs(x)) return x;
     const uvod = uvodZ(ciste[i-1]);
     return uvod ? (uvod + ' ' + x) : x;
-  });
+  }).map(vrat);
 }
 
 let navrhyTodo = [];
@@ -2331,7 +2361,7 @@ function naplnFiltrPart(){
 }
 function kresliClenove(){
   const f = $('#filtrParty').value;
-  const vsichni = D.clenove;
+  const vsichni = zivi();
   const videt = f ? vsichni.filter(c=>c.kod_tymu===f) : vsichni;
   tabulka('#tabClenove', bezCitlivych([
     {nadpis:"Grupa", pole:"kod_tymu", typ:"select", moznosti:()=>D.tymy.map(t=>t.kod), sirka:"110px"},
@@ -2351,8 +2381,90 @@ function kresliClenove(){
     }
     kresliClenove(); kresliPaletu(); kresliPlan();
     if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
-  }, true, undefined, D.clenove);
-  $('#stavClenove').textContent = videt.length + ' z ' + vsichni.length + ' lidí';
+  }, true, undefined, D.clenove, odlozDoHistorie);
+  const vHistorii = D.clenove.length - vsichni.length;
+  $('#stavClenove').textContent = videt.length + ' z ' + vsichni.length + ' lidí'
+    + (vHistorii ? ' · v historii ' + vHistorii : '');
+  kresliHistorii();
+}
+
+/* ---------- odložení do historie a vyvolání zpět ----------
+   Křížek u člena grupy řádek nemaže. Jen ho označí jako historii: v databázi
+   zůstane i s kontakty, ze seznamu zmizí a šéfovský příznak se mu sundá, aby
+   v grupě neblokoval místo nástupci. Zpátky se dá vyvolat vyhledáváním. */
+function odlozDoHistorie(r){
+  r.historie = true;
+  r.sef = 'ne';
+  hlaska('Odloženo do historie: ' + (r.jmeno || 'bez jména'));
+}
+function vratZHistorie(i){
+  const r = D.clenove[i];
+  if(!r) return;
+  r.historie = false;
+  oznacZmenu();
+  kresliClenove(); kresliPaletu(); kresliPlan();
+  hlaska('Vráceno zpět: ' + (r.jmeno || 'bez jména'));
+}
+
+// všechny předávky, na kterých kdy grupa něco měla — z letošního plánu i ze vzoru
+function predavkyGrupy(kod){
+  const zdroje = [D.ukoly || [], D.vzorHB25 || []];
+  const cisla = new Set();
+  zdroje.forEach(z=>z.forEach(u=>{ if(u.parta===kod && u.cislo!=null) cisla.add(u.cislo); }));
+  return [...cisla].sort((a,b)=>a-b).map(c=>{
+    const p = (D.predavky||[]).find(x=>x.cislo===c);
+    return {cislo:c, nazev: p ? p.nazev : ''};
+  });
+}
+
+// hledá se přes kód grupy, jméno i příjmení a přes číslo nebo název předávky
+function sediHledani(c, dotaz){
+  const q = bezDiakritiky(String(dotaz).trim().toLowerCase());
+  if(!q) return false;
+  if(bezDiakritiky(String(c.kod_tymu||'').toLowerCase()).indexOf(q) >= 0) return true;
+  if(bezDiakritiky(String(c.jmeno||'').toLowerCase()).indexOf(q) >= 0) return true;
+  return predavkyGrupy(c.kod_tymu).some(p =>
+    String(p.cislo) === q || bezDiakritiky(String(p.nazev||'').toLowerCase()).indexOf(q) >= 0);
+}
+
+function kresliHistorii(){
+  const cil = $('#historieClenu'); if(!cil) return;
+  const dotaz = ($('#hledejHistorii') || {}).value || '';
+  const vsichni = D.clenove.map((c,i)=>({c,i})).filter(x=>x.c.historie);
+
+  if(!vsichni.length){
+    cil.innerHTML = '<p class="popisek">V historii zatím nikdo není. '
+      + 'Křížek u řádku člověka nesmaže — jen ho sem odloží.</p>';
+    return;
+  }
+  if(!dotaz.trim()){
+    const n = vsichni.length;
+    const kolik = n === 1 ? 'je jeden člověk' : (n < 5 ? ('jsou ' + n + ' lidé') : ('je ' + n + ' lidí'));
+    cil.innerHTML = '<p class="popisek">V historii ' + kolik
+      + '. Napište kód grupy, jméno, příjmení, číslo nebo název předávky.</p>';
+    return;
+  }
+  const nalezeni = vsichni.filter(x=>sediHledani(x.c, dotaz));
+  if(!nalezeni.length){
+    cil.innerHTML = '<p class="popisek">Nic takového v historii není.</p>';
+    return;
+  }
+  cil.innerHTML = '<div class="obal-tab"><table class="tab"><thead><tr>'
+    + '<th style="width:90px">Grupa</th><th style="width:210px">Jméno</th>'
+    + '<th>Předávky, kde grupa byla</th><th style="width:120px"></th>'
+    + '</tr></thead><tbody>'
+    + nalezeni.map(x=>{
+        const pr = predavkyGrupy(x.c.kod_tymu);
+        return '<tr><td style="padding:6px 8px">' + esc(x.c.kod_tymu) + '</td>'
+          + '<td style="padding:6px 8px">' + esc(x.c.jmeno) + '</td>'
+          + '<td style="padding:6px 8px;font-size:12.5px;color:var(--pisek)">'
+          + (pr.length ? esc(pr.map(q=>q.cislo + (q.nazev?' '+q.nazev:'')).join(' · ')) : '—')
+          + '</td>'
+          + '<td style="padding:4px 8px"><button class="tl" style="padding:3px 10px;font-size:11.5px" '
+          + 'title="Vrátí člověka zpátky do seznamu grupy." '
+          + 'onclick="vratZHistorie(' + x.i + ')">Vrátit zpět</button></td></tr>';
+      }).join('')
+    + '</tbody></table></div>';
 }
 
 /* ---------- 4. předávky ---------- */
@@ -3200,7 +3312,7 @@ const MAPA = {
     tabulka:'clenove_tymu', klic:['id'], konflikt:['id'], rok:true, jen:['zRocniku'],
     pole:{id:'id', kod_tymu:'kod_tymu', jmeno:'jmeno', telefon:'telefon', email:'email',
           nocleh_patek:'nocleh_patek', nocleh_sobota:'nocleh_sobota',
-          cislo_uctu:'cislo_uctu', poznamka:'poznamka', sef:'sef'},
+          cislo_uctu:'cislo_uctu', poznamka:'poznamka', sef:'sef', historie:'historie'},
     naJs:  r => ({...r, sef: r.sef ? 'ano' : 'ne'}),
     naDb:  r => ({...r, sef: r.sef === 'ano'})
   },

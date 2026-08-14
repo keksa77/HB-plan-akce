@@ -2210,6 +2210,12 @@ function kresliTodo(){
       moznosti:()=>[""].concat(D.tymy.map(g=>g.kod))},
     {nadpis:"Priorita", pole:"priorita", typ:"select", sirka:"105px", moznosti:["běžná","vysoká"]},
     {nadpis:"Stav", pole:"stav", typ:"select", sirka:"120px", moznosti:TODO_STAVY},
+    {nadpis:"Odkaz", sirka:"78px", trida:"stred",
+      napovedaSl:"Odkazy nalezené v textu úkolu. Klepnutím se otevřou v nové záložce.",
+      html:(r)=>najdiOdkazy(r.text).map(o=>
+        '<a href="' + esc(o.url) + '" target="_blank" rel="noopener noreferrer"'
+        + ' title="' + esc(o.popis) + '" style="text-decoration:none;font-size:15px">'
+        + (o.mail ? '&#9993;' : '&#128279;') + '</a>').join(' ')},
     {nadpis:"Do plánu", sirka:"120px", html:(r,i)=>
       '<button class="tl" style="padding:3px 9px;font-size:11.5px" data-doplanu="'+i+'"'
       + ' title="Udělá z téhle položky úkol v závodním plánu u vybrané grupy.">→ úkol</button>'}
@@ -2230,6 +2236,26 @@ function kresliTodo(){
   const po = D.todo.filter(t=>t.termin && t.termin<dnesIso && t.stav!=='hotovo' && t.stav!=='zrušeno').length;
   $('#stavTodo').textContent = 'zobrazeno ' + videt.length + ' z ' + D.todo.length
     + (po ? ' · po termínu: ' + po : '');
+}
+
+/* ---------- odkazy v textu úkolu ----------
+   Text úkolu se píše v poli, kde klikací odkaz být nemůže. Ve zvláštním
+   sloupci se proto ukáže ikonka na každý odkaz, který v textu je. Otevírá
+   se v nové záložce, ať se rozepsaný úkol neztratí. */
+function najdiOdkazy(text){
+  const vzor = PRAV && PRAV.rozdeleni && PRAV.rozdeleni.odkaz_vzor;
+  if(!vzor) return [];
+  const nalez = String(text||'').match(new RegExp(vzor, 'gi')) || [];
+  const hotovo = [];
+  return nalez.filter(x=>{ const k=x.toLowerCase();
+      if(hotovo.indexOf(k)>=0) return false; hotovo.push(k); return true; })
+    .map(x=>{
+      const cisty = x.replace(/[.,;:)]+$/, '');          // tečka na konci věty do odkazu nepatří
+      const mail = cisty.indexOf('@') >= 0 && cisty.indexOf('/') < 0;
+      const url = mail ? ('mailto:' + cisty)
+                : (/^https?:\/\//i.test(cisty) ? cisty : 'https://' + cisty);
+      return {url, popis: cisty, mail};
+    });
 }
 
 /* ---------- 1b. podrobný plán ---------- */

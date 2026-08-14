@@ -432,7 +432,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
         <div class="obal-tab"><table class="tab" id="tabClenove"></table></div>
         <button class="tl" style="margin-top:10px" title="Přidá do tabulky prázdný řádek pro nového člena grupy." onclick="pridej('clenove')">+ Přidat člověka</button>
 
-        <h3 style="margin:26px 0 6px;font-size:15px">Historie — kdo už v seznamu není</h3>
+        <h3 style="margin:26px 0 6px;font-size:15px" id="nadpisHistorie">Historie — kdo už v seznamu není</h3>
         <p class="popisek" style="margin:0 0 10px">Křížek u řádku člověka nesmaže. Odloží ho sem
           i s kontakty, aby se dal kdykoli vyvolat zpátky. Hledá se přes kód grupy, jméno
           i příjmení a přes číslo nebo název kterékoli předávky, na které ta grupa byla.</p>
@@ -656,6 +656,20 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
 </div>
 
 <div class="hlaska" id="hlaska"></div>
+
+<!-- Plovoucí Uložit. Lišta nahoře bývá odscrollovaná pryč, tak tlačítko drží
+     u pravého dolního rohu, dokud jsou neuložené změny. -->
+<div id="plovouciUlozit" style="display:none;position:fixed;right:22px;bottom:22px;z-index:55;
+     background:#fff;border:1px solid var(--linka);border-radius:12px;padding:10px 12px;
+     box-shadow:0 10px 28px rgba(0,0,0,.18);max-width:280px"></div>
+<style>
+@keyframes hbPripominka {
+  0%,100% { box-shadow:0 10px 28px rgba(0,0,0,.18); transform:none; }
+  25%     { box-shadow:0 10px 30px rgba(164,68,58,.55); transform:translateY(-3px); }
+  60%     { box-shadow:0 10px 30px rgba(164,68,58,.35); transform:none; }
+}
+#plovouciUlozit.pripominka { animation: hbPripominka 1.1s ease-in-out 2; }
+</style>
 
 <script>
 /* ============================================================
@@ -1319,9 +1333,11 @@ let zmeneno = false;
 function oznacZmenu(){
   if(zmeneno) return;
   zmeneno = true;
+  posledniUlozeno = Date.now();     // od téhle chvíle se počítá, jak dlouho se neukládá
   kresliStavUlozeni();
 }
 function kresliStavUlozeni(){
+  kresliPlovouciUlozit();
   const el = $('#stavUlozeni'); if(!el) return;
   el.innerHTML = !zmeneno ? '' : (prihlasen
     ? '<b>Neuloženo.</b> Změny zatím žijí jen v tomhle okně. '
@@ -2427,10 +2443,17 @@ function sediHledani(c, dotaz){
     String(p.cislo) === q || bezDiakritiky(String(p.nazev||'').toLowerCase()).indexOf(q) >= 0);
 }
 
+// „1 člen / 3 členové / 7 členů" — čeština počítá po svém
+const poctemClenu = n => n + ' ' + (n === 1 ? 'člen' : (n >= 2 && n <= 4 ? 'členové' : 'členů'));
+
 function kresliHistorii(){
   const cil = $('#historieClenu'); if(!cil) return;
   const dotaz = ($('#hledejHistorii') || {}).value || '';
   const vsichni = D.clenove.map((c,i)=>({c,i})).filter(x=>x.c.historie);
+
+  const nadpis = $('#nadpisHistorie');
+  if(nadpis) nadpis.textContent = 'Historie — kdo už v seznamu není ('
+    + poctemClenu(vsichni.length) + ')';
 
   if(!vsichni.length){
     cil.innerHTML = '<p class="popisek">V historii zatím nikdo není. '
@@ -2438,10 +2461,8 @@ function kresliHistorii(){
     return;
   }
   if(!dotaz.trim()){
-    const n = vsichni.length;
-    const kolik = n === 1 ? 'je jeden člověk' : (n < 5 ? ('jsou ' + n + ' lidé') : ('je ' + n + ' lidí'));
-    cil.innerHTML = '<p class="popisek">V historii ' + kolik
-      + '. Napište kód grupy, jméno, příjmení, číslo nebo název předávky.</p>';
+    cil.innerHTML = '<p class="popisek">Napište kód grupy, jméno, příjmení, '
+      + 'číslo nebo název předávky.</p>';
     return;
   }
   const nalezeni = vsichni.filter(x=>sediHledani(x.c, dotaz));
@@ -3614,9 +3635,46 @@ async function ulozDoDatabaze(){
     // něco se opravdu nepovedlo — příznak neuložených změn zůstává
     hlaska('Uloženo částečně. Nepovedlo se: ' + potize.join(' · ') + dovetek);
   }else{
-    zmeneno = false; kresliStavUlozeni();
+    zmeneno = false; posledniUlozeno = Date.now(); kresliStavUlozeni();
     hlaska('Uloženo do databáze: ' + (hotovo.join(', ') || 'nic ke změně') + dovetek);
   }
+}
+
+
+/* ---------- plovoucí Uložit a připomínka po deseti minutách ----------
+   Tlačítko v horní liště zmizí z očí, jakmile člověk odscrolluje. Tohle drží
+   u pravého dolního rohu a je vidět pořád. Když se dlouho neukládá, jednou za
+   deset minut se ozve, aby se práce neztratila obnovením stránky. */
+const PRIPOMINKA_MIN = 10;
+let posledniUlozeno = Date.now();
+let pripominkaBezi = null;
+
+function kresliPlovouciUlozit(){
+  const el = $('#plovouciUlozit'); if(!el) return;
+  if(!zmeneno){ el.style.display = 'none'; el.classList.remove('pripominka'); return; }
+  el.style.display = '';
+  el.innerHTML = prihlasen
+    ? '<div class="popisek" style="margin:0 0 7px"><b>Máte neuložené změny.</b></div>'
+      + '<button class="tl hlavni" id="tlUlozitPlovouci" style="padding:5px 12px" '
+      + 'title="Zapíše změny do databáze." onclick="ulozDoDatabaze()">Uložit do databáze</button>'
+    : '<div class="popisek" style="margin:0"><b>Máte neuložené změny.</b><br>'
+      + 'Ukládat je kam až po přihlášení. Do té doby si je stáhněte tlačítkem '
+      + '<b>Uložit do souboru</b> v Plánu úkolů.</div>';
+}
+
+function pripomenUlozeni(){
+  if(!zmeneno) return;
+  const el = $('#plovouciUlozit'); if(!el || el.style.display === 'none') return;
+  el.classList.remove('pripominka');
+  void el.offsetWidth;                      // restart animace
+  el.classList.add('pripominka');
+  const minut = Math.round((Date.now() - posledniUlozeno) / 60000);
+  hlaska('Neuloženo už ' + minut + ' min — obnovením stránky by se práce ztratila');
+}
+
+function spustPripominku(){
+  if(pripominkaBezi) clearInterval(pripominkaBezi);
+  pripominkaBezi = setInterval(pripomenUlozeni, PRIPOMINKA_MIN * 60000);
 }
 
 /* ---------- start ---------- */
@@ -3649,6 +3707,7 @@ PRAV = slozPravidla('HB');
 kresliNav();
 vseKresli();
 kresliStavPrihlaseni();
+spustPripominku();
 obnovRelaci();
 napisJakDiktovat();
 prepni('s-ukoly');

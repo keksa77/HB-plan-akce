@@ -504,6 +504,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
         <p class="popisek">Kde tým spí. Jedno místo může sloužit víc nocí, proto noc není
           součástí klíče — noc se určuje až u lidí.</p>
         <div class="obal-tab"><table class="tab" id="tabNocMista"></table></div>
+        <div id="souhrnNoclehu" style="margin-top:12px"></div>
         <button class="tl" style="margin-top:10px" title="Přidá prázdný řádek pro další místo noclehu." onclick="pridej('nocMista')">+ Přidat nocleh</button>
       </div>
     </div>
@@ -949,11 +950,19 @@ const popisGrupy = k => {
 // návrh štítku podle šéfa grupy — nabízí se tlačítkem, nepřepisuje se sám
 const navrhStitku = k => { const j = prvniJmeno(k); return j ? (k + ' ' + j) : k; };
 // volby do rozbalovacích seznamů: hodnota zůstává kód, vidět je i jméno
-const volbyGrup = (sPrazdnou, seradit) => {
-  const t = seradit ? D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99)) : D.tymy;
+const volbyGrup = (sPrazdnou, seradit, drzet) => {
+  let t = grupyLetos();
+  if(seradit) t = t.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99));
   const v = t.map(x=>({v:x.kod, t:popisGrupy(x.kod)}));
+  // co už na řádku je, musí v nabídce zůstat, i když grupa letos nejede
+  if(drzet && !v.some(x=>x.v===drzet)) v.unshift({v:drzet, t:popisGrupy(drzet) + ' (letos nejede)'});
   return sPrazdnou ? [{v:"", t:(typeof sPrazdnou === 'string' ? sPrazdnou : "")}].concat(v) : v;
 };
+
+// Grupa, která se letos nejede. Zůstává v datech kvůli úkolům zkopírovaným
+// z minulého ročníku, ale nikde se nenabízí.
+const jedeLetos = k => { const t = parta(k); return !t || t.aktivni !== 'ne'; };
+const grupyLetos = () => D.tymy.filter(t=>t.aktivni !== 'ne');
 
 const jePartaVDb = k => !!parta(k) && MIMO_DB.indexOf(k)<0;
 const hlaska = t => {const h=$('#hlaska');h.textContent=t;h.classList.add('videt');
@@ -1170,7 +1179,7 @@ function kresliPaletu(){
   const poc = {};
   D.ukoly.forEach(u=>{ if(u.parta) poc[u.parta]=(poc[u.parta]||0)+1; });
 
-  D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99)).forEach(t=>{
+  grupyLetos().slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99)).forEach(t=>{
     const c = document.createElement('span');
     c.className = 'chip' + (MIMO_DB.indexOf(t.kod)>=0?' cizi':'') + ((zvyraznit&&vybrany===t.kod)?' zvyrazneno':'');
     c.style.background = t.barva; c.draggable = true;
@@ -1209,9 +1218,13 @@ function slotChip(u){
   const j = document.createElement('span'); j.textContent = u.parta; c.appendChild(j);
   const jm = prvniJmeno(u.parta);
   if(jm){ const n = document.createElement('span'); n.className='jmeno'; n.textContent = jm; c.appendChild(n); }
-  const vsichni = D.clenove.filter(x=>x.kod_tymu===u.parta).map(x=>x.jmeno).join(', ');
+  const vsichni = zivi().filter(x=>x.kod_tymu===u.parta).map(x=>x.jmeno).join(', ');
   const sef = sefGrupy(u.parta);
   c.title = u.kod + (sef?' · šéf: '+sef:'') + (vsichni?' — '+vsichni:'');
+  if(!jedeLetos(u.parta)){                 // grupa letos nejede, úkol je potřeba přerozdělit
+    c.style.outline = '2px dashed var(--vinova)';
+    c.title += ' — POZOR: grupa letos nejede, úkol je potřeba přerozdělit';
+  }
   const x = document.createElement('span'); x.className='smaz'; x.textContent='×'; x.title='Odebere úkol z tohoto políčka. Vrátit se to nedá.';
   x.onclick = e=>{ e.stopPropagation(); D.ukoly.splice(D.ukoly.indexOf(u),1); kresliPlan(); };
   c.appendChild(x);
@@ -1323,8 +1336,8 @@ function otevriEditor(u){
   $('#edNadpis').textContent = u.kod;
   const misto = u.cislo ? (D.predavky[u.cislo-1] ? (' · ' + u.cislo + ' ' + D.predavky[u.cislo-1].nazev) : '') : '';
   $('#edKde').textContent = (NAZVY_TYPU[u.typ]||u.typ) + misto;
-  $('#edParta').innerHTML = D.tymy.map(t=>
-    `<option value="${esc(t.kod)}"${t.kod===u.parta?' selected':''}>${esc(popisGrupy(t.kod))}</option>`).join('');
+  $('#edParta').innerHTML = volbyGrup(false, false, u.parta).map(o=>
+    `<option value="${esc(o.v)}"${o.v===u.parta?' selected':''}>${esc(o.t)}</option>`).join('');
   $('#edKdy').value = u.kdy_text||'';
   $('#edStav').value = u.stav||'plán';
   $('#edPopis').value = u.popis||'';
@@ -1973,7 +1986,7 @@ function kresliNavrhy(){
         + D.predavky.map(p=>`<option value="${p.cislo}"${p.cislo===n.predavka?' selected':''}>${p.cislo} ${esc(p.nazev)}</option>`).join('')
       + '</select></td>'
       + '<td><select data-n="'+i+'" data-p="grupa"><option value=""></option>'
-        + D.tymy.map(g=>`<option value="${esc(g.kod)}"${g.kod===n.grupa?' selected':''}>${esc(popisGrupy(g.kod))}</option>`).join('')
+        + grupyLetos().map(g=>`<option value="${esc(g.kod)}"${g.kod===n.grupa?' selected':''}>${esc(popisGrupy(g.kod))}</option>`).join('')
       + '</select></td>'
       + '<td><select data-n="'+i+'" data-p="priorita">'
         + ["běžná","vysoká"].map(p=>`<option${p===n.priorita?' selected':''}>${p}</option>`).join('')
@@ -2144,7 +2157,7 @@ function naplnRucne(){
   el('predavka').innerHTML = '<option value="">—</option>'
     + D.predavky.map(p=>`<option value="${p.cislo}">${p.cislo} ${esc(p.nazev)}</option>`).join('');
   el('grupa').innerHTML = '<option value=""></option>'
-    + D.tymy.map(g=>`<option value="${esc(g.kod)}">${esc(popisGrupy(g.kod))}</option>`).join('');
+    + grupyLetos().map(g=>`<option value="${esc(g.kod)}">${esc(popisGrupy(g.kod))}</option>`).join('');
   el('priorita').innerHTML = ["běžná","vysoká"]
     .map(x=>`<option${x===(v.priorita||'běžná')?' selected':''}>${x}</option>`).join('');
 
@@ -2231,7 +2244,7 @@ function kresliTodo(){
     {nadpis:"Předávka", pole:"predavka", typ:"select", sirka:"170px",
       moznosti:()=>[""].concat(D.predavky.map(p=>p.cislo))},
     {nadpis:"Grupa", pole:"grupa", typ:"select", sirka:"105px",
-      moznosti:()=>volbyGrup(true)},
+      moznosti:(r)=>volbyGrup(true,false,r&&r.grupa)},
     {nadpis:"Priorita", pole:"priorita", typ:"select", sirka:"105px", moznosti:["běžná","vysoká"]},
     {nadpis:"Stav", pole:"stav", typ:"select", sirka:"120px", moznosti:TODO_STAVY},
     {nadpis:"Odkaz", sirka:"78px", trida:"stred",
@@ -2287,7 +2300,7 @@ function naplnFiltryPodrobny(){
   const fp = $('#filtrPodrobny'), ft = $('#filtrTyp'), fs = $('#filtrStav');
   const dp = fp.value, dt = ft.value, ds = fs.value;
   fp.innerHTML = '<option value="">všechny grupy</option>' +
-    D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))
+    grupyLetos().slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))
       .map(t=>`<option value="${esc(t.kod)}"${t.kod===dp?' selected':''}>${esc(popisGrupy(t.kod))}</option>`).join('');
   ft.innerHTML = '<option value="">všechny typy</option>' +
     TYPY.map(t=>`<option${t===dt?' selected':''} value="${t}">${t} — ${NAZVY_TYPU[t]}</option>`).join('');
@@ -2394,14 +2407,19 @@ function kresliPodrobny(){
 function grupaBunka(r, i){
   const t = parta(r.parta) || {};
   const jm = prvniJmeno(r.parta);
-  const kody = D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99)).map(x=>x.kod);
+  const kody = grupyLetos().slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99)).map(x=>x.kod);
   if(kody.indexOf(r.parta)<0 && r.parta) kody.unshift(r.parta);
-  return '<span class="grupaOdznak" style="background:' + esc(t.barva||'#8A8371') + '">'
+  const nejede = r.parta && !jedeLetos(r.parta);
+  return '<span class="grupaOdznak" style="background:' + esc(t.barva||'#8A8371')
+    + (nejede ? ';outline:2px dashed var(--vinova)' : '') + '">'
     + '<select data-i="' + i + '" data-p="parta" title="' + esc((t.nazev||r.parta)
-      + (sefGrupy(r.parta)?' — šéf '+sefGrupy(r.parta):'')) + '. Přehodí úkol jiné grupě.">'
+      + (sefGrupy(r.parta)?' — šéf '+sefGrupy(r.parta):'')
+      + (nejede ? ' — POZOR: grupa letos nejede, úkol je potřeba přerozdělit' : ''))
+      + '. Přehodí úkol jiné grupě.">'
     + kody.map(k=>`<option${k===r.parta?' selected':''}>${esc(k)}</option>`).join('')
     + '</select></span>'
-    + (jm ? '<span class="grupaJmeno">' + esc(jm) + '</span>' : '');
+    + (jm ? '<span class="grupaJmeno">' + esc(jm) + '</span>' : '')
+    + (nejede ? '<span class="grupaJmeno" style="color:var(--vinova)">letos nejede</span>' : '');
 }
 
 /* ---------- 2. grupy ---------- */
@@ -2413,9 +2431,14 @@ function kresliTymy(){
     {nadpis:"Štítek", pole:"stitek", sirka:"190px",
       napovedaSl:"Co se místo kódu ukáže všude jinde v plánovači — obvykle kód a šéf "
         + "grupy, například „G1 Martin B.\". Když ho necháte prázdný, ukazuje se kód."},
-    {nadpis:"", sirka:"110px", jenCist:true,
+    {nadpis:"Doplnit", sirka:"110px", jenCist:true,
+      napovedaSl:"Přepíše štítek téhle grupy kódem a jménem šéfa, například „G1 Martin B.\".",
       html:(r,i)=>'<button class="tl" style="padding:3px 9px;font-size:11.5px" data-stitek="'+i+'"'
         + ' title="Doplní štítek podle aktuálního šéfa grupy.">z šéfa</button>'},
+    {nadpis:"Jede letos", pole:"aktivni", typ:"select", moznosti:["ano","ne"], sirka:"110px",
+      napovedaSl:"Grupa, která se letos nejede, zmizí z palety i ze všech nabídek. "
+        + "V datech zůstane kvůli úkolům z minulého ročníku a úkoly, které na ní visí, "
+        + "se v plánu zvýrazní."},
     {nadpis:"Název", pole:"nazev"},
     {nadpis:"Pořadí", pole:"poradi", typ:"number", sirka:"90px", trida:"stred"},
     {nadpis:"Doprava", pole:"doprava", typ:"select", moznosti:DOPRAVY, sirka:"150px"},
@@ -2451,14 +2474,14 @@ function doplnStitkyZeSefu(){
 function naplnFiltrPart(){
   const f = $('#filtrParty'); const drive = f.value;
   f.innerHTML = '<option value="">všechny grupy</option>' +
-    D.tymy.map(t=>`<option value="${esc(t.kod)}"${t.kod===drive?' selected':''}>${esc(popisGrupy(t.kod))}</option>`).join('');
+    grupyLetos().map(t=>`<option value="${esc(t.kod)}"${t.kod===drive?' selected':''}>${esc(popisGrupy(t.kod))}</option>`).join('');
 }
 function kresliClenove(){
   const f = $('#filtrParty').value;
   const vsichni = zivi();
   const videt = f ? vsichni.filter(c=>c.kod_tymu===f) : vsichni;
   tabulka('#tabClenove', bezCitlivych([
-    {nadpis:"Grupa", pole:"kod_tymu", typ:"select", moznosti:()=>volbyGrup(false), sirka:"165px"},
+    {nadpis:"Grupa", pole:"kod_tymu", typ:"select", moznosti:(r)=>volbyGrup(false,false,r&&r.kod_tymu), sirka:"165px"},
     {nadpis:"Jméno", pole:"jmeno", sirka:"210px"},
     {nadpis:"Šéf grupy", pole:"sef", typ:"select", moznosti:["ne","ano"], sirka:"110px",
       napovedaSl:"Kdo grupu vede. Jeho jméno se ukazuje na všech odznacích grupy. "
@@ -2473,7 +2496,7 @@ function kresliClenove(){
     if(r && r.sef==='ano'){                     // šéf smí být v grupě jen jeden
       D.clenove.forEach(c=>{ if(c!==r && c.kod_tymu===r.kod_tymu) c.sef = 'ne'; });
     }
-    kresliClenove(); kresliPaletu(); kresliPlan(); kresliTymy(); naplnFiltrPart();
+    kresliClenove(); kresliPaletu(); kresliPlan(); kresliTymy(); naplnFiltrPart(); kresliSouhrnNoclehu();
     if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
   }, true, undefined, D.clenove, odlozDoHistorie);
   const vHistorii = D.clenove.length - vsichni.length;
@@ -2716,6 +2739,90 @@ function kresliNocMista(){
     {nadpis:"Rezervace", pole:"rezervace", sirka:"230px"},
     {nadpis:"Poznámka", pole:"poznamka", sirka:"260px"}
   ]), D.nocMista, ()=>{kresliNocMista();kresliNocLide();}, true);
+  kresliSouhrnNoclehu();
+}
+
+/* ---------- součet lůžek a obsazenost ----------
+   Kdo kde spí, se vede na dvou místech: v tabulce noclehy_lide a u členů grup
+   v polích nocleh_patek a nocleh_sobota. Bere se to, kde pro danou noc něco je;
+   když jsou obsazená obě, platí noclehy_lide a druhý zdroj se jen připomene. */
+const POLE_NOCI = {"pátek":"nocleh_patek", "sobota":"nocleh_sobota"};
+
+function obsazenostNoci(noc){
+  const zLidi = {}, zClenu = {};
+  (D.nocLide||[]).forEach(x=>{ if(x.noc===noc && x.kod_noclehu) zLidi[x.kod_noclehu] = (zLidi[x.kod_noclehu]||0)+1; });
+  const pole = POLE_NOCI[noc];
+  if(pole) zivi().forEach(c=>{
+    const k = c[pole];
+    if(k && k !== NERESI) zClenu[k] = (zClenu[k]||0)+1;
+  });
+  const souctyLidi = Object.values(zLidi).reduce((a,b)=>a+b,0);
+  return souctyLidi ? {kde: zLidi, zdroj: 'noclehy — lidé', jinde: Object.values(zClenu).reduce((a,b)=>a+b,0)}
+                    : {kde: zClenu, zdroj: 'členové grup', jinde: 0};
+}
+
+function kresliSouhrnNoclehu(){
+  const cil = $('#souhrnNoclehu'); if(!cil) return;
+  const mista = D.nocMista || [];
+  const kapacita = mista.reduce((a,m)=>a + (+m.kapacita || 0), 0);
+
+  if(!mista.length){ cil.innerHTML = '<p class="popisek">Zatím žádné místo.</p>'; return; }
+
+  const pruh = (n, kap) => {
+    const pct = kap ? Math.min(100, Math.round(n/kap*100)) : 0;
+    const barva = !kap ? '#C9BFB0' : (n > kap ? 'var(--vinova)' : (pct >= 85 ? '#C97B2C' : '#5E8C3A'));
+    return '<span style="display:inline-block;width:70px;height:7px;border-radius:4px;'
+      + 'background:#E7E1D6;vertical-align:middle;margin-right:7px;overflow:hidden">'
+      + '<span style="display:block;height:100%;width:' + pct + '%;background:' + barva + '"></span></span>';
+  };
+
+  let h = '<table class="tab" style="width:auto;min-width:520px"><thead><tr>'
+    + '<th style="width:150px">Místo</th><th style="width:90px" class="stred">Lůžek</th>'
+    + NOCI.map(n=>'<th style="width:190px">' + esc(n) + '</th>').join('')
+    + '</tr></thead><tbody>';
+
+  const obs = {};
+  NOCI.forEach(n=>{ obs[n] = obsazenostNoci(n); });
+
+  mista.forEach(m=>{
+    const kap = +m.kapacita || 0;
+    h += '<tr><td style="padding:6px 8px">' + esc(m.kod) + '</td>'
+      + '<td class="stred" style="padding:6px 8px">' + (kap || '—') + '</td>'
+      + NOCI.map(n=>{
+          const c = obs[n].kde[m.kod] || 0;
+          const zbyva = kap - c;
+          return '<td style="padding:6px 8px;font-size:12.5px">' + pruh(c, kap)
+            + c + ' z ' + (kap || '?')
+            + (kap ? ('<span style="color:' + (zbyva < 0 ? 'var(--vinova)' : 'var(--pisek)') + '"> · '
+                + (zbyva < 0 ? ('přeplněno o ' + (-zbyva)) : ('volno ' + zbyva)) + '</span>') : '')
+            + '</td>';
+        }).join('')
+      + '</tr>';
+  });
+
+  h += '</tbody><tfoot><tr style="font-weight:800;background:var(--papir)">'
+    + '<td style="padding:7px 8px">Celkem</td>'
+    + '<td class="stred" style="padding:7px 8px">' + kapacita + '</td>'
+    + NOCI.map(n=>{
+        const c = Object.values(obs[n].kde).reduce((a,b)=>a+b,0);
+        const zbyva = kapacita - c;
+        return '<td style="padding:7px 8px;font-size:12.5px">' + pruh(c, kapacita)
+          + c + ' z ' + kapacita
+          + '<span style="font-weight:400;color:' + (zbyva < 0 ? 'var(--vinova)' : 'var(--pisek)') + '"> · '
+          + (zbyva < 0 ? ('přeplněno o ' + (-zbyva)) : ('volno ' + zbyva)) + '</span></td>';
+      }).join('')
+    + '</tr></tfoot></table>';
+
+  const zdroje = [...new Set(NOCI.map(n=>obs[n].zdroj))].join(' a ');
+  h += '<p class="popisek" style="margin:8px 0 0">Obsazenost se počítá z: ' + esc(zdroje)
+    + '. Lidé bez přiděleného místa (vlastní nocleh, „' + esc(NERESI) + '") se nepočítají.</p>';
+
+  const kolize = NOCI.filter(n=>obs[n].jinde > 0);
+  if(kolize.length){
+    h += '<p class="popisek" style="margin:4px 0 0;color:var(--vinova)">Pozor: '
+      + esc(kolize.join(' a ')) + ' má vyplněno i u členů grup — počítá se tabulka noclehy — lidé.</p>';
+  }
+  cil.innerHTML = h;
 }
 
 /* ---------- 7. noclehy lidé ---------- */
@@ -2724,9 +2831,9 @@ function kresliNocLide(){
     {nadpis:"Noc", pole:"noc", typ:"select", moznosti:NOCI, sirka:"120px"},
     {nadpis:"Místo", pole:"kod_noclehu", typ:"select", moznosti:volbyNoclehu, sirka:"150px"},
     {nadpis:"Jméno", pole:"jmeno", sirka:"230px"},
-    {nadpis:"Grupa", pole:"kod_tymu", typ:"select", moznosti:()=>volbyGrup(true), sirka:"165px"},
+    {nadpis:"Grupa", pole:"kod_tymu", typ:"select", moznosti:(r)=>volbyGrup(true,false,r&&r.kod_tymu), sirka:"165px"},
     {nadpis:"Poznámka", pole:"poznamka"}
-  ], D.nocLide, ()=>kresliNocLide(), true);
+  ], D.nocLide, ()=>{kresliNocLide();kresliSouhrnNoclehu();}, true);
 
   let h = '';
   NOCI.forEach(noc=>{
@@ -3229,7 +3336,7 @@ function kresliUzivatele(){
     {nadpis:"Úroveň", pole:"uroven", typ:"select",
       moznosti:()=>D.urovne.map(u=>u.kod), sirka:"150px"},
     {nadpis:"Grupa", pole:"kod_tymu", typ:"select",
-      moznosti:()=>volbyGrup(true), sirka:"165px"},
+      moznosti:(r)=>volbyGrup(true,false,r&&r.kod_tymu), sirka:"165px"},
     {nadpis:"Aktivní", pole:"aktivni", typ:"select", moznosti:["ano","ne"], sirka:"100px"},
     {nadpis:"Heslo", pole:"_heslo", jenCist:true, sirka:"110px"},
     {nadpis:"Poznámka", pole:"poznamka"}
@@ -3406,7 +3513,9 @@ const MAPA = {
   tymy: {
     tabulka:'tymy_org', klic:['kod'], konflikt:['rok','kod'], rok:true, jen:['barva','zRocniku'],
     pole:{kod:'kod', nazev:'nazev', poradi:'poradi', doprava:'doprava',
-          poznamka:'poznamka', stitek:'stitek'}
+          poznamka:'poznamka', stitek:'stitek', aktivni:'aktivni'},
+    naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano'}),
+    naDb: r => ({...r, aktivni: r.aktivni !== 'ne'})
   },
   clenove: {
     tabulka:'clenove_tymu', klic:['id'], konflikt:['id'], rok:true, jen:['zRocniku'],
@@ -3523,7 +3632,10 @@ function doDb(sada, r, rok){
     if(js === 'id' && (r.id === undefined || r.id === null)) return;   // nový řádek
     let h = r[js];
     if(h === '' && js !== 'text' && js !== 'jmeno' && js !== 'nazev') h = null;
-    v[m.pole[js]] = h;
+    // Nevyplněné pole musí jít do databáze jako prázdné, ne zmizet. Kdyby se
+    // klíč vynechal, měly by řádky v jedné dávce různý tvar a databáze by
+    // celý zápis odmítla („All object keys must match").
+    v[m.pole[js]] = (h === undefined) ? null : h;
   });
   if(m.rok) v.rok = rok;
   return m.naDb ? m.naDb(v) : v;

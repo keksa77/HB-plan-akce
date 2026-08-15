@@ -585,10 +585,10 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
     <div class="karta">
       <h2>Uživatelé — tabulka uzivatele</h2>
       <div class="telo">
-        <p class="popisek">Kdo se na web dostane a s jakou úrovní. Přihlašuje se e-mailem,
-          heslo ani jeho obnovu prototyp neřeší.</p>
+        <p class="popisek">Kdo se na web dostane a s jakou úrovní. Úroveň platí v databázi,
+          ne jen v téhle stránce — obejít ji nejde.</p>
         <div class="obal-tab"><table class="tab" id="tabUzivatele"></table></div>
-        <button class="tl" style="margin-top:10px" title="Přidá řádek pro dalšího člověka, který se má na web dostat." onclick="pridej('uzivatel')">+ Přidat uživatele</button>
+        <div id="jakPridatUzivatele"></div>
       </div>
     </div>
 
@@ -994,7 +994,6 @@ const ZALOZKY = [
   {id:"s-clenove",       nazev:"Členové grup",       napoveda:"Lidé v grupách a jejich kontakty."},
   {id:"s-predavky",      nazev:"Předávky",           napoveda:"Místa předávek, souřadnice, vzdálenosti a časy mezi nimi."},
   {id:"s-noclehy-mista", nazev:"Noclehy — místa",    napoveda:"Ubytování, kapacity a stav rezervací."},
-  {id:"s-noclehy-lide",  nazev:"Noclehy — lidé",     napoveda:"Kdo kde spí v pátek a v sobotu."},
   {id:"s-tricka",        nazev:"Trička",             napoveda:"Odhad potřeby triček podle velikostí, sklad a objednávky po vlnách."},
   {id:"s-pristupy",      nazev:"Přístupy",           napoveda:"Tři úrovně přístupu k webu, co která smí, a seznam uživatelů."},
   {id:"s-nastaveni",     nazev:"Nastavení",          napoveda:"Aktivní ročník, datum závodu a další nastavení plánovače."}
@@ -3375,27 +3374,35 @@ function kresliMatici(){
 
 function kresliUzivatele(){
   tabulka('#tabUzivatele', bezCitlivych([
-    {nadpis:"E-mail", pole:"email", sirka:"250px"},
+    {nadpis:"E-mail", pole:"email", sirka:"250px", jenCist:true,
+      napovedaSl:"E-mail, kterým se člověk přihlašuje. Mění se jen v Supabase, ne tady."},
     {nadpis:"Jméno", pole:"jmeno", sirka:"200px"},
     {nadpis:"Úroveň", pole:"uroven", typ:"select",
-      moznosti:()=>D.urovne.map(u=>u.kod), sirka:"150px"},
+      moznosti:()=>D.urovne.map(u=>({v:u.kod, t:(u.nazev || u.kod)})), sirka:"170px",
+      napovedaSl:"Správce mění všechno. Vedoucí čte všechno a mění jen svou grupu. "
+        + "Host jen čte plán a ke kontaktům se vůbec nedostane. Platí to v databázi, "
+        + "ne jen v téhle stránce."},
     {nadpis:"Grupa", pole:"kod_tymu", typ:"select",
-      moznosti:(r)=>volbyGrup(true,false,r&&r.kod_tymu), sirka:"165px"},
-    {nadpis:"Aktivní", pole:"aktivni", typ:"select", moznosti:["ano","ne"], sirka:"100px"},
-    {nadpis:"Heslo", pole:"_heslo", jenCist:true, sirka:"110px"},
+      moznosti:(r)=>volbyGrup(true,false,r&&r.kod_tymu), sirka:"165px",
+      napovedaSl:"Grupa, kterou smí vedoucí měnit. U správce a hosta nehraje roli."},
+    {nadpis:"Aktivní", pole:"aktivni", typ:"select", moznosti:["ano","ne"], sirka:"100px",
+      napovedaSl:"Neaktivní člověk se sice přihlásí, ale nedostane se nikam — bere se jako host."},
     {nadpis:"Poznámka", pole:"poznamka"}
-  ]), D.uzivatele.map(u=>Object.assign(u,{_heslo: u.heslo_hash?"nastaveno":"není"})), ()=>kresliPristupy(), true, false);
+  ]), D.uzivatele, ()=>kresliPristupy(), true, false);
+
+  const cil = $('#jakPridatUzivatele');
+  if(cil) cil.innerHTML = '<p class="popisek" style="margin:8px 0 0">Nového člověka '
+    + 'nejde přidat tady — účet i heslo se zakládají v Supabase '
+    + '(Authentication → Users → Add user, zaškrtnout Auto Confirm User). Jakmile se '
+    + 'jednou přihlásí, objeví se v téhle tabulce a tady mu nastavíte úroveň. '
+    + 'Samoregistrace je vypnutá, takže se nikdo nepřidá sám.</p>';
 }
 
 function kresliPristupy(){
   kresliUrovne(); kresliMatici(); kresliUzivatele();
-  const sp = spravce();
   const st = $('#stavHesla');
-  if(st) st.innerHTML = sp
-    ? ('Heslo teď platí pro <b>' + esc(sp.jmeno||sp.email||'?') + '</b>, úroveň '
-       + esc((uroven(sp.uroven)||{}).nazev||sp.uroven) + ' — '
-       + (sp.heslo_hash ? 'nastavené' : '<b style="color:var(--vinova)">není nastavené, tlačítko Vyprázdnit plán je bez ochrany</b>') + '.')
-    : 'Žádný aktivní uživatel, heslo nemá koho chránit.';
+  if(st) st.innerHTML = 'Hesla si drží Supabase, plánovač je nezná ani neukládá. '
+    + 'Změna hesla se dělá v Supabase (Authentication → Users → tři tečky → Reset password).';
   const v = $('#volbaNahledu');
   v.innerHTML = '<option value="">bez omezení — plný přístup</option>'
     + D.urovne.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))
@@ -3584,6 +3591,13 @@ const MAPA = {
     tabulka:'noclehy_lide', klic:['id'], konflikt:['id'], rok:true, vzdyUkladat:true, jen:[],
     pole:{id:'id', noc:'noc', kod_noclehu:'kod_noclehu', clen_id:'clen_id',
           jmeno:'jmeno', kod_tymu:'kod_tymu', poznamka:'poznamka'}
+  },
+  uzivatele: {
+    tabulka:'uzivatele', klic:['uid'], konflikt:['uid'], rok:false, jen:['_heslo'],
+    pole:{uid:'uid', email:'email', jmeno:'jmeno', uroven:'uroven',
+          kod_tymu:'kod_tymu', aktivni:'aktivni', poznamka:'poznamka'},
+    naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano'}),
+    naDb: r => ({...r, aktivni: r.aktivni !== 'ne'})
   },
   todo: {
     tabulka:'todo', klic:['id'], konflikt:['id'], rok:true, vzdyUkladat:true, jen:['vzit','rozdelitNa','nejiste'],

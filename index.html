@@ -362,8 +362,19 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
             <select id="todoStav" title="Ukáže jen položky v jednom stavu." onchange="kresliTodo()"
               style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
           </label>
+          <label class="stav">Ročník:
+            <select id="todoRok" title="To-do se vede přes ročníky. Tohle vybere jeden, nebo je ukáže všechny." onchange="kresliTodo()"
+              style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
+          </label>
+          <label class="stav">Kdo:
+            <select id="todoKdo" title="Ukáže jen úkoly jednoho člověka." onchange="kresliTodo()"
+              style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
+          </label>
           <label class="stav" title="Ukáže jen položky, kterým vypršel termín nebo je dnes.">
             <input type="checkbox" id="todoPoTerminu" onchange="kresliTodo()"> jen po termínu
+          </label>
+          <label class="stav" title="Skryje hotové a zrušené položky.">
+            <input type="checkbox" id="todoJenOtevrene" checked onchange="kresliTodo()"> jen otevřené
           </label>
           <span class="stav" id="stavTodo"></span>
         </div>
@@ -2171,6 +2182,7 @@ function ulozNavrhy(){
   if(!vzit.length){ hlaska('Nic není zaškrtnuté'); return; }
   vzit.forEach(n=>{
     const {nejiste, vzit:_v, ...cisty} = n;
+    if(!cisty.rok) cisty.rok = D.nastaveni.aktivni_rok;
     D.todo.push(cisty);
   });
   navrhyTodo = []; kresliNavrhy();
@@ -2181,8 +2193,9 @@ function ulozNavrhy(){
 
 function pridejTodo(){
   const v = (PRAV && PRAV.vychozi) || {};
-  D.todo.push({text:"", druh:"", kdo:v.kdo||"", grupa:"", predavka:null, nocleh:"",
-    termin:"", priorita:v.priorita||"běžná", stav:v.stav||"nové", zdroj:"ručně", dikt:""});
+  D.todo.push({text:"", rok:D.nastaveni.aktivni_rok, druh:"", kdo:v.kdo||"", grupa:"",
+    predavka:null, nocleh:"", termin:"", priorita:v.priorita||"běžná",
+    stav:v.stav||"nové", zdroj:"ručně", dikt:""});
   kresliTodo();
 }
 
@@ -2288,14 +2301,36 @@ function kresliTodo(){
   fs.innerHTML = '<option value="">všechny stavy</option>'
     + TODO_STAVY.map(s=>`<option${s===ds?' selected':''}>${esc(s)}</option>`).join('');
 
+  // ročníky, které se v to-do vyskytují — aktivní první
+  const fr = $('#todoRok'), dr = fr.value;
+  const rocniky = [...new Set(D.todo.map(t=>t.rok).filter(Boolean))]
+    .sort((a,b)=>String(b).localeCompare(String(a)));
+  fr.innerHTML = '<option value="">všechny ročníky</option>'
+    + rocniky.map(r=>`<option${r===dr?' selected':''}>${esc(r)}</option>`).join('');
+
+  const fk = $('#todoKdo'), dk = fk.value;
+  const lide = [...new Set(D.todo.map(t=>t.kdo).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'cs'));
+  fk.innerHTML = '<option value="">kdokoli</option>'
+    + lide.map(k=>`<option${k===dk?' selected':''}>${esc(k)}</option>`).join('');
+
   const dnesIso = new Date().toISOString().slice(0,10);
   const jenPo = $('#todoPoTerminu').checked;
+  const jenOtevrene = $('#todoJenOtevrene').checked;
   const videt = D.todo.filter(t =>
        (!ds || t.stav===ds)
-    && (!jenPo || (t.termin && t.termin<=dnesIso && t.stav!=='hotovo' && t.stav!=='zrušeno')));
+    && (!dr || t.rok===dr)
+    && (!dk || t.kdo===dk)
+    && (!jenOtevrene || (t.stav!=='hotovo' && t.stav!=='zrušeno'))
+    && (!jenPo || (t.termin && t.termin<=dnesIso && t.stav!=='hotovo' && t.stav!=='zrušeno')))
+    // nejbližší termín nahoře, položky bez termínu na konec
+    .sort((a,b)=>(a.termin||'9999').localeCompare(b.termin||'9999'));
 
   tabulka('#tabTodo', [
-    {nadpis:"Co se má udělat", pole:"text", sirka:"460px", viceradkove:true},
+    {nadpis:"Co se má udělat", pole:"text", sirka:"420px", viceradkove:true},
+    {nadpis:"Kdo", pole:"kdo", sirka:"130px",
+      napovedaSl:"Kdo to má na starosti. Volný text — Keksa, Claude, jméno člena grupy."},
+    {nadpis:"Ročník", pole:"rok", sirka:"90px",
+      napovedaSl:"Ke kterému ročníku úkol patří. Přípravné úkoly na příští ročník tady mají HB27."},
     {nadpis:"Termín", pole:"termin", typ:"date", sirka:"140px"},
     {nadpis:"Předávka", pole:"predavka", typ:"select", sirka:"170px",
       moznosti:()=>[""].concat(D.predavky.map(p=>p.cislo))},
@@ -2327,8 +2362,10 @@ function kresliTodo(){
   });
 
   const po = D.todo.filter(t=>t.termin && t.termin<dnesIso && t.stav!=='hotovo' && t.stav!=='zrušeno').length;
+  const hotovo = D.todo.filter(t=>t.stav==='hotovo').length;
   $('#stavTodo').textContent = 'zobrazeno ' + videt.length + ' z ' + D.todo.length
-    + (po ? ' · po termínu: ' + po : '');
+    + (po ? ' · po termínu: ' + po : '')
+    + (hotovo ? ' · hotovo: ' + hotovo : '');
 }
 
 /* ---------- odkazy v textu úkolu ----------
@@ -3659,10 +3696,12 @@ const MAPA = {
     naDb: r => ({...r, aktivni: r.aktivni !== 'ne'})
   },
   todo: {
-    tabulka:'todo', klic:['id'], konflikt:['id'], rok:true, vzdyUkladat:true, jen:['vzit','rozdelitNa','nejiste'],
-    pole:{id:'id', text:'text', druh:'druh', kdo:'kdo', termin:'termin', priorita:'priorita',
-          stav:'stav', predavka:'predavka_cislo', grupa:'kod_tymu', nocleh:'kod_noclehu',
-          zdroj:'zdroj', dikt:'dikt'}
+    // To-do jsou přípravné úkoly přes celý rok, včetně příštího ročníku.
+    // Ročníkem se proto nefiltrují — každý řádek si ho nese sám ve sloupci rok.
+    tabulka:'todo', klic:['id'], konflikt:['id'], rok:'radek', vzdyUkladat:true, jen:['vzit','rozdelitNa','nejiste'],
+    pole:{id:'id', rok:'rok', text:'text', druh:'druh', kdo:'kdo', termin:'termin',
+          priorita:'priorita', stav:'stav', predavka:'predavka_cislo', grupa:'kod_tymu',
+          nocleh:'kod_noclehu', zdroj:'zdroj', dikt:'dikt'}
   }
 };
 
@@ -3754,7 +3793,8 @@ function doDb(sada, r, rok){
     // celý zápis odmítla („All object keys must match").
     v[m.pole[js]] = (h === undefined) ? null : h;
   });
-  if(m.rok) v.rok = rok;
+  if(m.rok === true) v.rok = rok;
+  else if(m.rok === 'radek') v.rok = r.rok || rok;
   return m.naDb ? m.naDb(v) : v;
 }
 
@@ -3765,7 +3805,7 @@ async function nactiZDatabaze(){
   zDatabaze = []; sadySChybou = [];
   for(const sada of Object.keys(MAPA)){
     const m = MAPA[sada];
-    const filtr = m.rok ? ('&rok=eq.' + encodeURIComponent(rok)) : '';
+    const filtr = (m.rok === true) ? ('&rok=eq.' + encodeURIComponent(rok)) : '';
     let radky;
     try{
       radky = await sbDotaz(m.tabulka + '?select=*' + filtr);
@@ -3919,7 +3959,7 @@ async function ulozDoDatabaze(){
       // 2) smazání toho, co uživatel v prohlížeči zahodil
       const zbyle = radky.map(r => r[m.klic[0]]).filter(x => x !== undefined && x !== null && x !== '');
       const sloupec = m.pole[m.klic[0]];
-      let filtr = (m.rok ? 'rok=eq.' + encodeURIComponent(rok) + '&' : '');
+      let filtr = (m.rok === true ? 'rok=eq.' + encodeURIComponent(rok) + '&' : '');
       if(zbyle.length){
         const seznam = zbyle.map(x => typeof x === 'string' ? '"' + String(x).replace(/"/g,'') + '"' : x).join(',');
         filtr += sloupec + '=not.in.(' + encodeURIComponent(seznam) + ')';

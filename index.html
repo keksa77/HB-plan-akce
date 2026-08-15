@@ -1040,7 +1040,8 @@ const najdi = (typ, cislo) => D.ukoly.find(u=>u.typ===typ && u.cislo===cislo);
 
 /* ---------- záložky ---------- */
 const ZALOZKY = [
-  {id:"s-todo",          nazev:"To-do",              napoveda:"Přípravné úkoly přes celý rok. Nadiktujete je do pole a web z nich udělá položky s termínem, odpovědným člověkem a vazbou na předávku nebo grupu."},
+  {id:"s-todo",          nazev:"To-do",              jenPrihlaseni:true,
+   napoveda:"Přípravné úkoly přes celý rok. Nadiktujete je do pole a web z nich udělá položky s termínem, odpovědným člověkem a vazbou na předávku nebo grupu."},
   {id:"s-ukoly",         nazev:"Plán úkolů",         napoveda:"Mřížka etap a rolí — kdo trasuje, uklízí a obsluhuje které předávky."},
   {id:"s-podrobny",      nazev:"Podrobný plán",      napoveda:"Všechny úkoly po grupách, včetně přejezdů, noclehů, startu a cíle."},
   {id:"s-tymy",          nazev:"Grupy",              napoveda:"Seznam grup, jejich barvy a způsob dopravy."},
@@ -1052,10 +1053,32 @@ const ZALOZKY = [
   {id:"s-nastaveni",     nazev:"Nastavení",          napoveda:"Aktivní ročník, datum závodu a další nastavení plánovače."}
 ];
 
+/* Které záložky se zrovna nabízejí. Dvě síta za sebou:
+   1) To-do je pracovní seznam, bez přihlášení nemá co ukazovat, tak se nenabízí vůbec.
+   2) Na mobilu zůstanou jen ty, ve kterých se cestou opravdu dá pracovat. */
+function zalozkyKVideni(){
+  let z = ZALOZKY.filter(x=>!x.jenPrihlaseni || prihlasen);
+  if(mobil && !mobilVse) z = z.filter(x=>MOBIL_ZALOZKY.indexOf(x.id) >= 0);
+  return z.length ? z : ZALOZKY;
+}
+
+// Otevře, co je požadované; když to zrovna není k vidění, tak první možnou.
+function otevriVhodnou(prefer){
+  const z = zalozkyKVideni();
+  const cil = z.some(x=>x.id===prefer) ? prefer : (z[0] && z[0].id);
+  if(cil) prepni(cil);
+}
+
+// Když se seznam zúží (přepnutí na mobil, odhlášení), otevřená záložka nesmí zůstat viset.
+function hlidejOtevrenou(){
+  const z = zalozkyKVideni();
+  const ot = ZALOZKY.find(x=>$('#'+x.id) && $('#'+x.id).classList.contains('videt'));
+  if(ot && !z.some(x=>x.id===ot.id)) otevriVhodnou('s-podrobny');
+}
+
 function kresliNav(){
   const n = $('#nav');
-  // na mobilu se nabízejí jen záložky, které mají cestou smysl
-  const videt = (mobil && !mobilVse) ? ZALOZKY.filter(z=>MOBIL_ZALOZKY.indexOf(z.id) >= 0) : ZALOZKY;
+  const videt = zalozkyKVideni();
   n.innerHTML = videt.map(z=>`<button data-id="${z.id}" title="${z.napoveda||''}" onclick="prepni('${z.id}')">${z.nazev}</button>`).join('')
     + ((mobil && !mobilVse)
         ? `<button class="odd" title="Ukáže i zbylé záložky. Na mobilu se v nich hůř pracuje." onclick="odemkniVse()" style="border:0;background:none;cursor:pointer">+ vše</button>`
@@ -3863,7 +3886,7 @@ async function poPrihlaseni(){
   kresliStavPrihlaseni();
   hlaska('Načítám data z databáze…');
   const potize = await nactiZDatabaze();
-  vseKresli(); kresliNav();
+  vseKresli(); kresliNav(); hlidejOtevrenou();
   zmeneno = false; posledniUlozeno = Date.now(); kresliStavUlozeni();
   kresliStavPrihlaseni();
   hlaska(potize.length
@@ -3890,9 +3913,15 @@ function kresliStavPrihlaseni(){
     if(v.textContent.indexOf('Veřejná ukázka') >= 0) v.style.display = prihlasen ? 'none' : '';
   });
   const c = $('#stavPrihlaseni'); if(!c) return;
-  const prepinac = '<button class="tl" style="padding:3px 10px;font-size:11.5px"'
-    + ' title="Přepne mezi mobilním a plným zobrazením. Volba se pamatuje."'
-    + ' onclick="prepniZobrazeni()">' + (mobil ? 'Plné zobrazení' : 'Mobilní zobrazení') + '</button>';
+  // Jedno tlačítko se dvěma popiskami mátlo — nebylo poznat, jestli píše, co je
+  // zapnuté, nebo co zapne. Teď jsou vidět obě možnosti a zvýrazněná je ta platná.
+  const volba = (jeMobil, popisek) => '<button class="tl'
+    + (mobil === jeMobil ? ' hlavni' : '') + '" style="padding:3px 10px;font-size:11.5px"'
+    + ' title="' + (mobil === jeMobil ? 'Právě zapnuté zobrazení.' : 'Přepne na ' + popisek.toLowerCase() + ' zobrazení. Volba se pamatuje.') + '"'
+    + ' onclick="nastavZobrazeni(' + jeMobil + ')">' + popisek + '</button>';
+  const prepinac = '<span class="pozn">Zobrazení:</span>'
+    + '<span style="display:inline-flex;gap:4px">'
+    + volba(false, 'Plné') + volba(true, 'Mobilní') + '</span>';
   c.innerHTML = prepinac + (prihlasen
     ? '<span class="pozn">přihlášen: ' + esc(relace && relace.email || '') + '</span>'
       + '<button class="tl" style="padding:3px 10px;font-size:11.5px" onclick="odhlas()">Odhlásit</button>'
@@ -4063,20 +4092,19 @@ function nactiVolbuZobrazeni(){
   document.body.classList.toggle('mobil', mobil);
 }
 
-function prepniZobrazeni(){
-  mobil = !mobil;
+function nastavZobrazeni(chciMobil){
+  if(mobil === chciMobil) return;
+  mobil = chciMobil;
   try{ localStorage.setItem(MOBIL_KLIC, mobil ? '1' : '0'); }catch(e){}
   document.body.classList.toggle('mobil', mobil);
   if(!mobil) mobilVse = false;
-  kresliNav(); zmerHlavicku();
-  // když je otevřená záložka, která se na mobilu nenabízí, přepneme na to-do
-  const ot = ZALOZKY.find(z=>$('#'+z.id) && $('#'+z.id).classList.contains('videt'));
-  if(mobil && !mobilVse && ot && MOBIL_ZALOZKY.indexOf(ot.id) < 0) prepni('s-todo');
+  kresliNav(); kresliStavPrihlaseni(); hlidejOtevrenou(); zmerHlavicku();
   hlaska(mobil ? 'Mobilní zobrazení' : 'Plné zobrazení');
 }
+function prepniZobrazeni(){ nastavZobrazeni(!mobil); }
 
 function odemkniVse(){
-  mobilVse = true; kresliNav(); zmerHlavicku();
+  mobilVse = true; kresliNav(); kresliStavPrihlaseni(); zmerHlavicku();
   hlaska('Odemčeny všechny záložky');
 }
 
@@ -4114,7 +4142,7 @@ kresliStavPrihlaseni();
 spustPripominku();
 obnovRelaci();
 napisJakDiktovat();
-prepni('s-ukoly');
+otevriVhodnou('s-ukoly');
 zmerHlavicku();
 </script>
 </body>

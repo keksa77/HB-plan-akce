@@ -274,11 +274,11 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
               <tr>
                 <th data-nap="Etapa">Etapa</th>
                 <th class="uzky" data-nap="Na další">Na další</th>
-                <th data-nap="Trasování">Trasování</th>
-                <th data-nap="Úklid fáborků">Úklid fáborků</th>
-                <th data-nap="Obsluha předávky">Obsluha předávky</th>
-                <th data-nap="Zahájení předávky">Zahájení předávky</th>
-                <th data-nap="Ukončení předávky">Ukončení předávky</th>
+                <th data-nap="Trasování">Trasa-značení</th>
+                <th data-nap="Úklid fáborků">Úklid značení</th>
+                <th data-nap="Obsluha předávky">PŘED obsluha</th>
+                <th data-nap="Zahájení předávky">PŘED zahájení</th>
+                <th data-nap="Ukončení předávky">PŘED ukončení</th>
                 <th class="uzky" data-nap="Kopie">Kopie</th>
               </tr>
             </thead>
@@ -667,6 +667,9 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
 </div>
 
 <div class="hlaska" id="hlaska"></div>
+<div id="nacitani" style="display:none;position:fixed;left:0;right:0;top:0;z-index:60;
+  padding:7px 14px;font:700 13px Nunito,sans-serif;color:#fff;background:#5E6B4B;
+  text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.2)"></div>
 
 <style>
 /* ---------- mobilní zobrazení ----------
@@ -736,34 +739,34 @@ const D = {
 
   // tymy_org (HB25) + barva a doprava pro potřeby prototypu
   tymy: [
-    {kod:"G1",  nazev:"",                    poradi:1,  doprava:"osobní auto", barva:"#3F6B8A", poznamka:""},
-    {kod:"G2",  nazev:"",                    poradi:2,  doprava:"osobní auto", barva:"#C9A227", poznamka:""},
-    {kod:"G3",  nazev:"",                    poradi:3,  doprava:"osobní auto", barva:"#B4533A", poznamka:""},
-    {kod:"G4",  nazev:"Dolní Lomná — místní",poradi:4,  doprava:"",            barva:"#B07C3F", poznamka:"v prototypu v1 chyběla"},
-    {kod:"G5",  nazev:"",                    poradi:5,  doprava:"osobní auto", barva:"#C97B2C", poznamka:""},
-    {kod:"G6",  nazev:"",                    poradi:6,  doprava:"osobní auto", barva:"#4E9BA6", poznamka:""},
-    {kod:"G7",  nazev:"",                    poradi:7,  doprava:"osobní auto", barva:"#5E8C3A", poznamka:""},
-    {kod:"G8",  nazev:"",                    poradi:8,  doprava:"osobní auto", barva:"#8A6FA8", poznamka:""},
-    {kod:"IT",  nazev:"IT podpora",          poradi:9,  doprava:"",            barva:"#46586B", poznamka:""},
-    {kod:"G0A", nazev:"Vedení, dodávka A",   poradi:10, doprava:"dodávka",     barva:"#7B3F17", poznamka:""},
-    {kod:"G0B", nazev:"Vedení, dodávka B",   poradi:11, doprava:"dodávka",     barva:"#9A5A22", poznamka:""},
-    {kod:"G10", nazev:"",                    poradi:12, doprava:"osobní auto", barva:"#7A6A55", poznamka:""},
-    {kod:"G11", nazev:"",                    poradi:13, doprava:"osobní auto", barva:"#A63D4E", poznamka:""},
-    {kod:"G12", nazev:"",                    poradi:14, doprava:"osobní auto", barva:"#8E9A3C", poznamka:""},
-    {kod:"G13", nazev:"",                    poradi:15, doprava:"dodávka",     barva:"#5B4A8C", poznamka:""},
-    {kod:"G14", nazev:"",                    poradi:16, doprava:"dodávka",     barva:"#D08C3A", poznamka:""},
-    {kod:"G15", nazev:"",                    poradi:17, doprava:"osobní auto", barva:"#6E8FB5", poznamka:""},
-    {kod:"G16", nazev:"",                    poradi:18, doprava:"osobní auto", barva:"#4B7A5E", poznamka:""},
-    {kod:"G17", nazev:"",                    poradi:19, doprava:"osobní auto", barva:"#A8794F", poznamka:""},
-    {kod:"G18", nazev:"",                    poradi:20, doprava:"veřejná",     barva:"#3E7C6B", poznamka:""},
-    {kod:"FOTO",  nazev:"Fotografové",       poradi:21, doprava:"",            barva:"#8C4E6B", poznamka:""},
-    {kod:"ZVUK",  nazev:"Zvuk a moderace",   poradi:22, doprava:"dodávka",     barva:"#5A5A6E", poznamka:""},
-    {kod:"VIDEO", nazev:"Video",             poradi:23, doprava:"",            barva:"#6B5B8C", poznamka:""},
-    {kod:"GASTRO",nazev:"Občerstvení",       poradi:24, doprava:"",            barva:"#A2733C", poznamka:""},
+    {kod:"G1",  nazev:"",                    poradi:1,  doprava:"osobní auto", barva:"#3F6B8A", poznamka:"", stitek:"G1 Martin B."},
+    {kod:"G2",  nazev:"",                    poradi:2,  doprava:"osobní auto", barva:"#C9A227", poznamka:"", stitek:"G2 Youzza"},
+    {kod:"G3",  nazev:"",                    poradi:3,  doprava:"osobní auto", barva:"#B4533A", poznamka:"", stitek:"G3 Pepička"},
+    {kod:"G4",  nazev:"Dolní Lomná — místní",poradi:4,  doprava:"",            barva:"#B07C3F", poznamka:"v prototypu v1 chyběla", stitek:"G4 Beata K."},
+    {kod:"G5",  nazev:"",                    poradi:5,  doprava:"osobní auto", barva:"#C97B2C", poznamka:"", stitek:"G5 Olda K."},
+    {kod:"G6",  nazev:"",                    poradi:6,  doprava:"osobní auto", barva:"#4E9BA6", poznamka:"", stitek:"G6 Milan"},
+    {kod:"G7",  nazev:"",                    poradi:7,  doprava:"osobní auto", barva:"#5E8C3A", poznamka:"", stitek:"G7 Skejťák"},
+    {kod:"G8",  nazev:"",                    poradi:8,  doprava:"osobní auto", barva:"#8A6FA8", poznamka:"", stitek:"G8"},
+    {kod:"IT",  nazev:"IT podpora",          poradi:9,  doprava:"",            barva:"#46586B", poznamka:"", stitek:"IT Jan H."},
+    {kod:"G0A", nazev:"Vedení, dodávka A",   poradi:10, doprava:"dodávka",     barva:"#7B3F17", poznamka:"", stitek:"G0A Keksa"},
+    {kod:"G0B", nazev:"Vedení, dodávka B",   poradi:11, doprava:"dodávka",     barva:"#9A5A22", poznamka:"", stitek:"G0B Ňufa"},
+    {kod:"G10", nazev:"",                    poradi:12, doprava:"osobní auto", barva:"#7A6A55", poznamka:"", stitek:"G10 Martin H."},
+    {kod:"G11", nazev:"",                    poradi:13, doprava:"osobní auto", barva:"#A63D4E", poznamka:"", stitek:"G11 Libor K."},
+    {kod:"G12", nazev:"",                    poradi:14, doprava:"osobní auto", barva:"#8E9A3C", poznamka:"", stitek:"G12 Jiří P."},
+    {kod:"G13", nazev:"",                    poradi:15, doprava:"dodávka",     barva:"#5B4A8C", poznamka:"", stitek:"G13 Helena"},
+    {kod:"G14", nazev:"",                    poradi:16, doprava:"dodávka",     barva:"#D08C3A", poznamka:"", stitek:"G14 Přema Š."},
+    {kod:"G15", nazev:"",                    poradi:17, doprava:"osobní auto", barva:"#6E8FB5", poznamka:"", stitek:"G15 Adam S."},
+    {kod:"G16", nazev:"",                    poradi:18, doprava:"osobní auto", barva:"#4B7A5E", poznamka:"", stitek:"G16 SDH"},
+    {kod:"G17", nazev:"",                    poradi:19, doprava:"osobní auto", barva:"#A8794F", poznamka:"", stitek:"G17 Martin V."},
+    {kod:"G18", nazev:"",                    poradi:20, doprava:"veřejná",     barva:"#3E7C6B", poznamka:"", stitek:"G18 Franta D."},
+    {kod:"FOTO",  nazev:"Fotografové",       poradi:21, doprava:"",            barva:"#8C4E6B", poznamka:"", stitek:"FOTO Tomáš M."},
+    {kod:"ZVUK",  nazev:"Zvuk a moderace",   poradi:22, doprava:"dodávka",     barva:"#5A5A6E", poznamka:"", stitek:"ZVUK Jerza"},
+    {kod:"VIDEO", nazev:"Video",             poradi:23, doprava:"",            barva:"#6B5B8C", poznamka:"", stitek:"VIDEO Štěpán G."},
+    {kod:"GASTRO",nazev:"Občerstvení",       poradi:24, doprava:"",            barva:"#A2733C", poznamka:"", stitek:"GASTRO Rado D."},
     {kod:"ZDRAV", nazev:"Zdravotní dohled",
-                                             poradi:25, doprava:"",            barva:"#8C3A3A", poznamka:"ZZS Zlín, dodavatel — bez jmen v tabulce"},
+                                             poradi:25, doprava:"",            barva:"#8C3A3A", poznamka:"ZZS Zlín, dodavatel — bez jmen v tabulce", stitek:"ZDRAV"},
     {kod:"domácí",nazev:"Místní pořadatelé",
-                                             poradi:26, doprava:"",            barva:"#96907F", poznamka:"místní grupy na předávkách, vedou se bez jmen"}
+                                             poradi:26, doprava:"",            barva:"#96907F", poznamka:"místní grupy na předávkách, vedou se bez jmen", stitek:"domácí"}
   ],
 
   // clenove_tymu (HB25)
@@ -871,32 +874,8 @@ const D = {
     barva:"bílá", velikost_loga:"A4", barva_loga:"", dodavatel:"BARTUNKOVA s.r.o.",
     tymy_zaplaceno:83, tymy_ocekavano:7, koeficient:9.7, rezerva_pct:5
   },
-  velikosti: [
-    // rada, kod, poradi, podíly z minulých ročníků, odhad pro letošek, pomocníci a tři vlny objednávek
-    {rada:"dámská", kod:"S",    poradi:1,  hb24:14.0, hb25:14.8, hb26:16.1, odhad:14.9, pomocnici:6,  varka1:100, varka2:30, varka3:0},
-    {rada:"dámská", kod:"M",    poradi:2,  hb24:13.8, hb25:12.3, hb26:11.5, odhad:12.4, pomocnici:10, varka1:100, varka2:17, varka3:0},
-    {rada:"dámská", kod:"L",    poradi:3,  hb24:3.9,  hb25:1.5,  hb26:2.8,  odhad:3.0,  pomocnici:9,  varka1:0, varka2:25, varka3:0},
-    {rada:"dámská", kod:"XL",   poradi:4,  hb24:0.8,  hb25:0.4,  hb26:0.0,  odhad:0.3,  pomocnici:1,  varka1:0, varka2:3, varka3:0},
-    {rada:"dámská", kod:"XXL",  poradi:5,  hb24:0.1,  hb25:0.0,  hb26:0.0,  odhad:0.0,  pomocnici:0,  varka1:0, varka2:0, varka3:0},
-    {rada:"pánská", kod:"S",    poradi:6,  hb24:4.9,  hb25:6.2,  hb26:4.8,  odhad:6.0,  pomocnici:2,  varka1:0, varka2:40, varka3:0},
-    {rada:"pánská", kod:"M",    poradi:7,  hb24:28.1, hb25:30.1, hb26:26.2, odhad:26.4, pomocnici:19, varka1:250, varka2:10, varka3:0},
-    {rada:"pánská", kod:"L",    poradi:8,  hb24:28.0, hb25:27.4, hb26:29.0, odhad:29.8, pomocnici:36, varka1:250, varka2:40, varka3:0},
-    {rada:"pánská", kod:"XL",   poradi:9,  hb24:5.3,  hb25:6.5,  hb26:7.9,  odhad:6.0,  pomocnici:22, varka1:50, varka2:20, varka3:0},
-    {rada:"pánská", kod:"XXL",  poradi:10, hb24:1.2,  hb25:0.9,  hb26:1.7,  odhad:1.3,  pomocnici:15, varka1:0, varka2:20, varka3:0},
-    {rada:"pánská", kod:"XXXL", poradi:11, hb24:0.0,  hb25:0.0,  hb26:0.0,  odhad:0.0,  pomocnici:1,  varka1:0, varka2:2, varka3:0},
-    {rada:"pánská", kod:"4XL",  poradi:12, hb24:0.0,  hb25:0.0,  hb26:0.0,  odhad:0.0,  pomocnici:0,  varka1:0, varka2:1, varka3:0}
-  ],
-  objednavky: [
-    {rok:"HB24", vlna:1, datum:"2024-08-05", pocet:592,  poznamka:""},
-    {rok:"HB24", vlna:2, datum:"",           pocet:269,  poznamka:""},
-    {rok:"HB24", vlna:3, datum:"",           pocet:140,   poznamka:""},
-    {rok:"HB25", vlna:1, datum:"2025-07-03", pocet:305,  poznamka:""},
-    {rok:"HB25", vlna:2, datum:"2025-08-11", pocet:405, poznamka:"včetně 9 mikin CAPE a 9 merino RISE pro organizátory"},
-    {rok:"HB25", vlna:3, datum:"2025-08-11", pocet:303,  poznamka:""},
-    {rok:"HB26", vlna:1, datum:"",           pocet:750,           poznamka:"objednáno a na skladě"},
-    {rok:"HB26", vlna:2, datum:"",           pocet:208,  poznamka:"připraveno k objednání, ještě neobjednáno"},
-    {rok:"HB26", vlna:3, datum:"",           pocet:90,   poznamka:"doobjednávka koncem srpna podle soupisek — P L 21, P S 17, D S 13, D L 12, P XL 8, P XXL 8, D M 7, D XL 2, P M 2"}
-  ],
+  velikosti: [],
+  objednavky: [],
 
   // --- přístupy k webu ---
   urovne: [
@@ -905,19 +884,20 @@ const D = {
     {kod:"HOST",    nazev:"Host",          popis:"Jen si čte plán a předávky, kontakty nevidí vůbec.", poradi:3}
   ],
   prava: {
-    "SPRAVCE": {tricka:"zápis", ukoly:"zápis", tymy_org:"zápis", clenove_tymu:"zápis", kontakty:"zápis",
-                predavky:"zápis", nastaveni:"zápis", noclehy_adresy:"zápis", noclehy_lide:"zápis", pristupy:"zápis"},
-    "VEDOUCI": {tricka:"čtení", ukoly:"zápis", tymy_org:"čtení", clenove_tymu:"čtení", kontakty:"čtení",
-                predavky:"čtení", nastaveni:"čtení", noclehy_adresy:"čtení", noclehy_lide:"zápis", pristupy:"žádné"},
-    "HOST":    {ukoly:"čtení", tymy_org:"čtení", clenove_tymu:"žádné", kontakty:"žádné",
-                predavky:"čtení", nastaveni:"žádné", noclehy_adresy:"žádné", noclehy_lide:"žádné", pristupy:"žádné"}
+    "SPRAVCE": {todo:"zápis", tricka:"zápis", ukoly:"zápis", tymy_org:"zápis", clenove_tymu:"zápis",
+                kontakty:"zápis", predavky:"zápis", nastaveni:"zápis", noclehy_adresy:"zápis",
+                noclehy_lide:"zápis", pristupy:"zápis"},
+    "VEDOUCI": {todo:"žádné", tricka:"čtení", ukoly:"zápis", tymy_org:"čtení", clenove_tymu:"čtení",
+                kontakty:"čtení", predavky:"čtení", nastaveni:"žádné", noclehy_adresy:"čtení",
+                noclehy_lide:"čtení", pristupy:"žádné"},
+    "HOST":    {todo:"žádné", tricka:"čtení", ukoly:"čtení", tymy_org:"čtení", clenove_tymu:"čtení",
+                kontakty:"žádné", predavky:"čtení", nastaveni:"žádné", noclehy_adresy:"čtení",
+                noclehy_lide:"čtení", pristupy:"žádné"}
   },
   todo: [],
 
 
-  uzivatele: [
-    {email:"", jmeno:"Keksa", uroven:"SPRAVCE", kod_tymu:"G0A", aktivni:"ano", heslo_hash:"", poznamka:""}
-  ],
+  uzivatele: [],
 
   // ukoly — jeden seznam pro všechny typy, přesně jak to má tabulka ukoly v databázi.
   // Vzor HB25 vytažený z Google tabulky „HB2025 public", listy „HB25 plán podrobný"
@@ -927,11 +907,13 @@ const D = {
 };
 
 const ROLE  = ["T","U","P","PZ","PK"];
-const NAZVY = ["trasování","úklid fáborků","obsluha předávky","zahájení předávky","ukončení předávky"];
+const NAZVY = ["trasa-značení","úklid značení","PŘED obsluha","PŘED zahájení","PŘED ukončení"];
+// klíče do NAPOVEDA zůstávají původní, ať se nemusí přepisovat texty nápovědy
+const NAPOVEDA_ROLE = ["Trasování","Úklid fáborků","Obsluha předávky","Zahájení předávky","Ukončení předávky"];
 const TYPY  = ["T","U","P","PZ","PK","N","A","S","C"];
-const NAZVY_TYPU = {T:"trasování etapy",U:"úklid fáborků",P:"obsluha předávky",
-  PZ:"zahájení předávky",PK:"ukončení předávky",N:"nocleh",A:"přejezd",
-  S:"práce na startu",C:"práce v cíli"};
+const NAZVY_TYPU = {T:"trasa-značení",U:"úklid značení",P:"PŘED obsluha",
+  PZ:"PŘED zahájení",PK:"PŘED ukončení",N:"nocleh",A:"přejezd",
+  S:"start",C:"cíl"};
 const STAVY = ["plán","nepotvrzeno","zrušeno"];
 const BARVA_STAVU = {"plán":"#66713E","nepotvrzeno":"#D08C3A","zrušeno":"#A63D4E"};
 const ROKY = ["HB19","HB20","HB21","HB22","HB23","HB24","HB25","HB26","HB27"];
@@ -952,7 +934,16 @@ const OBLASTI = [
   {kod:"pristupy",       nazev:"Přístupy k webu",            sekce:["s-pristupy"]}
 ];
 let nahledUroven = "";
-const VEREJNA = false;   // veřejná verze pro GitHub Pages = true
+// Úroveň přihlášeného. Prázdná znamená nepřihlášeného a ten se bere jako host —
+// tabulka práv tak platí i pro veřejnou ukázku a nemusí se vést zvlášť.
+let mojeUroven = "";
+const platnaUroven = () => nahledUroven || mojeUroven || "HOST";
+const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
+                        .some(o => D.prava[platnaUroven()][o] === "zápis");
+
+const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
+// Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
+const SKRYT_VEREJNE = ['s-tricka','s-pristupy','s-nastaveni'];
 const CITLIVE = ["Telefon","E-mail","Číslo účtu","Kontakt","Cena","Rezervace","Poznámka","Adresa","Mapa"];
 // Ve veřejném buildu jsou citlivé sloupce schované — dokud se člověk nepřihlásí.
 // Po přihlášení se data načtou z databáze a sloupce se objeví.
@@ -998,7 +989,9 @@ const prvniJmeno = k => {
 const popisGrupy = k => {
   const t = parta(k);
   const st = t && t.stitek ? String(t.stitek).trim() : '';
-  return st || k;
+  if(st) return st;
+  const jm = jmenoGrupy(k);   // sef, a kdyz neni oznaceny, prvni clen
+  return jm ? (k + ' ' + jm) : k;
 };
 // návrh štítku podle šéfa grupy — nabízí se tlačítkem, nepřepisuje se sám
 const navrhStitku = k => { const j = prvniJmeno(k); return j ? (k + ' ' + j) : k; };
@@ -1040,7 +1033,7 @@ const najdi = (typ, cislo) => D.ukoly.find(u=>u.typ===typ && u.cislo===cislo);
 
 /* ---------- záložky ---------- */
 const ZALOZKY = [
-  {id:"s-todo",          nazev:"To-do",              jenPrihlaseni:true,
+  {id:"s-todo",          nazev:"To-do",
    napoveda:"Přípravné úkoly přes celý rok. Nadiktujete je do pole a web z nich udělá položky s termínem, odpovědným člověkem a vazbou na předávku nebo grupu."},
   {id:"s-ukoly",         nazev:"Plán úkolů",         napoveda:"Mřížka etap a rolí — kdo trasuje, uklízí a obsluhuje které předávky."},
   {id:"s-podrobny",      nazev:"Podrobný plán",      napoveda:"Všechny úkoly po grupách, včetně přejezdů, noclehů, startu a cíle."},
@@ -1057,9 +1050,16 @@ const ZALOZKY = [
    1) To-do je pracovní seznam, bez přihlášení nemá co ukazovat, tak se nenabízí vůbec.
    2) Na mobilu zůstanou jen ty, ve kterých se cestou opravdu dá pracovat. */
 function zalozkyKVideni(){
-  let z = ZALOZKY.filter(x=>!x.jenPrihlaseni || prihlasen);
-  if(mobil && !mobilVse) z = z.filter(x=>MOBIL_ZALOZKY.indexOf(x.id) >= 0);
-  return z.length ? z : ZALOZKY;
+  const u = platnaUroven();
+  let z = ZALOZKY
+    .filter(x => SKRYT_VEREJNE.indexOf(x.id) < 0)          // co ve veřejné verzi vůbec není
+    .filter(x => {                                          // a co nedovolí úroveň
+      const o = OBLASTI.find(y => y.sekce.indexOf(x.id) >= 0);
+      return !o || pravo(u, o.kod) !== "žádné";
+    });
+  const doMobilu = z.filter(x => MOBIL_ZALOZKY.indexOf(x.id) >= 0);
+  if(mobil && !mobilVse && doMobilu.length) z = doMobilu;
+  return z;
 }
 
 // Otevře, co je požadované; když to zrovna není k vidění, tak první možnou.
@@ -1067,6 +1067,7 @@ function otevriVhodnou(prefer){
   const z = zalozkyKVideni();
   const cil = z.some(x=>x.id===prefer) ? prefer : (z[0] && z[0].id);
   if(cil) prepni(cil);
+  else ZALOZKY.forEach(x=>{ const e = $('#'+x.id); if(e) e.classList.remove('videt'); });
 }
 
 // Když se seznam zúží (přepnutí na mobil, odhlášení), otevřená záložka nesmí zůstat viset.
@@ -1215,7 +1216,11 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
             }).join('')
           + '</select></td>';
       } else if(s.viceradkove){
-        h += `<td class="${s.trida||''}"${lbl}><textarea rows="1" data-i="${i}" data-p="${s.pole}"
+        // maxRadky ořízne dlouhý text na pár řádků; celý se ukáže po najetí myší
+        // a při psaní se pole samo roztáhne
+        const strop = s.maxRadky ? ` data-max="${s.maxRadky}"` : '';
+        const cely  = (s.maxRadky && v) ? ` title="${esc(v)}"` : '';
+        h += `<td class="${s.trida||''}"${lbl}><textarea rows="1" data-i="${i}" data-p="${s.pole}"${strop}${cely}
                  style="overflow:hidden;resize:none;white-space:pre-wrap">${esc(v)}</textarea></td>`;
       } else {
         // Adresa v poli se nedá proklikat, tak se vedle ní ukáže ikonka.
@@ -1235,8 +1240,30 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
   });
   t.innerHTML = h + '</tbody>';
 
-  const dorovnej = el=>{ el.style.height = 'auto'; el.style.height = (el.scrollHeight+2) + 'px'; };
-  t.querySelectorAll('textarea').forEach(el=>{ dorovnej(el); el.addEventListener('input', ()=>dorovnej(el)); });
+  // Tabulka se překresluje i po uplatnění práv, tak si zámek zjistí sama —
+  // jinak by se po každém překreslení zas dala editovat.
+  const zamcenaSekce = t.closest && t.closest('.sekce.zamceno');
+  if(zamcenaSekce){
+    t.querySelectorAll('input,select,textarea,button').forEach(el=>{ el.disabled = true; });
+    t.querySelectorAll('.smaz').forEach(el=>{ el.style.display = 'none'; });
+  }
+
+  const dorovnej = el=>{
+    el.style.height = 'auto';
+    let v = el.scrollHeight + 2;
+    const max = +el.dataset.max || 0;
+    if(max && document.activeElement !== el){
+      const radek = parseFloat(getComputedStyle(el).lineHeight) || 18;
+      v = Math.min(v, Math.round(max * radek) + 10);
+    }
+    el.style.height = v + 'px';
+  };
+  t.querySelectorAll('textarea').forEach(el=>{
+    dorovnej(el);
+    el.addEventListener('input', ()=>dorovnej(el));
+    el.addEventListener('focus', ()=>dorovnej(el));
+    el.addEventListener('blur',  ()=>setTimeout(()=>dorovnej(el), 0));
+  });
 
   t.querySelectorAll('input,select,textarea').forEach(el=>{
     el.onchange = ()=>{
@@ -1348,7 +1375,7 @@ function kresliPlan(){
         slot.appendChild(cas);
       } else {
         slot.textContent = typ+cislo;
-        slot.title = (NAPOVEDA[NAZVY[s]]||'') + ' Sem přetáhněte grupu z palety vlevo.';
+        slot.title = (NAPOVEDA[NAPOVEDA_ROLE[s]]||'') + ' Sem přetáhněte grupu z palety vlevo.';
       }
       slot.ondragover = ev=>{ev.preventDefault();slot.classList.add('nad');};
       slot.ondragleave = ()=>slot.classList.remove('nad');
@@ -1466,6 +1493,7 @@ function oznacZmenu(){
 function kresliStavUlozeni(){
   kresliPlovouciUlozit();
   const el = $('#stavUlozeni'); if(!el) return;
+  if(prihlasen && !smiPsat()){ el.innerHTML = ''; return; }
   el.innerHTML = !zmeneno ? '' : (prihlasen
     ? '<b>Neuloženo.</b> Změny zatím žijí jen v tomhle okně. '
       + '<button class="tl hlavni" id="tlUlozitDb" style="padding:3px 10px;font-size:11.5px;margin-left:6px" '
@@ -2484,17 +2512,18 @@ function kresliPodrobny(){
   telo.appendChild(tab);
 
   tabulka(tab, [
-    {nadpis:"Grupa", sirka:"172px", html:grupaBunka, napovedaSl:"Kód grupy a jméno prvního člena. Grupu tady jde i přehodit — úkol se rovnou přesune."},
-    {nadpis:"Typ",  pole:"typ",  typ:"select", sirka:"180px",
+    {nadpis:"Grupa", sirka:"150px", html:grupaBunka, napovedaSl:"Kód grupy a jméno šéfa. Grupu tady jde i přehodit — úkol se rovnou přesune."},
+    {nadpis:"Typ",  pole:"typ",  typ:"select", sirka:"132px",
       moznosti:TYPY.map(t=>({v:t, t:NAZVY_TYPU[t] || t}))},
-    {nadpis:"Kód",  pole:"kod",  sirka:"92px"},
-    {nadpis:"Číslo",pole:"cislo",typ:"number", sirka:"78px", trida:"stred"},
-    {nadpis:"Kdy",  pole:"kdy_text", sirka:"150px"},
-    {nadpis:"Den",  pole:"den", typ:"select", moznosti:["","pátek","sobota","neděle"], sirka:"110px"},
-    {nadpis:"Od",   pole:"kdy_od", typ:"time", sirka:"100px"},
-    {nadpis:"Do",   pole:"kdy_do", typ:"time", sirka:"100px"},
-    {nadpis:"Co se dělá", pole:"popis"},
-    {nadpis:"Stav", pole:"stav", typ:"select", moznosti:STAVY, sirka:"128px"}
+    {nadpis:"Kód",  pole:"kod",  sirka:"74px"},
+    {nadpis:"Číslo",pole:"cislo",typ:"number", sirka:"56px", trida:"stred"},
+    {nadpis:"Kdy",  pole:"kdy_text", sirka:"120px",
+      napovedaSl:"Původní text z HB25, ze kterého se vytáhly Den, Od a Do. Slouží už jen ke kontrole."},
+    {nadpis:"Den",  pole:"den", typ:"select", moznosti:["","pátek","sobota","neděle"], sirka:"88px"},
+    {nadpis:"Od",   pole:"kdy_od", typ:"time", sirka:"92px"},
+    {nadpis:"Do",   pole:"kdy_do", typ:"time", sirka:"92px"},
+    {nadpis:"Co se dělá", pole:"popis", viceradkove:true, maxRadky:3},
+    {nadpis:"Stav", pole:"stav", typ:"select", moznosti:STAVY, sirka:"118px"}
   ], u, ()=>{kresliPodrobny();kresliPlan();}, true, undefined, D.ukoly);
 
   // tenká linka tam, kde začíná jiná grupa — ať se to pořád čte po grupách
@@ -2617,6 +2646,7 @@ function kresliClenove(){
     kresliClenove(); kresliPaletu(); kresliPlan(); kresliTymy(); naplnFiltrPart(); kresliSouhrnNoclehu();
     if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
   }, true, undefined, D.clenove, odlozDoHistorie);
+  schovejKontakty();
   const vHistorii = D.clenove.length - vsichni.length;
   $('#stavClenove').textContent = videt.length + ' z ' + vsichni.length + ' lidí'
     + (vHistorii ? ' · v historii ' + vHistorii : '');
@@ -3543,28 +3573,15 @@ function zapniNahled(kod){
 }
 
 function uplatniPrava(){
-  // 1) záložky podle práva k oblasti
-  const skryte = new Set();
-  if(nahledUroven){
-    OBLASTI.forEach(o=>{
-      if(pravo(nahledUroven, o.kod)==="žádné") o.sekce.forEach(x=>skryte.add(x));
-    });
-  }
-  let prvniVidet = null;
-  ZALOZKY.forEach(z=>{
-    const b = document.querySelector(`#nav button[data-id="${z.id}"]`);
-    if(!b) return;
-    b.style.display = skryte.has(z.id) ? 'none' : '';
-    if(!skryte.has(z.id) && !prvniVidet) prvniVidet = z.id;
-    if(skryte.has(z.id)) $('#'+z.id).classList.remove('videt');
-  });
-  if(nahledUroven && !ZALOZKY.some(z=>$('#'+z.id).classList.contains('videt')) && prvniVidet) prepni(prvniVidet);
+  // 1) záložky řeší kresliNav přes zalozkyKVideni — tady jen dorovnáme, co je otevřené
+  const u = platnaUroven();
+  kresliNav(); hlidejOtevrenou();
 
   // 2) zámek na čtení
   ZALOZKY.forEach(z=>{
     const sek = $('#'+z.id);
     const o = OBLASTI.find(x=>x.sekce.indexOf(z.id)>=0);
-    const jenCist = nahledUroven && o && pravo(nahledUroven, o.kod)==="čtení";
+    const jenCist = o && pravo(u, o.kod)==="čtení";
     sek.classList.toggle('zamceno', !!jenCist);
     sek.querySelectorAll('input,select,textarea,button').forEach(el=>{
       if(el.closest('.nastroje') && el.tagName==='SELECT') return;   // filtry nechat funkční
@@ -3575,18 +3592,22 @@ function uplatniPrava(){
   });
 
   // 3) citlivé sloupce
-  const bezKontaktu = nahledUroven && pravo(nahledUroven, "kontakty")==="žádné";
-  const tab = $('#tabClenove');
-  if(tab && bezKontaktu){
-    const skryt = [];
-    tab.querySelectorAll('thead th').forEach((th,i)=>{
-      const n = th.textContent.trim();
-      if(n==='Telefon' || n==='E-mail' || n==='Číslo účtu') skryt.push(i);
-    });
-    tab.querySelectorAll('tr').forEach(tr=>{
-      skryt.forEach(i=>{ const c = tr.children[i]; if(c) c.style.display='none'; });
-    });
-  }
+  schovejKontakty();
+}
+
+/* Telefon, e-mail a číslo účtu vidí jen ten, kdo má právo na kontakty.
+   Volá se i po každém překreslení tabulky členů — jinak by se sloupce vrátily. */
+function schovejKontakty(){
+  const tab = $('#tabClenove'); if(!tab) return;
+  if(pravo(platnaUroven(), "kontakty") !== "žádné") return;
+  const skryt = [];
+  tab.querySelectorAll('thead th').forEach((th,i)=>{
+    const n = th.textContent.trim();
+    if(n==='Telefon' || n==='E-mail' || n==='Číslo účtu') skryt.push(i);
+  });
+  tab.querySelectorAll('tr').forEach(tr=>{
+    skryt.forEach(i=>{ const c = tr.children[i]; if(c) c.style.display='none'; });
+  });
 }
 
 /* ---------- přidávání řádků ---------- */
@@ -3753,7 +3774,7 @@ function relaceNacti(){
   }catch(e){ relace = null; }
 }
 function relaceZahod(){
-  relace = null; prihlasen = false; zDatabaze = [];
+  relace = null; prihlasen = false; mojeUroven = ""; zDatabaze = [];
   try{
     localStorage.removeItem(SB.ulozKlic);
     sessionStorage.removeItem(SB.ulozKlic);
@@ -3884,14 +3905,26 @@ async function poPrihlaseni(){
   prihlasen = true;
   zavriPrihlaseni();
   kresliStavPrihlaseni();
-  hlaska('Načítám data z databáze…');
+  ukazNacitani('Načítám data z databáze…');
   const potize = await nactiZDatabaze();
+  zjistiUroven();
   vseKresli(); kresliNav(); hlidejOtevrenou();
   zmeneno = false; posledniUlozeno = Date.now(); kresliStavUlozeni();
   kresliStavPrihlaseni();
-  hlaska(potize.length
+  const zprava = potize.length
     ? ('Načteno, ale s výhradami: ' + potize.join(' · '))
-    : ('Načteno z databáze: ' + zDatabaze.join(', ')));
+    : ('Hotovo — data jsou z databáze (' + zDatabaze.join(', ') + '), úroveň '
+       + ((uroven(mojeUroven)||{}).nazev || mojeUroven || 'host') + '.');
+  schovejNacitani(zprava, potize.length ? 'vyhrada' : 'hotovo');
+  hlaska(zprava);
+}
+
+// Úroveň se bere z tabulky uživatelů podle e-mailu, kterým je člověk přihlášený.
+// Když tam řádek není (nový účet, který si správce ještě nezařadil), platí host.
+function zjistiUroven(){
+  const mail = String((relace && relace.email) || '').trim().toLowerCase();
+  const u = (D.uzivatele || []).find(x => String(x.email||'').trim().toLowerCase() === mail);
+  mojeUroven = (u && u.aktivni !== 'ne' && u.uroven) ? u.uroven : 'HOST';
 }
 
 function odhlas(){
@@ -4039,6 +4072,8 @@ function kresliPlovouciUlozit(){
   // Přihlášenému je tlačítko na očích pořád — po úkonu svítí, jinak jen tiše
   // hlásí, že je uloženo. Nepřihlášenému nemá co nabízet, dokud něco nezmění.
   if(!prihlasen && !zmeneno){ el.style.display = 'none'; el.classList.remove('pripominka'); return; }
+  // kdo nemá kam ukládat, ať se na tlačítko nedívá
+  if(prihlasen && !smiPsat()){ el.style.display = 'none'; el.classList.remove('pripominka'); return; }
   el.style.display = '';
 
   if(!prihlasen){
@@ -4079,6 +4114,26 @@ function spustPripominku(){
    Na úzkém displeji naskočí samo, přepínač v hlavičce ho přebije a volba se
    pamatuje. Na mobilu se nabízejí jen záložky, které mají cestou smysl —
    ostatní se dají odemknout tlačítkem „vše". */
+/* ---------- hláška o načítání ----------
+   Než se stáhnou data z databáze, běží stránka na tom, co je zapečené v souboru.
+   Je to vidět (grupy bez jmen šéfů), tak se to rovnou řekne — a když je hotovo,
+   řekne se to taky. */
+function ukazNacitani(text){
+  const el = $('#nacitani'); if(!el) return;
+  el.textContent = text;
+  el.style.background = '#5E6B4B';
+  el.style.display = '';
+  clearTimeout(el._t);
+}
+function schovejNacitani(text, jak){
+  const el = $('#nacitani'); if(!el) return;
+  el.textContent = text;
+  el.style.background = (jak === 'vyhrada') ? '#8C5A2B' : '#3F6B3F';
+  el.style.display = '';
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>{ el.style.display = 'none'; }, jak === 'vyhrada' ? 9000 : 4500);
+}
+
 const MOBIL_KLIC = 'hb_mobil';
 const MOBIL_ZALOZKY = ['s-todo','s-podrobny'];
 let mobil = false, mobilVse = false;

@@ -2313,7 +2313,7 @@ function naplnFiltryPodrobny(){
     grupyLetos().slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))
       .map(t=>`<option value="${esc(t.kod)}"${t.kod===dp?' selected':''}>${esc(popisGrupy(t.kod))}</option>`).join('');
   ft.innerHTML = '<option value="">všechny typy</option>' +
-    TYPY.map(t=>`<option${t===dt?' selected':''} value="${t}">${t} — ${NAZVY_TYPU[t]}</option>`).join('');
+    TYPY.map(t=>`<option${t===dt?' selected':''} value="${t}">${NAZVY_TYPU[t]} (${t})</option>`).join('');
   fs.innerHTML = '<option value="">všechny stavy</option>' +
     STAVY.map(s=>`<option${s===ds?' selected':''}>${esc(s)}</option>`).join('');
 
@@ -2378,7 +2378,8 @@ function kresliPodrobny(){
 
   tabulka(tab, [
     {nadpis:"Grupa", sirka:"172px", html:grupaBunka, napovedaSl:"Kód grupy a jméno prvního člena. Grupu tady jde i přehodit — úkol se rovnou přesune."},
-    {nadpis:"Typ",  pole:"typ",  typ:"select", moznosti:TYPY, sirka:"74px"},
+    {nadpis:"Typ",  pole:"typ",  typ:"select", sirka:"180px",
+      moznosti:TYPY.map(t=>({v:t, t:NAZVY_TYPU[t] || t}))},
     {nadpis:"Kód",  pole:"kod",  sirka:"92px"},
     {nadpis:"Číslo",pole:"cislo",typ:"number", sirka:"78px", trida:"stred"},
     {nadpis:"Kdy",  pole:"kdy_text", sirka:"150px"},

@@ -1137,7 +1137,16 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
         h += `<td class="${s.trida||''}"><textarea rows="1" data-i="${i}" data-p="${s.pole}"
                  style="overflow:hidden;resize:none;white-space:pre-wrap">${esc(v)}</textarea></td>`;
       } else {
-        h += `<td class="${s.trida||''}"><input type="${s.typ||'text'}" data-i="${i}" data-p="${s.pole}" value="${esc(v)}"></td>`;
+        // Adresa v poli se nedá proklikat, tak se vedle ní ukáže ikonka.
+        const odkazy = (s.typ && s.typ !== 'text') ? [] : najdiOdkazy(v);
+        const ikony = odkazy.map(o=>' <a href="' + esc(o.url) + '" target="_blank" rel="noopener noreferrer"'
+          + ' title="Otevřít ' + esc(o.popis) + ' v nové záložce" style="text-decoration:none;font-size:14px">'
+          + (o.mail ? '&#9993;' : '&#128279;') + '</a>').join('');
+        h += `<td class="${s.trida||''}">`
+          + (ikony ? '<span style="display:flex;align-items:center;gap:2px">' : '')
+          + `<input type="${s.typ||'text'}" data-i="${i}" data-p="${s.pole}" value="${esc(v)}"`
+          + (ikony ? ' style="flex:1;min-width:0"' : '') + '>'
+          + ikony + (ikony ? '</span>' : '') + '</td>';
       }
     });
     if(mazatelne) h += `<td class="smaz"><button class="smazX" data-del="${i}" title="Smaže celý tento řádek. Vrátit se to nedá.">×</button></td>`;
@@ -2280,6 +2289,7 @@ function kresliTodo(){
    sloupci se proto ukáže ikonka na každý odkaz, který v textu je. Otevírá
    se v nové záložce, ať se rozepsaný úkol neztratí. */
 function najdiOdkazy(text){
+  if(text === null || text === undefined || text === '') return [];
   const vzor = PRAV && PRAV.rozdeleni && PRAV.rozdeleni.odkaz_vzor;
   if(!vzor) return [];
   const nalez = String(text||'').match(new RegExp(vzor, 'gi')) || [];
@@ -2750,15 +2760,28 @@ const POLE_NOCI = {"pátek":"nocleh_patek", "sobota":"nocleh_sobota"};
 
 function obsazenostNoci(noc){
   const zLidi = {}, zClenu = {};
-  (D.nocLide||[]).forEach(x=>{ if(x.noc===noc && x.kod_noclehu) zLidi[x.kod_noclehu] = (zLidi[x.kod_noclehu]||0)+1; });
+  const pridej = (kam, misto, grupa, jmeno) => {
+    if(!kam[misto]) kam[misto] = [];
+    kam[misto].push({grupa: grupa || '', jmeno: jmeno || ''});
+  };
+  (D.nocLide||[]).forEach(x=>{ if(x.noc===noc && x.kod_noclehu) pridej(zLidi, x.kod_noclehu, x.kod_tymu, x.jmeno); });
   const pole = POLE_NOCI[noc];
   if(pole) zivi().forEach(c=>{
     const k = c[pole];
-    if(k && k !== NERESI) zClenu[k] = (zClenu[k]||0)+1;
+    if(k && k !== NERESI) pridej(zClenu, k, c.kod_tymu, c.jmeno);
   });
-  const souctyLidi = Object.values(zLidi).reduce((a,b)=>a+b,0);
-  return souctyLidi ? {kde: zLidi, zdroj: 'noclehy — lidé', jinde: Object.values(zClenu).reduce((a,b)=>a+b,0)}
-                    : {kde: zClenu, zdroj: 'členové grup', jinde: 0};
+  const pocet = o => Object.values(o).reduce((a,x)=>a+x.length,0);
+  return pocet(zLidi) ? {kde: zLidi, zdroj: 'noclehy — lidé', jinde: pocet(zClenu)}
+                      : {kde: zClenu, zdroj: 'členové grup', jinde: 0};
+}
+
+// „G1 Martin Běhal, Jan Riedl · G3 Pepička" — kdo na tom místě tu noc spí
+function kdoTamSpi(lide){
+  if(!lide || !lide.length) return '';
+  const podleGrupy = {};
+  lide.forEach(x=>{ const g = x.grupa || '—'; (podleGrupy[g] = podleGrupy[g] || []).push(x.jmeno); });
+  return Object.keys(podleGrupy).sort().map(g =>
+    '<b>' + esc(g) + '</b> ' + esc(podleGrupy[g].filter(Boolean).join(', '))).join(' · ');
 }
 
 function kresliSouhrnNoclehu(){
@@ -2776,9 +2799,9 @@ function kresliSouhrnNoclehu(){
       + '<span style="display:block;height:100%;width:' + pct + '%;background:' + barva + '"></span></span>';
   };
 
-  let h = '<table class="tab" style="width:auto;min-width:520px"><thead><tr>'
+  let h = '<table class="tab" style="width:100%;min-width:760px"><thead><tr>'
     + '<th style="width:150px">Místo</th><th style="width:90px" class="stred">Lůžek</th>'
-    + NOCI.map(n=>'<th style="width:190px">' + esc(n) + '</th>').join('')
+    + NOCI.map(n=>'<th style="min-width:290px">' + esc(n) + '</th>').join('')
     + '</tr></thead><tbody>';
 
   const obs = {};
@@ -2789,12 +2812,18 @@ function kresliSouhrnNoclehu(){
     h += '<tr><td style="padding:6px 8px">' + esc(m.kod) + '</td>'
       + '<td class="stred" style="padding:6px 8px">' + (kap || '—') + '</td>'
       + NOCI.map(n=>{
-          const c = obs[n].kde[m.kod] || 0;
+          const lide = obs[n].kde[m.kod] || [];
+          const c = lide.length;
           const zbyva = kap - c;
-          return '<td style="padding:6px 8px;font-size:12.5px">' + pruh(c, kap)
+          const kdo = kdoTamSpi(lide);
+          return '<td style="padding:6px 8px;font-size:12.5px;vertical-align:top">'
+            + '<div style="white-space:nowrap">' + pruh(c, kap)
             + c + ' z ' + (kap || '?')
             + (kap ? ('<span style="color:' + (zbyva < 0 ? 'var(--vinova)' : 'var(--pisek)') + '"> · '
                 + (zbyva < 0 ? ('přeplněno o ' + (-zbyva)) : ('volno ' + zbyva)) + '</span>') : '')
+            + '</div>'
+            + (kdo ? '<div style="font-size:11.5px;color:var(--pisek);margin-top:3px;line-height:1.45">'
+                     + kdo + '</div>' : '')
             + '</td>';
         }).join('')
       + '</tr>';
@@ -2804,7 +2833,7 @@ function kresliSouhrnNoclehu(){
     + '<td style="padding:7px 8px">Celkem</td>'
     + '<td class="stred" style="padding:7px 8px">' + kapacita + '</td>'
     + NOCI.map(n=>{
-        const c = Object.values(obs[n].kde).reduce((a,b)=>a+b,0);
+        const c = Object.values(obs[n].kde).reduce((a,x)=>a+x.length,0);
         const zbyva = kapacita - c;
         return '<td style="padding:7px 8px;font-size:12.5px">' + pruh(c, kapacita)
           + c + ' z ' + kapacita

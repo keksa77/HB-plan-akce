@@ -475,7 +475,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   <!-- 5. NASTAVENÍ -->
   <section class="sekce" id="s-nastaveni">
     <div class="karta">
-      <h2>Nastavení ročníku — tabulka nastaveni</h2>
+      <h2>Nastavení — tabulka nastaveni</h2>
       <div class="telo">
         <p class="popisek">Nástroj vždycky ukazuje jen jeden ročník. Přepnutí je změna jedné
           hodnoty; historie zůstává v databázi, ale do plánování se nedostane.</p>
@@ -892,7 +892,7 @@ const OBLASTI = [
   {kod:"clenove_tymu",   nazev:"Členové grup",               sekce:["s-clenove"]},
   {kod:"kontakty",       nazev:"Telefony, e-maily, čísla účtů", sekce:[]},
   {kod:"predavky",       nazev:"Předávky",                   sekce:["s-predavky"]},
-  {kod:"nastaveni",      nazev:"Nastavení ročníku",          sekce:["s-nastaveni"]},
+  {kod:"nastaveni",      nazev:"Nastavení",                  sekce:["s-nastaveni"]},
   {kod:"noclehy_adresy", nazev:"Noclehy — místa",            sekce:["s-noclehy-mista"]},
   {kod:"noclehy_lide",   nazev:"Noclehy — lidé",             sekce:["s-noclehy-lide"]},
   {kod:"tricka",         nazev:"Trička a objednávky",        sekce:["s-tricka"]},
@@ -993,11 +993,11 @@ const ZALOZKY = [
   {id:"s-tymy",          nazev:"Grupy",              napoveda:"Seznam grup, jejich barvy a způsob dopravy."},
   {id:"s-clenove",       nazev:"Členové grup",       napoveda:"Lidé v grupách a jejich kontakty."},
   {id:"s-predavky",      nazev:"Předávky",           napoveda:"Místa předávek, souřadnice, vzdálenosti a časy mezi nimi."},
-  {id:"s-nastaveni",     nazev:"Nastavení ročníku",  napoveda:"Aktivní ročník a datum závodu."},
   {id:"s-noclehy-mista", nazev:"Noclehy — místa",    napoveda:"Ubytování, kapacity a stav rezervací."},
   {id:"s-noclehy-lide",  nazev:"Noclehy — lidé",     napoveda:"Kdo kde spí v pátek a v sobotu."},
   {id:"s-tricka",        nazev:"Trička",             napoveda:"Odhad potřeby triček podle velikostí, sklad a objednávky po vlnách."},
-  {id:"s-pristupy",      nazev:"Přístupy",           napoveda:"Tři úrovně přístupu k webu, co která smí, a seznam uživatelů."}
+  {id:"s-pristupy",      nazev:"Přístupy",           napoveda:"Tři úrovně přístupu k webu, co která smí, a seznam uživatelů."},
+  {id:"s-nastaveni",     nazev:"Nastavení",          napoveda:"Aktivní ročník, datum závodu a další nastavení plánovače."}
 ];
 
 function kresliNav(){
@@ -2740,6 +2740,8 @@ function kresliNocMista(){
   tabulka('#tabNocMista', bezCitlivych([
     {nadpis:"Kód", pole:"kod", sirka:"120px"},
     {nadpis:"Název", pole:"nazev", sirka:"230px"},
+    {nadpis:"Noc", pole:"noc", typ:"select", moznosti:[""].concat(NOCI), sirka:"110px",
+      napovedaSl:"Na kterou noc je místo domluvené. Obsazenost se počítá jen pro ni."},
     {nadpis:"Adresa", pole:"adresa", sirka:"160px"},
     {nadpis:"Mapa", pole:"mapa_url", sirka:"210px"},
     {nadpis:"Kapacita", pole:"kapacita", typ:"number", sirka:"90px", trida:"stred"},
@@ -2766,11 +2768,13 @@ function obsazenostNoci(noc){
     if(!kam[misto]) kam[misto] = [];
     kam[misto].push({grupa: grupa || '', jmeno: jmeno || ''});
   };
+  // místo patřící jiné noci se do téhle noci nepočítá
+  const patriSem = k => { const m = (D.nocMista||[]).find(x=>x.kod===k); return !m || !m.noc || m.noc === noc; };
   (D.nocLide||[]).forEach(x=>{ if(x.noc===noc && x.kod_noclehu) pridej(zLidi, x.kod_noclehu, x.kod_tymu, x.jmeno); });
   const pole = POLE_NOCI[noc];
   if(pole) zivi().forEach(c=>{
     const k = c[pole];
-    if(k && k !== NERESI) pridej(zClenu, k, c.kod_tymu, c.jmeno);
+    if(k && k !== NERESI && patriSem(k)) pridej(zClenu, k, c.kod_tymu, c.jmeno);
   });
   const pocet = o => Object.values(o).reduce((a,x)=>a+x.length,0);
   return pocet(zLidi) ? {kde: zLidi, zdroj: 'noclehy — lidé', jinde: pocet(zClenu)}
@@ -2801,48 +2805,56 @@ function kresliSouhrnNoclehu(){
       + '<span style="display:block;height:100%;width:' + pct + '%;background:' + barva + '"></span></span>';
   };
 
-  let h = '<table class="tab" style="width:100%;min-width:760px"><thead><tr>'
-    + '<th style="width:150px">Místo</th><th style="width:90px" class="stred">Lůžek</th>'
-    + NOCI.map(n=>'<th style="min-width:290px">' + esc(n) + '</th>').join('')
-    + '</tr></thead><tbody>';
-
   const obs = {};
   NOCI.forEach(n=>{ obs[n] = obsazenostNoci(n); });
 
-  mista.forEach(m=>{
+  // Každé místo patří jedné noci, tak se řadí po nocích pod sebe.
+  const skupiny = NOCI.map(n=>({noc:n, mista: mista.filter(m=>m.noc === n)}));
+  const bezNoci = mista.filter(m=>!m.noc || NOCI.indexOf(m.noc) < 0);
+  if(bezNoci.length) skupiny.push({noc:'', mista: bezNoci});
+
+  let h = '<table class="tab" style="width:100%;min-width:700px"><thead><tr>'
+    + '<th style="width:230px">Místo</th><th style="width:90px" class="stred">Lůžek</th>'
+    + '<th style="width:230px">Obsazeno</th><th>Kdo tam spí</th>'
+    + '</tr></thead><tbody>';
+
+  const radek = (m, noc) => {
     const kap = +m.kapacita || 0;
-    h += '<tr><td style="padding:6px 8px">' + esc(m.kod) + '</td>'
+    const lide = noc ? (obs[noc].kde[m.kod] || []) : [];
+    const c = lide.length;
+    const zbyva = kap - c;
+    return '<tr><td style="padding:6px 8px">' + esc(m.nazev || m.kod) + '</td>'
       + '<td class="stred" style="padding:6px 8px">' + (kap || '—') + '</td>'
-      + NOCI.map(n=>{
-          const lide = obs[n].kde[m.kod] || [];
-          const c = lide.length;
-          const zbyva = kap - c;
-          const kdo = kdoTamSpi(lide);
-          return '<td style="padding:6px 8px;font-size:12.5px;vertical-align:top">'
-            + '<div style="white-space:nowrap">' + pruh(c, kap)
-            + c + ' z ' + (kap || '?')
+      + '<td style="padding:6px 8px;font-size:12.5px;white-space:nowrap">'
+        + (noc ? (pruh(c, kap) + c + ' z ' + (kap || '?')
             + (kap ? ('<span style="color:' + (zbyva < 0 ? 'var(--vinova)' : 'var(--pisek)') + '"> · '
-                + (zbyva < 0 ? ('přeplněno o ' + (-zbyva)) : ('volno ' + zbyva)) + '</span>') : '')
-            + '</div>'
-            + (kdo ? '<div style="font-size:11.5px;color:var(--pisek);margin-top:3px;line-height:1.45">'
-                     + kdo + '</div>' : '')
-            + '</td>';
-        }).join('')
-      + '</tr>';
+                + (zbyva < 0 ? ('přeplněno o ' + (-zbyva)) : ('volno ' + zbyva)) + '</span>') : ''))
+           : '<span style="color:var(--vinova)">bez noci — doplňte ji v tabulce</span>')
+      + '</td>'
+      + '<td style="padding:6px 8px;font-size:11.5px;color:var(--pisek);line-height:1.45">'
+        + (kdoTamSpi(lide) || '—') + '</td></tr>';
+  };
+
+  skupiny.forEach(sk=>{
+    if(!sk.mista.length) return;
+    const kap = sk.mista.reduce((a,m)=>a + (+m.kapacita || 0), 0);
+    const c = sk.noc ? sk.mista.reduce((a,m)=>a + ((obs[sk.noc].kde[m.kod]||[]).length), 0) : 0;
+    const zbyva = kap - c;
+    h += '<tr style="background:var(--papir);font-weight:800">'
+      + '<td style="padding:7px 8px">' + esc(sk.noc || 'bez noci') + '</td>'
+      + '<td class="stred" style="padding:7px 8px">' + kap + '</td>'
+      + '<td style="padding:7px 8px;font-size:12.5px;white-space:nowrap">'
+        + (sk.noc ? (pruh(c, kap) + c + ' z ' + kap
+            + '<span style="font-weight:400;color:' + (zbyva < 0 ? 'var(--vinova)' : 'var(--pisek)') + '"> · '
+            + (zbyva < 0 ? ('přeplněno o ' + (-zbyva)) : ('volno ' + zbyva)) + '</span>') : '')
+      + '</td><td></td></tr>';
+    sk.mista.forEach(m=>{ h += radek(m, sk.noc); });
   });
 
-  h += '</tbody><tfoot><tr style="font-weight:800;background:var(--papir)">'
-    + '<td style="padding:7px 8px">Celkem</td>'
+  h += '</tbody><tfoot><tr style="font-weight:800">'
+    + '<td style="padding:7px 8px">Celkem lůžek</td>'
     + '<td class="stred" style="padding:7px 8px">' + kapacita + '</td>'
-    + NOCI.map(n=>{
-        const c = Object.values(obs[n].kde).reduce((a,x)=>a+x.length,0);
-        const zbyva = kapacita - c;
-        return '<td style="padding:7px 8px;font-size:12.5px">' + pruh(c, kapacita)
-          + c + ' z ' + kapacita
-          + '<span style="font-weight:400;color:' + (zbyva < 0 ? 'var(--vinova)' : 'var(--pisek)') + '"> · '
-          + (zbyva < 0 ? ('přeplněno o ' + (-zbyva)) : ('volno ' + zbyva)) + '</span></td>';
-      }).join('')
-    + '</tr></tfoot></table>';
+    + '<td colspan="2"></td></tr></tfoot></table>';
 
   const zdroje = [...new Set(NOCI.map(n=>obs[n].zdroj))].join(' a ');
   h += '<p class="popisek" style="margin:8px 0 0">Obsazenost se počítá z: ' + esc(zdroje)
@@ -3563,9 +3575,9 @@ const MAPA = {
   },
   nocMista: {
     tabulka:'noclehy_adresy', klic:['kod'], konflikt:['rok','kod'], rok:true, jen:[],
-    pole:{kod:'kod', nazev:'nazev', adresa:'adresa', mapa_url:'mapa_url', kapacita:'kapacita',
-          pokoje:'pokoje', kontakt:'kontakt', telefon:'telefon', cena:'cena',
-          platba:'platba', rezervace:'rezervace', poznamka:'poznamka'}
+    pole:{kod:'kod', nazev:'nazev', noc:'noc', adresa:'adresa', mapa_url:'mapa_url',
+          kapacita:'kapacita', pokoje:'pokoje', kontakt:'kontakt', telefon:'telefon',
+          cena:'cena', platba:'platba', rezervace:'rezervace', poznamka:'poznamka'}
   },
   nocLide: {
     tabulka:'noclehy_lide', klic:['id'], konflikt:['id'], rok:true, vzdyUkladat:true, jen:[],

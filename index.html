@@ -2601,6 +2601,8 @@ function kresliHistorii(){
 
 /* ---------- 4. předávky ---------- */
 function kresliPredavky(){
+  // pořadí na trati je jediné, které dává smysl — od Dolní Lomné k cíli
+  D.predavky.sort((a,b)=>(+a.cislo||0)-(+b.cislo||0));
   tabulka('#tabPredavky', bezCitlivych([
     {nadpis:"#", pole:"cislo", typ:"number", sirka:"60px", trida:"stred"},
     {nadpis:"Název místa", pole:"nazev", sirka:"210px"},

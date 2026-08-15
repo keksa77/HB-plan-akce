@@ -659,6 +659,50 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
 
 <div class="hlaska" id="hlaska"></div>
 
+<style>
+/* ---------- mobilní zobrazení ----------
+   Tabulka se na úzkém displeji nedá číst. V režimu .mobil se z každého řádku
+   stane karta: hlavička tabulky zmizí a název sloupce se píše nad hodnotu. */
+body.mobil { font-size: 15px; }
+body.mobil header .pozn { display: none; }
+body.mobil nav { gap: 4px; }
+body.mobil main { padding: 8px; }
+body.mobil .karta { border-radius: 10px; }
+body.mobil .telo { padding: 10px; }
+body.mobil .obal-tab { overflow: visible; }
+body.mobil table.tab { display: block; width: 100%; min-width: 0 !important; }
+body.mobil table.tab thead { display: none; }
+body.mobil table.tab tbody, body.mobil table.tab tfoot { display: block; }
+body.mobil table.tab tr {
+  display: block; margin: 0 0 9px; padding: 7px 9px;
+  border: 1px solid var(--linka); border-radius: 10px; background: #fff;
+}
+body.mobil table.tab td {
+  display: flex; align-items: center; gap: 8px;
+  width: auto !important; padding: 3px 0 !important; border: 0 !important;
+  white-space: normal !important;
+}
+body.mobil table.tab td::before {
+  content: attr(data-th); flex: 0 0 40%; max-width: 40%;
+  font-size: 11px; font-weight: 800; letter-spacing: .03em;
+  text-transform: uppercase; color: var(--pisek);
+}
+body.mobil table.tab td:empty { display: none; }
+body.mobil table.tab td > input,
+body.mobil table.tab td > select,
+body.mobil table.tab td > textarea,
+body.mobil table.tab td > span { flex: 1; min-width: 0; }
+body.mobil table.tab input, body.mobil table.tab select, body.mobil table.tab textarea {
+  font-size: 16px;            /* pod 16 px iPhone při psaní zvětší stránku */
+  padding: 7px 8px;
+}
+body.mobil .smazX { font-size: 20px; padding: 2px 10px; }
+body.mobil .mrizka, body.mobil #grafPredavky, body.mobil .paleta { overflow-x: auto; }
+body.mobil #plovouciUlozit { left: 10px; right: 10px; max-width: none; bottom: 10px; }
+body.mobil .nastroje { flex-wrap: wrap; }
+body.mobil .tl { padding: 7px 12px; }
+</style>
+
 <!-- Plovoucí Uložit. Lišta nahoře bývá odscrollovaná pryč, tak tlačítko drží
      u pravého dolního rohu, dokud jsou neuložené změny. -->
 <div id="plovouciUlozit" style="display:none;position:fixed;right:22px;bottom:22px;z-index:55;
@@ -1001,13 +1045,18 @@ const ZALOZKY = [
 
 function kresliNav(){
   const n = $('#nav');
-  n.innerHTML = ZALOZKY.map(z=>`<button data-id="${z.id}" title="${z.napoveda||''}" onclick="prepni('${z.id}')">${z.nazev}</button>`).join('')
-    + `<span class="odd">skryté: vzdálenosti · historie plánů · fotky</span>`;
+  // na mobilu se nabízejí jen záložky, které mají cestou smysl
+  const videt = (mobil && !mobilVse) ? ZALOZKY.filter(z=>MOBIL_ZALOZKY.indexOf(z.id) >= 0) : ZALOZKY;
+  n.innerHTML = videt.map(z=>`<button data-id="${z.id}" title="${z.napoveda||''}" onclick="prepni('${z.id}')">${z.nazev}</button>`).join('')
+    + ((mobil && !mobilVse)
+        ? `<button class="odd" title="Ukáže i zbylé záložky. Na mobilu se v nich hůř pracuje." onclick="odemkniVse()" style="border:0;background:none;cursor:pointer">+ vše</button>`
+        : `<span class="odd">skryté: vzdálenosti · historie plánů · fotky</span>`);
 }
 function prepni(id){
   ZALOZKY.forEach(z=>{
     $('#'+z.id).classList.toggle('videt', z.id===id);
-    document.querySelector(`#nav button[data-id="${z.id}"]`).classList.toggle('aktivni', z.id===id);
+    const b = document.querySelector(`#nav button[data-id="${z.id}"]`);
+    if(b) b.classList.toggle('aktivni', z.id===id);
   });
   zavriEditor();
   if(id==="s-todo") kresliTodo();
@@ -1117,14 +1166,15 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
     if(maOdznak) h += '<td class="odzn">'+odznakHtml(r)+'</td>';
     sloupce.forEach(s=>{
       const v = r[s.pole];
+      const lbl = s.nadpis ? ` data-th="${esc(s.nadpis)}"` : '';
       if(s.html){
-        h += `<td class="${s.trida||''}" style="padding:5px 8px;white-space:nowrap">${s.html(r,i)}</td>`;
+        h += `<td class="${s.trida||''}"${lbl} style="padding:5px 8px;white-space:nowrap">${s.html(r,i)}</td>`;
       } else if(s.jenCist){
-        h += `<td class="${s.trida||''}" style="padding:7px 8px;font-size:13px;color:var(--pisek)">${esc(v)}</td>`;
+        h += `<td class="${s.trida||''}"${lbl} style="padding:7px 8px;font-size:13px;color:var(--pisek)">${esc(v)}</td>`;
       } else if(s.typ==='select'){
         const moznosti = (typeof s.moznosti==='function'? s.moznosti(r) : s.moznosti);
         // volba může být holá hodnota, nebo dvojice {v: hodnota, t: co je vidět}
-        h += `<td class="${s.trida||''}"><select data-i="${i}" data-p="${s.pole}">`
+        h += `<td class="${s.trida||''}"${lbl}><select data-i="${i}" data-p="${s.pole}">`
           + moznosti.map(m=>{
               const hod = (m && typeof m === 'object') ? m.v : m;
               const vid = (m && typeof m === 'object') ? m.t : m;
@@ -1133,7 +1183,7 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
             }).join('')
           + '</select></td>';
       } else if(s.viceradkove){
-        h += `<td class="${s.trida||''}"><textarea rows="1" data-i="${i}" data-p="${s.pole}"
+        h += `<td class="${s.trida||''}"${lbl}><textarea rows="1" data-i="${i}" data-p="${s.pole}"
                  style="overflow:hidden;resize:none;white-space:pre-wrap">${esc(v)}</textarea></td>`;
       } else {
         // Adresa v poli se nedá proklikat, tak se vedle ní ukáže ikonka.
@@ -1141,7 +1191,7 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
         const ikony = odkazy.map(o=>' <a href="' + esc(o.url) + '" target="_blank" rel="noopener noreferrer"'
           + ' title="Otevřít ' + esc(o.popis) + ' v nové záložce" style="text-decoration:none;font-size:14px">'
           + (o.mail ? '&#9993;' : '&#128279;') + '</a>').join('');
-        h += `<td class="${s.trida||''}">`
+        h += `<td class="${s.trida||''}"${lbl}>`
           + (ikony ? '<span style="display:flex;align-items:center;gap:2px">' : '')
           + `<input type="${s.typ||'text'}" data-i="${i}" data-p="${s.pole}" value="${esc(v)}"`
           + (ikony ? ' style="flex:1;min-width:0"' : '') + '>'
@@ -2737,22 +2787,33 @@ function zmenNastaveni(){
 
 /* ---------- 6. noclehy místa ---------- */
 function kresliNocMista(){
+  // pořadí nocí, ne abecedy — tak se na to člověk dívá
+  const poradiNoci = k => { const i = NOCI.indexOf(k); return i < 0 ? 99 : i; };
+  D.nocMista.sort((a,b)=>poradiNoci(a.noc)-poradiNoci(b.noc)
+                        || String(a.nazev||a.kod).localeCompare(String(b.nazev||b.kod),'cs'));
+
+  // sloupce, které mají mít šířku podle dat, ne napevno
+  const sirkaZDat = (pole, min, max) => {
+    const nej = D.nocMista.reduce((a,m)=>Math.max(a, String(m[pole]==null?'':m[pole]).length), 0);
+    return Math.min(max, Math.max(min, nej * 8 + 26)) + 'px';
+  };
+
   tabulka('#tabNocMista', bezCitlivych([
-    {nadpis:"Kód", pole:"kod", sirka:"120px"},
-    {nadpis:"Název", pole:"nazev", sirka:"230px"},
-    {nadpis:"Noc", pole:"noc", typ:"select", moznosti:[""].concat(NOCI), sirka:"110px",
+    {nadpis:"Kód", pole:"kod", sirka:sirkaZDat('kod', 70, 150)},
+    {nadpis:"Název", pole:"nazev", sirka:sirkaZDat('nazev', 90, 260)},
+    {nadpis:"Noc", pole:"noc", typ:"select", moznosti:[""].concat(NOCI), sirka:"96px",
       napovedaSl:"Na kterou noc je místo domluvené. Obsazenost se počítá jen pro ni."},
-    {nadpis:"Adresa", pole:"adresa", sirka:"160px"},
-    {nadpis:"Mapa", pole:"mapa_url", sirka:"210px"},
+    {nadpis:"Adresa", pole:"adresa", sirka:sirkaZDat('adresa', 90, 200)},
+    {nadpis:"Mapa", pole:"mapa_url", sirka:sirkaZDat('mapa_url', 110, 280)},
     {nadpis:"Kapacita", pole:"kapacita", typ:"number", sirka:"90px", trida:"stred"},
-    {nadpis:"Pokoje", pole:"pokoje", sirka:"260px"},
+    {nadpis:"Pokoje", pole:"pokoje", sirka:"320px", viceradkove:true},
     {nadpis:"Kontakt", pole:"kontakt", sirka:"140px"},
     {nadpis:"Telefon", pole:"telefon", sirka:"140px"},
     {nadpis:"Cena", pole:"cena", sirka:"180px"},
     {nadpis:"Platba", pole:"platba", typ:"select", moznosti:["","nezaplaceno","záloha","zaplaceno"], sirka:"130px"},
     {nadpis:"Rezervace", pole:"rezervace", sirka:"230px"},
-    {nadpis:"Poznámka", pole:"poznamka", sirka:"260px"}
-  ]), D.nocMista, ()=>{kresliNocMista();kresliNocLide();}, true);
+    {nadpis:"Poznámka", pole:"poznamka", sirka:"320px", viceradkove:true}
+  ]), D.nocMista, ()=>{kresliNocMista();}, true);
   kresliSouhrnNoclehu();
 }
 
@@ -3791,10 +3852,13 @@ function kresliStavPrihlaseni(){
     if(v.textContent.indexOf('Veřejná ukázka') >= 0) v.style.display = prihlasen ? 'none' : '';
   });
   const c = $('#stavPrihlaseni'); if(!c) return;
-  c.innerHTML = prihlasen
+  const prepinac = '<button class="tl" style="padding:3px 10px;font-size:11.5px"'
+    + ' title="Přepne mezi mobilním a plným zobrazením. Volba se pamatuje."'
+    + ' onclick="prepniZobrazeni()">' + (mobil ? 'Plné zobrazení' : 'Mobilní zobrazení') + '</button>';
+  c.innerHTML = prepinac + (prihlasen
     ? '<span class="pozn">přihlášen: ' + esc(relace && relace.email || '') + '</span>'
       + '<button class="tl" style="padding:3px 10px;font-size:11.5px" onclick="odhlas()">Odhlásit</button>'
-    : '<button class="tl hlavni" style="padding:3px 10px;font-size:11.5px" onclick="otevriPrihlaseni()">Přihlásit</button>';
+    : '<button class="tl hlavni" style="padding:3px 10px;font-size:11.5px" onclick="otevriPrihlaseni()">Přihlásit</button>');
   const pozn = $('#poznHlavicka');
   if(pozn) pozn.textContent = prihlasen
     ? 'data z databáze · změny se ukládají tlačítkem'
@@ -3943,6 +4007,41 @@ function spustPripominku(){
   pripominkaBezi = setInterval(pripomenUlozeni, PRIPOMINKA_MIN * 60000);
 }
 
+
+/* ---------- mobilní zobrazení ----------
+   Na úzkém displeji naskočí samo, přepínač v hlavičce ho přebije a volba se
+   pamatuje. Na mobilu se nabízejí jen záložky, které mají cestou smysl —
+   ostatní se dají odemknout tlačítkem „vše". */
+const MOBIL_KLIC = 'hb_mobil';
+const MOBIL_ZALOZKY = ['s-todo','s-podrobny'];
+let mobil = false, mobilVse = false;
+
+const uzkyDisplej = () => window.matchMedia('(max-width: 820px)').matches;
+
+function nactiVolbuZobrazeni(){
+  let v = null;
+  try{ v = localStorage.getItem(MOBIL_KLIC); }catch(e){}
+  mobil = (v === null) ? uzkyDisplej() : (v === '1');
+  document.body.classList.toggle('mobil', mobil);
+}
+
+function prepniZobrazeni(){
+  mobil = !mobil;
+  try{ localStorage.setItem(MOBIL_KLIC, mobil ? '1' : '0'); }catch(e){}
+  document.body.classList.toggle('mobil', mobil);
+  if(!mobil) mobilVse = false;
+  kresliNav(); zmerHlavicku();
+  // když je otevřená záložka, která se na mobilu nenabízí, přepneme na to-do
+  const ot = ZALOZKY.find(z=>$('#'+z.id) && $('#'+z.id).classList.contains('videt'));
+  if(mobil && !mobilVse && ot && MOBIL_ZALOZKY.indexOf(ot.id) < 0) prepni('s-todo');
+  hlaska(mobil ? 'Mobilní zobrazení' : 'Plné zobrazení');
+}
+
+function odemkniVse(){
+  mobilVse = true; kresliNav(); zmerHlavicku();
+  hlaska('Odemčeny všechny záložky');
+}
+
 /* ---------- start ---------- */
 function vseKresli(){
   kresliTodo(); naplnRucne();
@@ -3970,6 +4069,7 @@ function zmerHlavicku(){
 window.addEventListener('resize', zmerHlavicku);
 
 PRAV = slozPravidla('HB');
+nactiVolbuZobrazeni();
 kresliNav();
 vseKresli();
 kresliStavPrihlaseni();

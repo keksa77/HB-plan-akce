@@ -50,7 +50,10 @@ button.tl.cerv{color:var(--vinova);border-color:#E4C6CA}
 .stav{font-size:12px;color:var(--pisek)}
 
 /* ---- obecná editovatelná tabulka ---- */
-.tab{width:100%;border-collapse:collapse}
+/* pevné rozvržení: sloupce dostanou přesně tu šířku, kterou jim spočítá
+   zmerSloupec(), a zbytek místa spolkne prázdný sloupec na konci */
+.tab{width:100%;border-collapse:collapse;table-layout:fixed}
+.tab.matice{table-layout:auto}
 .tab th{background:var(--zelena);color:#fff;font-size:11px;text-transform:uppercase;
   letter-spacing:.05em;padding:8px;text-align:left;font-weight:800;white-space:nowrap}
 .tab td{border-bottom:1px solid var(--linka);padding:0;vertical-align:middle}
@@ -79,6 +82,10 @@ button.tl.cerv{color:var(--vinova);border-color:#E4C6CA}
 .tab td.uzka{width:74px}
 .tab td.stred input{text-align:center}
 .tab td.smaz{width:34px;text-align:center}
+/* prázdný sloupec na konci: spolkne místo, které datové sloupce nepotřebují */
+.tab th.dopln{width:auto}
+.tab td.dopln{padding:0;border-bottom:1px solid var(--linka)}
+body.mobil .tab td.dopln{display:none}
 .smazX{background:none;border:0;color:var(--pisek);font:900 15px Nunito,sans-serif;cursor:pointer;
   padding:4px 8px;border-radius:6px}
 .smazX:hover{color:var(--vinova);background:#F7ECED}
@@ -191,6 +198,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   <div class="hlava">
     <h1>Hory Bory — plánování</h1>
     <span class="rok" id="odznakRok">HB26</span>
+<span class="pozn" id="razitkoVerze" title="Verze planovace a posledni commit na GitHubu."></span>
     <span class="pozn" id="poznHlavicka">Veřejná ukázka bez osobních údajů · data jen v paměti prohlížeče</span>
     <span id="stavPrihlaseni" style="margin-left:auto;display:flex;align-items:center;gap:8px"></span>
   </div>
@@ -273,7 +281,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
             <thead>
               <tr>
                 <th data-nap="Etapa">Etapa</th>
-                <th class="uzky" data-nap="Na další">Na další</th>
+                <th class="uzky" data-nap="Cesta autem">Cesta autem</th>
                 <th data-nap="Trasování">Trasa-značení</th>
                 <th data-nap="Úklid fáborků">Úklid značení</th>
                 <th data-nap="Obsluha předávky">PŘED obsluha</th>
@@ -859,37 +867,37 @@ const D = {
 
   // predavky HB26 (31 míst) + km/min na následující předávku z tabulky vzdalenosti
   predavky: [
-    {cislo:1, nazev:"Dolní Lomná",       lat:49.5554500, lon:18.7335361, typ:"Local",      pozn:"", gpx:"", km:9.2, min:14, prvni:"so 06:00", posledni:"so 11:30"},
-    {cislo:2, nazev:"Horní Lomná",       lat:49.5296144, lon:18.6379006, typ:"Local",      pozn:"", gpx:"", km:63.2, min:69, prvni:"so 06:54", posledni:"so 12:18"},
-    {cislo:3, nazev:"Morávka",           lat:49.5612047, lon:18.5505747, typ:"Local",      pozn:"", gpx:"", km:6.7, min:25, prvni:"so 08:08", posledni:"so 13:24"},
-    {cislo:4, nazev:"Visalaje",          lat:49.5177819, lon:18.5284303, typ:"Local",      pozn:"", gpx:"", km:49.1, min:63, prvni:"so 08:52", posledni:"so 14:03"},
-    {cislo:5, nazev:"Staré Hamry",       lat:49.4859372, lon:18.4776239, typ:"Interně HB", pozn:"", gpx:"", km:9.0, min:16, prvni:"so 09:38", posledni:"so 14:42"},
-    {cislo:6, nazev:"Bílá",              lat:49.4430025, lon:18.4581692, typ:"Local",      pozn:"", gpx:"", km:12.0, min:12, prvni:"so 10:25", posledni:"so 15:20"},
-    {cislo:7, nazev:"Bumbálka",          lat:49.3990919, lon:18.4110378, typ:"Local",      pozn:"", gpx:"", km:13.9, min:17, prvni:"so 11:13", posledni:"so 16:06"},
-    {cislo:8, nazev:"Světlá",            lat:49.3479767, lon:18.3689822, typ:"Local",      pozn:"", gpx:"", km:3.9, min:7, prvni:"so 12:28", posledni:"so 17:23"},
-    {cislo:9, nazev:"Kasárne",           lat:49.3271775, lon:18.3816800, typ:"Local",      pozn:"", gpx:"", km:34.2, min:52, prvni:"so 13:19", posledni:"so 17:56"},
-    {cislo:10,nazev:"Kohútka",           lat:49.2550597, lon:18.2187267, typ:"Local",      pozn:"", gpx:"", km:26.7, min:39, prvni:"so 14:28", posledni:"so 19:04"},
-    {cislo:11,nazev:"Huslenky",          lat:49.2764436, lon:18.1477394, typ:"Interně HB", pozn:"", gpx:"", km:29.4, min:39, prvni:"so 15:18", posledni:"so 19:46"},
-    {cislo:12,nazev:"Pulčín",            lat:49.2199331, lon:18.0768194, typ:"Local",      pozn:"", gpx:"", km:11.3, min:18, prvni:"so 16:33", posledni:"so 21:20"},
-    {cislo:13,nazev:"Študlov",           lat:49.1585350, lon:18.0861778, typ:"Local",      pozn:"", gpx:"", km:16.4, min:20, prvni:"so 17:44", posledni:"so 22:24"},
-    {cislo:14,nazev:"Návojná",           lat:49.1080494, lon:18.0479172, typ:"Local",      pozn:"", gpx:"", km:10.3, min:14, prvni:"so 18:54", posledni:"so 23:25"},
-    {cislo:15,nazev:"Popov",             lat:49.0824411, lon:17.9709131, typ:"Local",      pozn:"", gpx:"", km:6.6, min:8, prvni:"so 20:02", posledni:"ne 00:30"},
-    {cislo:16,nazev:"Rokytnice",         lat:49.0667764, lon:17.9162406, typ:"Local",      pozn:"", gpx:"", km:9.5, min:11, prvni:"so 21:02", posledni:"ne 01:24"},
-    {cislo:17,nazev:"Bojkovice",         lat:49.0384564, lon:17.8171467, typ:"Local",      pozn:"", gpx:"", km:10.8, min:14, prvni:"so 21:56", posledni:"ne 02:32"},
-    {cislo:18,nazev:"Starý Hrozenkov",   lat:48.9706333, lon:17.8612167, typ:"Local",      pozn:"", gpx:"", km:9.3, min:10, prvni:"so 23:15", posledni:"ne 03:42"},
-    {cislo:19,nazev:"Mikulčin vrch",     lat:48.9498192, lon:17.8014039, typ:"Local",      pozn:"", gpx:"", km:16.5, min:24, prvni:"ne 00:10", posledni:"ne 04:40"},
-    {cislo:20,nazev:"Strání",            lat:48.9137661, lon:17.6617256, typ:"Local",      pozn:"", gpx:"", km:20.4, min:20, prvni:"ne 01:32", posledni:"ne 06:16"},
-    {cislo:21,nazev:"Nová Lhota",        lat:48.8608856, lon:17.5936308, typ:"Local",      pozn:"", gpx:"", km:10.5, min:15, prvni:"ne 02:33", posledni:"ne 07:00"},
-    {cislo:22,nazev:"Velká nad Veličkou",lat:48.8801433, lon:17.5147478, typ:"Local",      pozn:"", gpx:"", km:20.9, min:30, prvni:"ne 03:22", posledni:"ne 08:28"},
-    {cislo:23,nazev:"Lučina, koupaliště",lat:48.8611175, lon:17.3922178, typ:"Local",      pozn:"", gpx:"", km:14.7, min:19, prvni:"ne 04:22", posledni:"ne 09:36"},
-    {cislo:24,nazev:"Sudoměřice",        lat:48.8643533, lon:17.2559186, typ:"Local",      pozn:"", gpx:"", km:14.7, min:19, prvni:"ne 05:35", posledni:"ne 10:56"},
-    {cislo:25,nazev:"Hodonín",           lat:48.8437192, lon:17.1200578, typ:"Local",      pozn:"", gpx:"", km:17.4, min:21, prvni:"ne 06:38", posledni:"ne 12:17"},
-    {cislo:26,nazev:"Týnec",             lat:48.7735797, lon:17.0116775, typ:"Local",      pozn:"", gpx:"", km:7.8, min:12, prvni:"ne 07:44", posledni:"ne 13:46"},
-    {cislo:27,nazev:"Lanžhot",           lat:48.7235136, lon:16.9723267, typ:"Local",      pozn:"", gpx:"", km:7.4, min:11, prvni:"ne 08:31", posledni:"ne 14:38"},
-    {cislo:28,nazev:"Břeclav",           lat:48.7428022, lon:16.8968669, typ:"Local",      pozn:"", gpx:"", km:10.1, min:16, prvni:"ne 09:10", posledni:"ne 15:33"},
-    {cislo:29,nazev:"Valtice",           lat:48.7466506, lon:16.7923433, typ:"Local",      pozn:"", gpx:"", km:8.9, min:13, prvni:"ne 09:59", posledni:"ne 16:28"},
-    {cislo:30,nazev:"Hlohovec",          lat:48.7795208, lon:16.7576239, typ:"Local",      pozn:"", gpx:"", km:20.5, min:26, prvni:"ne 10:43", posledni:"ne 17:22"},
-    {cislo:31,nazev:"Mikulov",           lat:48.8130847, lon:16.6393036, typ:"",           pozn:"", gpx:"", km:null, min:null, prvni:"ne 11:32", posledni:"ne 18:10"}
+    {cislo:1, nazev:"Dolní Lomná",       lat:49.5554500, lon:18.7335361, typ:"Local",      pozn:"", gpx:"", km:9.2, min:14, delka:10.6, prvni:"so 06:00", posledni:"so 11:30"},
+    {cislo:2, nazev:"Horní Lomná",       lat:49.5296144, lon:18.6379006, typ:"Local",      pozn:"", gpx:"", km:63.2, min:69, delka:13.6, prvni:"so 06:54", posledni:"so 12:18"},
+    {cislo:3, nazev:"Morávka",           lat:49.5612047, lon:18.5505747, typ:"Local",      pozn:"", gpx:"", km:6.7, min:25, delka:6.9, prvni:"so 08:08", posledni:"so 13:24"},
+    {cislo:4, nazev:"Visalaje",          lat:49.5177819, lon:18.5284303, typ:"Local",      pozn:"", gpx:"", km:49.1, min:63, delka:7.3, prvni:"so 08:52", posledni:"so 14:03"},
+    {cislo:5, nazev:"Staré Hamry",       lat:49.4859372, lon:18.4776239, typ:"Interně HB", pozn:"", gpx:"", km:9.0, min:16, delka:8.1, prvni:"so 09:38", posledni:"so 14:42"},
+    {cislo:6, nazev:"Bílá",              lat:49.4430025, lon:18.4581692, typ:"Local",      pozn:"", gpx:"", km:12.0, min:12, delka:7.9, prvni:"so 10:25", posledni:"so 15:20"},
+    {cislo:7, nazev:"Bumbálka",          lat:49.3990919, lon:18.4110378, typ:"Local",      pozn:"", gpx:"", km:13.9, min:17, delka:11.2, prvni:"so 11:13", posledni:"so 16:06"},
+    {cislo:8, nazev:"Světlá",            lat:49.3479767, lon:18.3689822, typ:"Local",      pozn:"", gpx:"", km:3.9, min:7, delka:7.3, prvni:"so 12:28", posledni:"so 17:23"},
+    {cislo:9, nazev:"Kasárne",           lat:49.3271775, lon:18.3816800, typ:"Local",      pozn:"", gpx:"", km:34.2, min:52, delka:12.4, prvni:"so 13:19", posledni:"so 17:56"},
+    {cislo:10,nazev:"Kohútka",           lat:49.2550597, lon:18.2187267, typ:"Local",      pozn:"", gpx:"", km:26.7, min:39, delka:8.4, prvni:"so 14:28", posledni:"so 19:04"},
+    {cislo:11,nazev:"Huslenky",          lat:49.2764436, lon:18.1477394, typ:"Interně HB", pozn:"", gpx:"", km:29.4, min:39, delka:13.4, prvni:"so 15:18", posledni:"so 19:46"},
+    {cislo:12,nazev:"Pulčín",            lat:49.2199331, lon:18.0768194, typ:"Local",      pozn:"", gpx:"", km:11.3, min:18, delka:10.3, prvni:"so 16:33", posledni:"so 21:20"},
+    {cislo:13,nazev:"Študlov",           lat:49.1585350, lon:18.0861778, typ:"Local",      pozn:"", gpx:"", km:16.4, min:20, delka:11.4, prvni:"so 17:44", posledni:"so 22:24"},
+    {cislo:14,nazev:"Návojná",           lat:49.1080494, lon:18.0479172, typ:"Local",      pozn:"", gpx:"", km:10.3, min:14, delka:11.7, prvni:"so 18:54", posledni:"so 23:25"},
+    {cislo:15,nazev:"Popov",             lat:49.0824411, lon:17.9709131, typ:"Local",      pozn:"", gpx:"", km:6.6, min:8, delka:11.2, prvni:"so 20:02", posledni:"ne 00:30"},
+    {cislo:16,nazev:"Rokytnice",         lat:49.0667764, lon:17.9162406, typ:"Local",      pozn:"", gpx:"", km:9.5, min:11, delka:9.4, prvni:"so 21:02", posledni:"ne 01:24"},
+    {cislo:17,nazev:"Bojkovice",         lat:49.0384564, lon:17.8171467, typ:"Local",      pozn:"", gpx:"", km:10.8, min:14, delka:13.1, prvni:"so 21:56", posledni:"ne 02:32"},
+    {cislo:18,nazev:"Starý Hrozenkov",   lat:48.9706333, lon:17.8612167, typ:"Local",      pozn:"", gpx:"", km:9.3, min:10, delka:8.6, prvni:"so 23:15", posledni:"ne 03:42"},
+    {cislo:19,nazev:"Mikulčin vrch",     lat:48.9498192, lon:17.8014039, typ:"Local",      pozn:"", gpx:"", km:16.5, min:24, delka:12.7, prvni:"ne 00:10", posledni:"ne 04:40"},
+    {cislo:20,nazev:"Strání",            lat:48.9137661, lon:17.6617256, typ:"Local",      pozn:"", gpx:"", km:20.4, min:20, delka:11.8, prvni:"ne 01:32", posledni:"ne 06:16"},
+    {cislo:21,nazev:"Nová Lhota",        lat:48.8608856, lon:17.5936308, typ:"Local",      pozn:"", gpx:"", km:10.5, min:15, delka:9.8, prvni:"ne 02:33", posledni:"ne 07:00"},
+    {cislo:22,nazev:"Velká nad Veličkou",lat:48.8801433, lon:17.5147478, typ:"Local",      pozn:"", gpx:"", km:20.9, min:30, delka:10.7, prvni:"ne 03:22", posledni:"ne 08:28"},
+    {cislo:23,nazev:"Lučina, koupaliště",lat:48.8611175, lon:17.3922178, typ:"Local",      pozn:"", gpx:"", km:14.7, min:19, delka:13.8, prvni:"ne 04:22", posledni:"ne 09:36"},
+    {cislo:24,nazev:"Sudoměřice",        lat:48.8643533, lon:17.2559186, typ:"Local",      pozn:"", gpx:"", km:14.7, min:19, delka:12.7, prvni:"ne 05:35", posledni:"ne 10:56"},
+    {cislo:25,nazev:"Hodonín",           lat:48.8437192, lon:17.1200578, typ:"Local",      pozn:"", gpx:"", km:17.4, min:21, delka:13.4, prvni:"ne 06:38", posledni:"ne 12:17"},
+    {cislo:26,nazev:"Týnec",             lat:48.7735797, lon:17.0116775, typ:"Local",      pozn:"", gpx:"", km:7.8, min:12, delka:9.2, prvni:"ne 07:44", posledni:"ne 13:46"},
+    {cislo:27,nazev:"Lanžhot",           lat:48.7235136, lon:16.9723267, typ:"Local",      pozn:"", gpx:"", km:7.4, min:11, delka:9.2, prvni:"ne 08:31", posledni:"ne 14:38"},
+    {cislo:28,nazev:"Břeclav",           lat:48.7428022, lon:16.8968669, typ:"Local",      pozn:"", gpx:"", km:10.1, min:16, delka:10.5, prvni:"ne 09:10", posledni:"ne 15:33"},
+    {cislo:29,nazev:"Valtice",           lat:48.7466506, lon:16.7923433, typ:"Local",      pozn:"", gpx:"", km:8.9, min:13, delka:9.3, prvni:"ne 09:59", posledni:"ne 16:28"},
+    {cislo:30,nazev:"Hlohovec",          lat:48.7795208, lon:16.7576239, typ:"Local",      pozn:"", gpx:"", km:20.5, min:26, delka:11.9, prvni:"ne 10:43", posledni:"ne 17:22"},
+    {cislo:31,nazev:"Mikulov",           lat:48.8130847, lon:16.6393036, typ:"",           pozn:"", gpx:"", km:null, min:null, delka:null, prvni:"ne 11:32", posledni:"ne 18:10"}
   ],
 
   // noclehy_adresy HB26
@@ -977,8 +985,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.42";
-const BUILD = "2026-08-16T12:16+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.45";
+const BUILD = "2026-08-16T14:52+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1150,7 +1158,7 @@ function prepni(id){
 const NAPOVEDA = {
   // plán úkolů
   "Etapa":"Úsek mezi dvěma předávkami. E1 je z Dolní Lomné do Horní Lomné.",
-  "Na další":"Skutečná vzdálenost a čas autem na následující předávku, z tabulky vzdalenosti.",
+  "Cesta autem":"Skutečná vzdálenost a čas autem na následující předávku, z tabulky vzdalenosti.",
   "Trasování":"Kdo etapu předem naznačí fáborky a šipkami. Kód T a číslo etapy.",
   "Úklid fáborků":"Kdo po závodě etapu projde a značení sesbírá. Kód U a číslo etapy.",
   "Obsluha předávky":"Kdo stojí na předávce po celou dobu. Kód P a číslo předávky, tedy etapa plus jedna.",
@@ -1233,15 +1241,74 @@ const NAPOVEDA = {
 const nap = t => NAPOVEDA[t] ? ' title="'+esc(NAPOVEDA[t])+'"' : '';
 
 /* ---------- generická editovatelná tabulka ---------- */
+
+/* ---------- šířky sloupců podle nejdelších dat ----------
+   Dřív měl každý sloupec šířku napsanou natvrdo a tabulka se roztahovala přes
+   celou obrazovku, takže v úzkých sloupcích zbýval prázdný prostor a v širokých
+   se text ořezával. Teď se šířka změří: vezme se nejdelší hodnota ve sloupci
+   i jeho nadpis a sloupec dostane přesně tolik, kolik potřebuje. Zbytek místa
+   spolkne prázdný sloupec na konci, aby tabulka pořád vyplnila rám. */
+const SIRKA_MIN = 46, SIRKA_MAX = 300;
+let _platno = null;
+function sirkaTextu(txt, font){
+  if(!_platno) _platno = document.createElement('canvas').getContext('2d');
+  _platno.font = font;
+  return _platno.measureText(String(txt == null ? '' : txt)).width;
+}
+const FONT_HLAVICKA = '800 11px Nunito, "Segoe UI", system-ui, sans-serif';
+const FONT_BUNKY    = '13px Nunito, "Segoe UI", system-ui, sans-serif';
+
+function zmerSloupec(s, radky){
+  // barva je čtvereček, ten se neměří
+  if(s.typ === 'color') return 62;
+
+  const nadpis = String(s.nadpis || '').toUpperCase();
+  // hlavička má prostrkání .05em, tedy asi 0.55 px na znak
+  let sirka = sirkaTextu(nadpis, FONT_HLAVICKA) + nadpis.length * 0.55 + 18;
+
+  const hodnoty = [];
+  radky.forEach((r, i) => {
+    if(s.html){ hodnoty.push(''); return; }              // vlastní obsah se neměří
+    if(s.typ === 'select'){
+      const moznosti = (typeof s.moznosti === 'function' ? s.moznosti(r) : s.moznosti) || [];
+      moznosti.forEach(m => hodnoty.push((m && typeof m === 'object') ? m.t : m));
+    }else{
+      hodnoty.push(r[s.pole]);
+    }
+  });
+  hodnoty.forEach(h => {
+    const t = String(h == null ? '' : h);
+    // víceřádkový sloupec měříme po nejdelším řádku, ne po celém textu
+    const kus = s.viceradkove ? t.split('\n').reduce((a,b)=>a.length>=b.length?a:b, '') : t;
+    sirka = Math.max(sirka, sirkaTextu(kus, FONT_BUNKY) + 18);
+  });
+
+  if(s.typ === 'select') sirka += 22;                    // šipka rozbalovátka
+  if(s.typ === 'number') sirka += 20;                    // šipky nahoru/dolů
+  // Políčko na čas si prohlížeč kreslí sám i s ikonkou hodin. Když se mu ubere
+  // místo, ořízne čas na „10:0" — tak dostane pevné minimum.
+  if(s.typ === 'time') sirka = Math.max(sirka + 34, 118);
+  if(s.viceradkove) sirka = Math.min(sirka, 260);        // dlouhý text se zalomí
+  if(s.html && s.sirka) return parseInt(s.sirka, 10) || SIRKA_MIN;
+
+  return Math.round(Math.max(SIRKA_MIN, Math.min(SIRKA_MAX, sirka)));
+}
+
 function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat){
   const t = (typeof cil==='string') ? $(cil) : cil;
+  // odznak ročníku (HB25/HB26) je buď vlevo, nebo — s odznaky:'konec' — až za daty
   const maOdznak = odznaky !== false;
-  let h = '<thead><tr>' + (maOdznak?'<th style="width:52px"></th>':'')
-        + sloupce.map(s=>`<th${s.sirka?` style="width:${s.sirka}"`:''}${s.napovedaSl?' title="'+esc(s.napovedaSl)+'"':nap(s.nadpis)}>${s.nadpis}</th>`).join('')
-        + (mazatelne?'<th></th>':'') + '</tr></thead><tbody>';
+  const odznakVzadu = odznaky === 'konec';
+  const odznakTh = '<th style="width:52px"></th>';
+  const sirky = sloupce.map(s => zmerSloupec(s, radky));
+  let h = '<thead><tr>' + ((maOdznak && !odznakVzadu) ? odznakTh : '')
+        + sloupce.map((s,k)=>`<th style="width:${sirky[k]}px"${s.napovedaSl?' title="'+esc(s.napovedaSl)+'"':nap(s.nadpis)}>${s.nadpis}</th>`).join('')
+        + ((maOdznak && odznakVzadu) ? odznakTh : '')
+        + (mazatelne?'<th style="width:34px"></th>':'')
+        + '<th class="dopln"></th></tr></thead><tbody>';
   radky.forEach((r,i)=>{
     h += '<tr>';
-    if(maOdznak) h += '<td class="odzn">'+odznakHtml(r)+'</td>';
+    if(maOdznak && !odznakVzadu) h += '<td class="odzn">'+odznakHtml(r)+'</td>';
     sloupce.forEach(s=>{
       const v = r[s.pole];
       const lbl = s.nadpis ? ` data-th="${esc(s.nadpis)}"` : '';
@@ -1280,8 +1347,9 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
           + ikony + (ikony ? '</span>' : '') + '</td>';
       }
     });
+    if(maOdznak && odznakVzadu) h += '<td class="odzn">'+odznakHtml(r)+'</td>';
     if(mazatelne) h += `<td class="smaz"><button class="smazX" data-del="${i}" title="Smaže celý tento řádek. Vrátit se to nedá.">×</button></td>`;
-    h += '</tr>';
+    h += '<td class="dopln"></td></tr>';
   });
   t.innerHTML = h + '</tbody>';
 
@@ -2557,19 +2625,23 @@ function kresliPodrobny(){
   telo.appendChild(tab);
 
   tabulka(tab, [
-    {nadpis:"Grupa", sirka:"150px", html:grupaBunka, napovedaSl:"Kód grupy a jméno šéfa. Grupu tady jde i přehodit — úkol se rovnou přesune."},
+    {nadpis:"Číslo",pole:"cislo",typ:"number", sirka:"56px", trida:"stred",
+      napovedaSl:"Číslo předávky nebo etapy, ke které úkol patří."},
+    {nadpis:"Grupa", sirka:"96px", html:grupaBunka,
+      napovedaSl:"Kód grupy. Dá se tu i přehodit — úkol se rovnou přesune jinam."},
+    {nadpis:"Kdo",  sirka:"120px", html:sefBunka,
+      napovedaSl:"Kdo grupu vede. Mění se u členů grup, tady se jen ukazuje."},
     {nadpis:"Typ",  pole:"typ",  typ:"select", sirka:"132px",
       moznosti:TYPY.map(t=>({v:t, t:NAZVY_TYPU[t] || t}))},
+    {nadpis:"Úkol", pole:"popis", viceradkove:true, maxRadky:3},
     {nadpis:"Kód",  pole:"kod",  sirka:"74px"},
-    {nadpis:"Číslo",pole:"cislo",typ:"number", sirka:"56px", trida:"stred"},
     {nadpis:"Kdy",  pole:"kdy_text", sirka:"120px",
       napovedaSl:"Původní text z HB25, ze kterého se vytáhly Den, Od a Do. Slouží už jen ke kontrole."},
     {nadpis:"Den",  pole:"den", typ:"select", moznosti:["","pátek","sobota","neděle"], sirka:"88px"},
     {nadpis:"Od",   pole:"kdy_od", typ:"time", sirka:"92px"},
     {nadpis:"Do",   pole:"kdy_do", typ:"time", sirka:"92px"},
-    {nadpis:"Co se dělá", pole:"popis", viceradkove:true, maxRadky:3},
     {nadpis:"Stav", pole:"stav", typ:"select", moznosti:STAVY, sirka:"118px"}
-  ], u, ()=>{kresliPodrobny();kresliPlan();}, true, undefined, D.ukoly);
+  ], u, ()=>{kresliPodrobny();kresliPlan();}, true, 'konec', D.ukoly);
 
   // tenká linka tam, kde začíná jiná grupa — ať se to pořád čte po grupách
   const radky = tab.querySelectorAll('tbody tr');
@@ -2610,8 +2682,13 @@ function grupaBunka(r, i){
       + '. Přehodí úkol jiné grupě.">'
     + kody.map(k=>`<option${k===r.parta?' selected':''}>${esc(k)}</option>`).join('')
     + '</select></span>'
-    + (jm ? '<span class="grupaJmeno">' + esc(jm) + '</span>' : '')
-    + (nejede ? '<span class="grupaJmeno" style="color:var(--vinova)">letos nejede</span>' : '');
+    + (nejede ? '<span class="grupaJmeno" style="color:var(--vinova)">nejede</span>' : '');
+}
+
+// jméno šéfa grupy — v podrobném plánu má vlastní sloupec, ať se dá číst i řadit
+function sefBunka(r){
+  const jm = prvniJmeno(r.parta);
+  return jm ? '<span class="grupaJmeno" style="margin-left:0;max-width:none">' + esc(jm) + '</span>' : '';
 }
 
 /* ---------- 2. grupy ---------- */
@@ -2623,10 +2700,6 @@ function kresliTymy(){
     {nadpis:"Štítek", pole:"stitek", sirka:"190px",
       napovedaSl:"Co se místo kódu ukáže všude jinde v plánovači — obvykle kód a šéf "
         + "grupy, například „G1 Martin B.\". Když ho necháte prázdný, ukazuje se kód."},
-    {nadpis:"Doplnit", sirka:"110px", jenCist:true,
-      napovedaSl:"Přepíše štítek téhle grupy kódem a jménem šéfa, například „G1 Martin B.\".",
-      html:(r,i)=>'<button class="tl" style="padding:3px 9px;font-size:11.5px" data-stitek="'+i+'"'
-        + ' title="Doplní štítek podle aktuálního šéfa grupy.">z šéfa</button>'},
     {nadpis:"Jede letos", pole:"aktivni", typ:"select", moznosti:["ano","ne"], sirka:"110px",
       napovedaSl:"Grupa, která se letos nejede, zmizí z palety i ze všech nabídek. "
         + "V datech zůstane kvůli úkolům z minulého ročníku a úkoly, které na ní visí, "
@@ -2639,16 +2712,6 @@ function kresliTymy(){
   ], D.tymy, ()=>{kresliTymy();kresliPaletu();naplnFiltrPart();kresliPlan();
                   if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();}, true);
 
-  $('#tabTymy').querySelectorAll('[data-stitek]').forEach(b=>{
-    b.onclick = ()=>{
-      const t = D.tymy[+b.dataset.stitek];
-      t.stitek = navrhStitku(t.kod);
-      zrevidovano(t); oznacZmenu();
-      kresliTymy(); kresliPaletu(); naplnFiltrPart(); kresliPlan();
-      if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
-      hlaska('Štítek: ' + t.stitek);
-    };
-  });
 }
 
 // doplní štítek všem grupám, které ho nemají
@@ -2662,7 +2725,18 @@ function doplnStitkyZeSefu(){
   hlaska('Doplněno štítků: ' + n);
 }
 
-/* ---------- 3. členové ---------- */
+/* ---------- 3. členové ----------
+   Seznam lidí se řadí stejně jako grupy: podle pořadí grupy (G0A, G0B, G1…,
+   pak ostatní), uvnitř grupy šéf první a zbytek podle abecedy. Aby seznam lidí
+   šel číst vedle plánu grupu po grupě. */
+function poradiClenu(a, b){
+  const por = k => { const t = parta(k); return (t && t.poradi != null) ? +t.poradi : 999; };
+  return por(a.kod_tymu) - por(b.kod_tymu)
+      || String(a.kod_tymu||'').localeCompare(String(b.kod_tymu||''), 'cs')
+      || ((b.sef === 'ano') - (a.sef === 'ano'))
+      || String(a.jmeno||'').localeCompare(String(b.jmeno||''), 'cs');
+}
+
 function naplnFiltrPart(){
   const f = $('#filtrParty'); const drive = f.value;
   f.innerHTML = '<option value="">všechny grupy</option>' +
@@ -2671,7 +2745,7 @@ function naplnFiltrPart(){
 function kresliClenove(){
   const f = $('#filtrParty').value;
   const vsichni = zivi();
-  const videt = f ? vsichni.filter(c=>c.kod_tymu===f) : vsichni;
+  const videt = (f ? vsichni.filter(c=>c.kod_tymu===f) : vsichni.slice()).sort(poradiClenu);
   tabulka('#tabClenove', bezCitlivych([
     {nadpis:"Grupa", pole:"kod_tymu", typ:"select", moznosti:(r)=>volbyGrup(false,false,r&&r.kod_tymu), sirka:"165px"},
     {nadpis:"Jméno", pole:"jmeno", sirka:"210px"},
@@ -2785,6 +2859,17 @@ function kresliHistorii(){
     + '</tbody></table></div>';
 }
 
+/* ---------- 4. předávky ----------
+   „Cesta autem" je cesta autem na následující předávku — kilometry i minuty. Když
+   jedna z hodnot chybí, ukáže se jen ta druhá; dřív se v takovém případě vypsalo
+   „undefined min". Na poslední předávce (cíl) není kam jet, takže pomlčka. */
+function autoPopis(p){
+  const kus = [];
+  if(p.km  != null && p.km  !== '') kus.push(p.km + ' km');
+  if(p.min != null && p.min !== '') kus.push(p.min + ' min');
+  return kus.length ? kus.join(' · ') : '—';
+}
+
 /* ---------- 4. předávky ---------- */
 function kresliPredavky(){
   // pořadí na trati je jediné, které dává smysl — od Dolní Lomné k cíli
@@ -2792,15 +2877,20 @@ function kresliPredavky(){
   tabulka('#tabPredavky', bezCitlivych([
     {nadpis:"#", pole:"cislo", typ:"number", sirka:"60px", trida:"stred"},
     {nadpis:"Název místa", pole:"nazev", sirka:"210px"},
-    {nadpis:"GPS šířka", pole:"lat", typ:"number", sirka:"130px"},
-    {nadpis:"GPS délka", pole:"lon", typ:"number", sirka:"130px"},
     {nadpis:"Typ zajištění", pole:"typ", typ:"select", moznosti:["","Local","Interně HB"], sirka:"140px"},
-    {nadpis:"Soubor GPX", pole:"gpx", sirka:"150px"},
-    {nadpis:"Na další", pole:"_km", typ:"text", jenCist:true, sirka:"110px"},
+    {nadpis:"Cesta autem", pole:"_km", typ:"text", jenCist:true, sirka:"120px",
+      napovedaSl:"Kolik je to autem na následující předávku — kilometry a minuty. "
+        + "Počítá se z tabulky vzdalenosti, proto se needituje."},
     {nadpis:"První běžec", pole:"prvni", jenCist:true, sirka:"104px", trida:"stred"},
     {nadpis:"Poslední běžec", pole:"posledni", jenCist:true, sirka:"118px", trida:"stred"},
-    {nadpis:"Poznámka", pole:"pozn"}
-  ]), D.predavky.map(p=>Object.assign(p,{_km: p.km==null?'—':(p.km+' km · '+p.min+' min')})),
+    {nadpis:"Poznámka", pole:"pozn"},
+    {nadpis:"Etapa km", pole:"delka", typ:"number", sirka:"96px", trida:"stred",
+      napovedaSl:"Běžecká délka etapy z téhle předávky na další, spočítaná z GPX. "
+        + "Vede se od HB26; starší ročníky ji nemají."},
+    {nadpis:"GPS šířka", pole:"lat", typ:"number", sirka:"130px"},
+    {nadpis:"GPS délka", pole:"lon", typ:"number", sirka:"130px"},
+    {nadpis:"Soubor GPX", pole:"gpx", sirka:"150px"}
+  ]), D.predavky.map(p=>Object.assign(p,{_km: autoPopis(p)})),
      ()=>{kresliPredavky();kresliPlan();}, false);
   kresliGrafPredavek();
 }
@@ -3770,8 +3860,11 @@ const MAPA = {
   },
   predavky: {
     tabulka:'predavky', klic:['cislo'], konflikt:['rok','cislo'], rok:true, jen:['prvni','posledni','_km'],
+    // Pozor na dve ruzne delky: km/min je cesta AUTEM na dalsi predavku (sloupec
+    // "Na dalsi"), delka je BEHECKA delka etapy z GPX. Driv obe sedely na jednom
+    // sloupci delka_km a cas autem se neukladal vubec, takze se pri nacteni ztratil.
     pole:{cislo:'cislo', nazev:'nazev', lat:'gps_lat', lon:'gps_lon', typ:'typ_zajisteni',
-          pozn:'poznamka', gpx:'gpx_soubor', km:'delka_km'}
+          pozn:'poznamka', gpx:'gpx_soubor', km:'auto_km', min:'auto_min', delka:'delka_km'}
   },
   nocMista: {
     tabulka:'noclehy_adresy', klic:['kod'], konflikt:['rok','kod'], rok:true, jen:[],
@@ -4209,13 +4302,23 @@ const cesky = t => {
 };
 
 function kresliVerzi(){
-  const cil = $('#stavVerze'); if(!cil) return;
+  // Razitko v hlavicce je videt vzdycky - i kdyz se spravce na stranku Nastaveni
+  // nedostane. Podrobnosti (build, cely commit) zustavaji na Nastaveni.
+  const raz = $('#razitkoVerze');
+  if(raz) raz.innerHTML = esc(VERZE) + (BUILD ? ' · ' + esc(cesky(BUILD)) : ' · pracovni verze')
+    + ' <span id="razitkoCommit"></span>';
+  const cil = $('#stavVerze');
+  if(!cil){ dotazNaCommit(); return; }
   const radek = (co, cim) => '<div><span style="display:inline-block;min-width:150px;color:var(--pisek)">'
     + co + '</span><b>' + cim + '</b></div>';
   cil.innerHTML = radek('Verze plánovače', esc(VERZE))
     + radek('Build souboru', BUILD ? esc(cesky(BUILD)) : 'pracovní verze, nebuildováno')
     + radek('Poslední commit', '<span id="stavCommit">zjišťuji…</span>');
 
+  dotazNaCommit();
+}
+
+function dotazNaCommit(){
   if(commitNacten) return;
   // Ze souboru otevřeného z disku se GitHub ptát nedá (prohlížeč to zakáže),
   // a nemá to ani smysl — commit se týká toho, co je nahrané na webu.
@@ -4229,9 +4332,12 @@ function kresliVerzi(){
     .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
     .then(j => {
       const c = j && j[0];
-      const el = $('#stavCommit'); if(!el) return;
-      if(!c){ el.textContent = 'nenalezeno'; return; }
+      const el = $('#stavCommit');
+      if(!c){ if(el) el.textContent = 'nenalezeno'; return; }
       const kdy = c.commit && c.commit.committer && c.commit.committer.date;
+      const r = $('#razitkoCommit');
+      if(r) r.textContent = '· ' + String(c.sha).slice(0,7) + ' ' + cesky(kdy);
+      if(!el) return;
       el.innerHTML = '<a href="https://github.com/' + REPO + '/commit/' + esc(c.sha) + '"'
         + ' target="_blank" rel="noopener noreferrer">' + esc(String(c.sha).slice(0,7)) + '</a>'
         + ' · ' + esc(cesky(kdy))

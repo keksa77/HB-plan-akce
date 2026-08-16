@@ -42,11 +42,20 @@ main{max-width:1560px;margin:0 auto;padding:18px 22px 70px}
 .varovani b{color:#5d3810}
 
 .nastroje{display:flex;gap:8px;align-items:center;margin:0 0 12px;flex-wrap:wrap}
-button.tl{background:var(--bila);border:1px solid var(--linka);border-radius:8px;
-  padding:6px 12px;font:700 12.5px Nunito,sans-serif;color:var(--tmava);cursor:pointer}
-button.tl:hover{border-color:var(--khaki)}
-button.tl.hlavni{background:var(--olive);color:#fff;border-color:var(--olive)}
-button.tl.cerv{color:var(--vinova);border-color:#E4C6CA}
+/* Tlačítka jsou schválně světlá: tmavý text na světlém podkladu se čte líp než
+   bílé písmo na sytém pozadí, a na slunci u trati to platí dvojnásob. Barvy nejsou
+   z palety HB, jde o kontrast — všechny dvojice mají poměr přes 7:1 (norma chce 4,5). */
+button.tl{background:#fff;border:1.5px solid #B7A98D;border-radius:9px;
+  padding:7px 14px;font:700 13px Nunito,sans-serif;color:#2E2A23;cursor:pointer;
+  transition:background .12s ease,border-color .12s ease}
+button.tl:hover{background:#F6F1E6;border-color:#87795D}
+button.tl:active{background:#EBE3D2}
+button.tl:focus-visible{outline:3px solid #9EC65A;outline-offset:1px}
+button.tl:disabled{opacity:.45;cursor:default;background:#fff}
+button.tl.hlavni{background:#E4F0CB;border-color:#5F8A22;color:#2A3D12}
+button.tl.hlavni:hover{background:#D4E7AD;border-color:#456B14}
+button.tl.cerv{background:#FBEAEC;border-color:#C2707A;color:#8A2F38}
+button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
 .stav{font-size:12px;color:var(--pisek)}
 
 /* ---- obecná editovatelná tabulka ---- */
@@ -189,7 +198,15 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   align-items:center;gap:12px;flex-wrap:wrap}
 .nahledLista.videt{display:flex}
 .nahledLista b{color:var(--khaki)}
-.zamceno{opacity:.62}
+/* Jen pro čtení neznamená „hůř vidět". Dřív se celá sekce ztlumila na 62 %,
+   což na mobilu na slunci nešlo přečíst. Teď zůstává plně čitelná a zamčená
+   políčka se jen tváří jako obyčejný text. */
+.zamceno input:disabled,.zamceno select:disabled,.zamceno textarea:disabled{
+  color:var(--tmava);opacity:1;-webkit-text-fill-color:var(--tmava);
+  background:transparent;cursor:default;
+  -webkit-appearance:none;-moz-appearance:none;appearance:none}
+.zamceno select:disabled{background-image:none;padding-right:8px}
+.zamceno .grupaOdznak select:disabled{color:#fff;-webkit-text-fill-color:#fff}
 </style>
 </head>
 <body data-build="verejna">
@@ -238,7 +255,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
 </div>
 
 <main>
-  <div class="varovani" style="background:#F5F1E7;border-color:#E2D6BF;color:#6b5a3e">
+  <div class="varovani vysvetlivky" style="background:#F5F1E7;border-color:#E2D6BF;color:#6b5a3e">
     <b>Značky u řádků.</b> Červená <span class="odznak stary">HB25</span> znamená hodnotu jen
     překopírovanou z minulého ročníku, kterou pro letošek nikdo neprošel. Zelená
     <span class="odznak novy">HB26</span> je hodnota platná pro aktuální ročník. Jakmile řádek
@@ -729,7 +746,32 @@ body.mobil .smazX { font-size: 20px; padding: 2px 10px; }
 body.mobil .mrizka, body.mobil #grafPredavky, body.mobil .paleta { overflow-x: auto; }
 body.mobil #plovouciUlozit { left: 10px; right: 10px; max-width: none; bottom: 10px; }
 body.mobil .nastroje { flex-wrap: wrap; }
-body.mobil .tl { padding: 7px 12px; }
+body.mobil .tl { padding: 9px 14px; font-size: 13.5px; }
+
+/* Podrobný plán je na mobilu to hlavní, co lidi u trati čtou. Karta se čte
+   shora dolů: kdo (grupa a jméno), pak úkol přes celou šířku, dole časy. */
+body.mobil table.podrobnyTab tr { padding: 10px 12px; margin-bottom: 10px; }
+body.mobil table.podrobnyTab td { padding: 4px 0 !important; }
+body.mobil table.podrobnyTab td::before { flex: 0 0 30%; max-width: 30%; }
+body.mobil table.podrobnyTab td[data-th="Úkol"] { display: block; padding-top: 7px !important; }
+body.mobil table.podrobnyTab td[data-th="Úkol"]::before {
+  display: block; max-width: none; margin-bottom: 3px;
+}
+body.mobil table.podrobnyTab td[data-th="Úkol"] textarea { font-size: 15.5px; line-height: 1.45; }
+body.mobil table.podrobnyTab td[data-th="Grupa"] .grupaOdznak select { font-size: 15px; }
+body.mobil table.podrobnyTab td[data-th="Kdo"] { font-weight: 700; }
+body.mobil table.podrobnyTab td[data-th="Od"],
+body.mobil table.podrobnyTab td[data-th="Do"] { padding: 2px 0 !important; }
+/* odznak grupy je štítek, ne pruh přes celou šířku */
+body.mobil table.podrobnyTab td[data-th="Grupa"] > .grupaOdznak { flex: 0 0 auto; }
+/* hodnoty jen ke čtení jsou na kartě plnohodnotný obsah, ne šedý doplněk */
+body.mobil table.podrobnyTab td { color: var(--tmava) !important; font-size: 15px; }
+body.mobil table.podrobnyTab td[data-th="Úkol"] textarea { padding-left: 0; padding-right: 0; }
+
+/* Na mobilu jde o prostor. Co si nepřihlášený nemůže zapnout, se nezobrazuje,
+   a vysvětlivka k barevným značkám je jen pro toho, kdo plán opravdu edituje. */
+body.mobil .nastroje button:disabled { display: none; }
+body.mobil.host .vysvetlivky { display: none; }
 </style>
 
 <!-- Plovoucí Uložit. Lišta nahoře bývá odscrollovaná pryč, tak tlačítko drží
@@ -985,8 +1027,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.46";
-const BUILD = "2026-08-16T15:20+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.48";
+const BUILD = "2026-08-16T17:36+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2624,9 +2666,13 @@ function kresliPodrobny(){
   tab.className = 'tab podrobnyTab';
   telo.appendChild(tab);
 
-  tabulka(tab, [
-    {nadpis:"Číslo",pole:"cislo",typ:"number", sirka:"56px", trida:"stred",
-      napovedaSl:"Číslo předávky nebo etapy, ke které úkol patří."},
+  // Na mobilu bez přihlášení je tohle hlavní stránka pro lidi u trati: chtějí
+  // vědět kdo, co a kdy. Zbytek (číslo, typ, kód, den, stav, odznak ročníku) by
+  // na malém displeji jen překážel, tak se neukazuje.
+  const jenCteMobil = mobil && !prihlasen;
+  const PRO_MOBIL = ['Grupa','Kdo','Úkol','Od','Do'];
+
+  let sloupcePodrobny = [
     {nadpis:"Grupa", sirka:"96px", html:grupaBunka,
       napovedaSl:"Kód grupy. Dá se tu i přehodit — úkol se rovnou přesune jinam."},
     {nadpis:"Kdo",  sirka:"120px", html:sefBunka,
@@ -2637,11 +2683,21 @@ function kresliPodrobny(){
     {nadpis:"Kód",  pole:"kod",  sirka:"74px"},
     {nadpis:"Kdy",  pole:"kdy_text", sirka:"120px",
       napovedaSl:"Původní text z HB25, ze kterého se vytáhly Den, Od a Do. Slouží už jen ke kontrole."},
-    {nadpis:"Den",  pole:"den", typ:"select", moznosti:["","pátek","sobota","neděle"], sirka:"88px"},
+    {nadpis:"Den",  pole:"den", typ:"select", moznosti:["", ...DNY], sirka:"88px",
+      napovedaSl:"Den závodního víkendu. Čtvrtek je tam kvůli grupám, které vyjíždějí den předem."},
     {nadpis:"Od",   pole:"kdy_od", typ:"time", sirka:"92px"},
     {nadpis:"Do",   pole:"kdy_do", typ:"time", sirka:"92px"},
     {nadpis:"Stav", pole:"stav", typ:"select", moznosti:STAVY, sirka:"118px"}
-  ], u, ()=>{kresliPodrobny();kresliPlan();}, true, 'konec', D.ukoly);
+  ];
+  if(jenCteMobil) sloupcePodrobny = sloupcePodrobny
+    .filter(x => PRO_MOBIL.indexOf(x.nadpis) >= 0)
+    // Časy jako obyčejný text, ne políčka na psaní. Prohlížeč do prázdného
+    // políčka kreslí „--:-- --" a hodiny, což na kartě jen mate — a nepřihlášený
+    // stejně nic neupravuje. Prázdný čas se tak celý neukáže.
+    .map(x => (x.typ === 'time') ? {nadpis:x.nadpis, pole:x.pole, jenCist:true} : x);
+
+  tabulka(tab, sloupcePodrobny, u, ()=>{kresliPodrobny();kresliPlan();},
+          !jenCteMobil, jenCteMobil ? false : 'konec', D.ukoly);
 
   // tenká linka tam, kde začíná jiná grupa — ať se to pořád čte po grupách
   const radky = tab.querySelectorAll('tbody tr');
@@ -3220,7 +3276,8 @@ VZD_RAW.split(";").forEach(z=>{
 });
 const vzdal = (a,b) => (a&&b&&a!==b) ? (VZDM[a+"-"+b]||null) : null;
 
-const DNY = ["pátek","sobota","neděle"];
+// Den se píše zkratkou. Čtvrtek kvůli grupám, které vyjíždějí den předem.
+const DNY = ["ČT","PÁ","SO","NE"];
 const denIndex = d => DNY.indexOf(d);
 
 // „so 8:00 - 10:00", „ne 3.15", „pá 16-19", „neděle dopoledne" …
@@ -3229,9 +3286,10 @@ function rozeberCas(t){
   if(!t) return v;
   const s = t.toLowerCase();
   const kdeDen = [
-    [s.search(/(^|[^a-zá-ž])(pá|pátek)([^a-zá-ž]|$)/), "pátek"],
-    [s.search(/(^|[^a-zá-ž])(so|sobota)([^a-zá-ž]|$)/), "sobota"],
-    [s.search(/(^|[^a-zá-ž])(ne|neděle)([^a-zá-ž]|$)/), "neděle"]
+    [s.search(/(^|[^a-zá-ž])(čt|ct|čtvrtek)([^a-zá-ž]|$)/), "ČT"],
+    [s.search(/(^|[^a-zá-ž])(pá|pa|pátek)([^a-zá-ž]|$)/),   "PÁ"],
+    [s.search(/(^|[^a-zá-ž])(so|sobota)([^a-zá-ž]|$)/),     "SO"],
+    [s.search(/(^|[^a-zá-ž])(ne|neděle)([^a-zá-ž]|$)/),     "NE"]
   ].filter(x=>x[0]>=0).sort((a,b)=>a[0]-b[0]);
   if(kdeDen.length) v.den = kdeDen[0][1];
 
@@ -4097,7 +4155,12 @@ function otevriPrihlaseni(){
 }
 function zavriPrihlaseni(){ $('#prihlaseni').style.display = 'none'; }
 
+// CSS potřebuje vědět, jestli je někdo přihlášený — na mobilu podle toho schová
+// věci, které nepřihlášenému k ničemu nejsou.
+function oznacHosta(){ document.body.classList.toggle('host', !prihlasen); }
+
 function kresliStavPrihlaseni(){
+  oznacHosta();
   // hláška o tom, že se nic neukládá, platí jen pro nepřihlášenou ukázku
   document.querySelectorAll('.varovani').forEach(v=>{
     if(v.textContent.indexOf('Veřejná ukázka') >= 0) v.style.display = prihlasen ? 'none' : '';
@@ -4386,6 +4449,7 @@ function nastavZobrazeni(chciMobil){
   document.body.classList.toggle('mobil', mobil);
   if(!mobil) mobilVse = false;
   kresliNav(); kresliStavPrihlaseni(); hlidejOtevrenou(); zmerHlavicku();
+  kresliPodrobny();                      // na mobilu má jinou sadu sloupců
   hlaska(mobil ? 'Mobilní zobrazení' : 'Plné zobrazení');
 }
 function prepniZobrazeni(){ nastavZobrazeni(!mobil); }

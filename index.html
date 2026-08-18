@@ -100,6 +100,27 @@ body.mobil .tab td.dopln{display:none}
 .smazX:hover{color:var(--vinova);background:#F7ECED}
 .obal-tab{overflow-x:auto;border:1px solid var(--linka);border-radius:12px;background:var(--bila)}
 
+/* ---- fotoarchiv: dlaždice ---- */
+.fotoMrizka{display:grid;grid-template-columns:repeat(auto-fill,minmax(208px,1fr));gap:12px}
+.foto{border:1px solid var(--linka);border-radius:10px;background:var(--bila);overflow:hidden;
+  display:flex;flex-direction:column}
+.foto .obr{display:block;width:100%;height:150px;object-fit:cover;background:#F1EDE6}
+.foto .chybi{display:flex;align-items:center;justify-content:center;height:150px;background:#F1EDE6;
+  color:var(--pisek);font-size:11.5px;text-align:center;padding:0 10px}
+.foto .telo2{padding:8px 10px;font-size:12px;line-height:1.45;flex:1}
+.foto .hlava{display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap}
+.foto .znak{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;
+  padding:1px 7px;border-radius:9px;background:#EDE7DA;color:#5B5040}
+.foto .znak.hvezdy{background:#E4F0CB;color:#2A3D12}
+.foto .znak.fb{background:#DCE9F7;color:#12385E}
+.foto .znak.ig{background:#F7E2EE;color:#6E1B4B}
+.foto .popis{color:var(--pisek)}
+.foto .patka{padding:6px 10px;border-top:1px solid var(--linka);display:flex;gap:8px;align-items:center}
+.foto a.otevri{font-size:11.5px;color:var(--olive)}
+.fotoDetail{margin-top:6px;font-size:12px;line-height:1.5}
+.fotoDetail b{color:var(--olive)}
+body.mobil .fotoMrizka{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px}
+
 /* ---- paleta part ---- */
 .rozvrh{display:grid;grid-template-columns:260px 1fr;gap:18px;align-items:start}
 aside{position:sticky;top:104px;background:var(--bila);border:1px solid var(--linka);
@@ -504,6 +525,45 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
           Skutečné časy z ročníku 2025, tabulka nad grafem má stejná čísla zprůměrovaná
           s HB24. Šedý pás je tma mezi západem a východem slunce.</p>
         <div id="grafPredavky" style="position:relative"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. FOTOARCHIV -->
+  <section class="sekce" id="s-fotky">
+    <div class="karta">
+      <h2>Fotoarchiv — tabulka fotky</h2>
+      <div class="telo">
+        <p class="popisek">Fotky z ročníků HB19 až HB25 i s hodnocením a nápady na popisky.
+          Načítá se vždy jen jeden ročník — celá tabulka má přes čtyři tisíce řádků.
+          Tady se jen prohlíží, měnit se nedá nic.</p>
+
+        <div class="nastroje">
+          <label class="popisek" style="margin:0">Ročník:
+            <select id="fotoRok" onchange="nactiFotky()"></select></label>
+          <label class="popisek" style="margin:0">Etapa:
+            <select id="fotoEtapa" onchange="kresliFotky()"></select></label>
+          <label class="popisek" style="margin:0">Typ:
+            <select id="fotoTyp" onchange="kresliFotky()"></select></label>
+          <label class="popisek" style="margin:0">Atraktivita:
+            <select id="fotoAtr" onchange="kresliFotky()">
+              <option value="">všechny</option><option value="5">5</option>
+              <option value="4">4 a víc</option><option value="3">3 a víc</option>
+              <option value="0">bez hodnocení</option></select></label>
+          <label class="popisek" style="margin:0">Výběr:
+            <select id="fotoVyber" onchange="kresliFotky()">
+              <option value="">všechny</option>
+              <option value="fb">vybrané pro FB</option>
+              <option value="ig">vybrané pro IG</option>
+              <option value="pouzito">už použité</option>
+              <option value="nepouzito">ještě nepoužité</option></select></label>
+          <input id="fotoHledej" placeholder="hledat v popisech" oninput="kresliFotky()"
+                 style="padding:6px 10px;border:1px solid var(--linka);border-radius:8px;font:13px Nunito,sans-serif">
+          <button class="tl" onclick="zrusFotoFiltry()">Zrušit filtry</button>
+          <span class="stav" id="stavFotky"></span>
+        </div>
+
+        <div id="fotoMrizka" class="fotoMrizka"></div>
       </div>
     </div>
   </section>
@@ -971,13 +1031,13 @@ const D = {
   prava: {
     "SPRAVCE": {todo:"zápis", tricka:"zápis", ukoly:"zápis", tymy_org:"zápis", clenove_tymu:"zápis",
                 kontakty:"zápis", predavky:"zápis", nastaveni:"zápis", noclehy_adresy:"zápis",
-                noclehy_lide:"zápis", pristupy:"zápis"},
+                noclehy_lide:"zápis", pristupy:"zápis", fotky:"čtení"},
     "VEDOUCI": {todo:"žádné", tricka:"čtení", ukoly:"zápis", tymy_org:"čtení", clenove_tymu:"čtení",
                 kontakty:"čtení", predavky:"čtení", nastaveni:"žádné", noclehy_adresy:"čtení",
-                noclehy_lide:"čtení", pristupy:"žádné"},
+                noclehy_lide:"čtení", pristupy:"žádné", fotky:"žádné"},
     "HOST":    {todo:"žádné", tricka:"čtení", ukoly:"čtení", tymy_org:"čtení", clenove_tymu:"čtení",
                 kontakty:"žádné", predavky:"čtení", nastaveni:"žádné", noclehy_adresy:"čtení",
-                noclehy_lide:"čtení", pristupy:"žádné"}
+                noclehy_lide:"čtení", pristupy:"žádné", fotky:"žádné"}
   },
   todo: [],
 
@@ -1016,7 +1076,8 @@ const OBLASTI = [
   {kod:"noclehy_adresy", nazev:"Noclehy — místa",            sekce:["s-noclehy-mista"]},
   {kod:"noclehy_lide",   nazev:"Noclehy — lidé",             sekce:["s-noclehy-lide"]},
   {kod:"tricka",         nazev:"Trička a objednávky",        sekce:["s-tricka"]},
-  {kod:"pristupy",       nazev:"Přístupy k webu",            sekce:["s-pristupy"]}
+  {kod:"pristupy",       nazev:"Přístupy k webu",            sekce:["s-pristupy"]},
+  {kod:"fotky",          nazev:"Fotoarchiv",                 sekce:["s-fotky"]}
 ];
 let nahledUroven = "";
 // Úroveň přihlášeného. Prázdná znamená nepřihlášeného a ten se bere jako host —
@@ -1027,8 +1088,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.48";
-const BUILD = "2026-08-16T17:36+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.49";
+const BUILD = "2026-08-18T11:02+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1134,7 +1195,8 @@ const ZALOZKY = [
   {id:"s-noclehy-mista", nazev:"Noclehy — místa",    napoveda:"Ubytování, kapacity a stav rezervací."},
   {id:"s-tricka",        nazev:"Trička",             napoveda:"Odhad potřeby triček podle velikostí, sklad a objednávky po vlnách."},
   {id:"s-pristupy",      nazev:"Přístupy",           napoveda:"Tři úrovně přístupu k webu, co která smí, a seznam uživatelů."},
-  {id:"s-nastaveni",     nazev:"Nastavení",          napoveda:"Aktivní ročník, datum závodu a další nastavení plánovače."}
+  {id:"s-nastaveni",     nazev:"Nastavení",          napoveda:"Aktivní ročník, datum závodu a další nastavení plánovače."},
+  {id:"s-fotky",         nazev:"Fotoarchiv",         napoveda:"Fotky ze všech ročníků s hodnocením a nápady na popisky. Jen ke čtení, načítá se po ročnících."}
 ];
 
 /* Které záložky se zrovna nabízejí. Dvě síta za sebou:
@@ -1190,6 +1252,7 @@ function prepni(id){
   if(id==="s-podrobny") kresliPodrobny();
   if(id==="s-pristupy") kresliPristupy();
   if(id==="s-nastaveni") kresliVerzi();
+  if(id==="s-fotky")     nactiFotky();
   if(id==="s-tricka") kresliTricka();
   if(id==="s-noclehy-lide") kresliNocLide();
   if(id==="s-clenove") kresliClenove();
@@ -4034,6 +4097,22 @@ async function sbDotaz(cesta, volby){
   return txt ? JSON.parse(txt) : [];
 }
 
+/* ---------- načtení dlouhé tabulky po stránkách ----------
+   Supabase vrátí nejvýš 1000 řádků a neřekne o tom — u fotek (přes 4000) by se
+   tiše ztratily tři čtvrtiny. Tak se čte po dávkách, dokud něco chodí. */
+async function sbVse(cesta, davka){
+  const krok = davka || 1000;
+  const vse = [];
+  for(let od = 0; ; od += krok){
+    const kus = await sbDotaz(cesta, {headers:{'Range-Unit':'items',
+                                               'Range': od + '-' + (od + krok - 1)}});
+    vse.push(...kus);
+    if(kus.length < krok) break;
+    if(od > 100000) break;             // pojistka proti nekonečnu
+  }
+  return vse;
+}
+
 /* ---------- převod mezi tvarem v prohlížeči a v databázi ---------- */
 function zDb(sada, r){
   const m = MAPA[sada], v = {};
@@ -4348,6 +4427,168 @@ function spustPripominku(){
    Na úzkém displeji naskočí samo, přepínač v hlavičce ho přebije a volba se
    pamatuje. Na mobilu se nabízejí jen záložky, které mají cestou smysl —
    ostatní se dají odemknout tlačítkem „vše". */
+
+
+/* ---------- fotoarchiv ----------
+   Tabulka fotky se schválně nevede v MAPA: má přes čtyři tisíce řádků a je jen
+   ke čtení, takže nemá co dělat v hromadném ukládání, které maže to, co v
+   prohlížeči není. Načítá se ručně a vždycky jen jeden ročník. */
+const FOTO_ROKY = ['HB25','HB24','HB23','HB22','HB21','HB20','HB19'];
+let fotky = [];            // načtený ročník
+let fotkyRok = '';         // který to je
+let fotkyNacitam = false;
+
+// Náhled: horybory.cz jde použít rovnou, u Disku se z odkazu na soubor musí
+// složit adresa náhledu. Co nemá ani jedno, zůstane prázdné.
+function fotoNahled(u){
+  if(!u) return '';
+  const disk = String(u).match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if(disk) return 'https://drive.google.com/thumbnail?id=' + disk[1] + '&sz=w480';
+  if(/^https?:\/\//.test(u)) return u;
+  return '';
+}
+
+function naplnFotoFiltry(){
+  const r = $('#fotoRok');
+  if(r && !r.options.length){
+    r.innerHTML = FOTO_ROKY.map(x=>`<option${x==='HB25'?' selected':''}>${x}</option>`).join('');
+  }
+  const e = $('#fotoEtapa');
+  if(e){
+    const cisla = [...new Set(fotky.map(f=>f.etapa_cislo).filter(x=>x!=null))].sort((a,b)=>a-b);
+    const drive = e.value;
+    e.innerHTML = '<option value="">všechny</option>'
+      + cisla.map(c=>`<option${String(c)===drive?' selected':''}>${c}</option>`).join('');
+  }
+  const t = $('#fotoTyp');
+  if(t){
+    const typy = [...new Set(fotky.map(f=>f.typ).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'cs'));
+    const drive = t.value;
+    t.innerHTML = '<option value="">všechny</option>'
+      + typy.map(x=>`<option${x===drive?' selected':''}>${esc(x)}</option>`).join('');
+  }
+}
+
+function zrusFotoFiltry(){
+  ['fotoEtapa','fotoTyp','fotoAtr','fotoVyber'].forEach(id=>{ const e=$('#'+id); if(e) e.value=''; });
+  const h = $('#fotoHledej'); if(h) h.value = '';
+  kresliFotky();
+}
+
+async function nactiFotky(){
+  if(fotkyNacitam) return;
+  naplnFotoFiltry();
+  const rok = ($('#fotoRok') || {}).value || 'HB25';
+  if(rok === fotkyRok && fotky.length){ kresliFotky(); return; }
+  if(!prihlasen){
+    $('#fotoMrizka').innerHTML = '<p class="popisek">Fotoarchiv je jen pro přihlášené.</p>';
+    return;
+  }
+  fotkyNacitam = true;
+  $('#stavFotky').textContent = 'načítám ' + rok + '…';
+  $('#fotoMrizka').innerHTML = '<p class="popisek">Načítám fotky ročníku ' + esc(rok) + '…</p>';
+  try{
+    fotky = await sbVse('fotky?select=*&rok=eq.' + encodeURIComponent(rok) + '&order=poradi.asc');
+    fotkyRok = rok;
+    naplnFotoFiltry();
+    kresliFotky();
+  }catch(e){
+    fotky = []; fotkyRok = '';
+    $('#fotoMrizka').innerHTML = '<p class="popisek">Fotky se nepodařilo načíst: ' + esc(e.message) + '</p>';
+    $('#stavFotky').textContent = '';
+  }finally{
+    fotkyNacitam = false;
+  }
+}
+
+function fotoProjde(f){
+  const et = ($('#fotoEtapa')||{}).value || '';
+  const ty = ($('#fotoTyp')||{}).value || '';
+  const at = ($('#fotoAtr')||{}).value || '';
+  const vy = ($('#fotoVyber')||{}).value || '';
+  const q  = bezDiakritiky((($('#fotoHledej')||{}).value || '').trim().toLowerCase());
+
+  if(et && String(f.etapa_cislo) !== et) return false;
+  if(ty && f.typ !== ty) return false;
+  if(at === '0' && f.atraktivita != null) return false;
+  if(at && at !== '0' && !(f.atraktivita >= +at)) return false;
+  if(vy === 'fb' && !f.vybrano_fb) return false;
+  if(vy === 'ig' && !f.vybrano_ig) return false;
+  if(vy === 'pouzito'   && !(f.pouzito_fb || f.fb_publikovano_dne)) return false;
+  if(vy === 'nepouzito' &&  (f.pouzito_fb || f.fb_publikovano_dne)) return false;
+  if(q){
+    const kupa = [f.popis_sceny, f.napad_na_text, f.proc_hodnoceni, f.misto,
+                  f.jmeno_bezce, f.tym, f.soubor].join(' ').toLowerCase();
+    if(bezDiakritiky(kupa).indexOf(q) < 0) return false;
+  }
+  return true;
+}
+
+function kresliFotky(){
+  const cil = $('#fotoMrizka'); if(!cil) return;
+  if(!fotky.length){
+    if(!fotkyNacitam) cil.innerHTML = '<p class="popisek">Zvolte ročník — fotky se načtou z databáze.</p>';
+    return;
+  }
+  const videt = fotky.filter(fotoProjde);
+  $('#stavFotky').textContent = videt.length + ' z ' + fotky.length + ' fotek ročníku ' + fotkyRok;
+
+  if(!videt.length){ cil.innerHTML = '<p class="popisek">Pro zvolený filtr tu nic není.</p>'; return; }
+
+  cil.innerHTML = videt.slice(0, 400).map((f, i)=>{
+    const n = fotoNahled(f.url_zdroj);
+    const obr = n
+      ? '<img class="obr" loading="lazy" src="' + esc(n) + '" alt="' + esc(f.popis_sceny || f.soubor || '') + '"'
+        + ' onerror="this.outerHTML=\'<div class=&quot;chybi&quot;>náhled se nenačetl</div>\'">'
+      : '<div class="chybi">bez použitelné adresy</div>';
+    const hvezdy = f.atraktivita ? '<span class="znak hvezdy">' + '★'.repeat(f.atraktivita) + '</span>' : '';
+    const fb = f.vybrano_fb ? '<span class="znak fb">FB</span>' : '';
+    const ig = f.vybrano_ig ? '<span class="znak ig">IG</span>' : '';
+    const et = (f.etapa_cislo != null) ? '<span class="znak">E' + f.etapa_cislo + '</span>' : '';
+    const ty = f.typ ? '<span class="znak">' + esc(f.typ) + '</span>' : '';
+    return '<div class="foto">' + obr
+      + '<div class="telo2">'
+      + '<div class="hlava">' + et + ty + hvezdy + fb + ig + '</div>'
+      + (f.misto ? '<div>' + esc(f.misto) + '</div>' : '')
+      + (f.popis_sceny ? '<div class="popis">' + esc(zkrat(f.popis_sceny, 110)) + '</div>' : '')
+      + '</div>'
+      + '<div class="patka">'
+      + (f.url_zdroj ? '<a class="otevri" href="' + esc(f.url_zdroj) + '" target="_blank" rel="noopener noreferrer">otevřít</a>' : '')
+      + '<button class="tl" style="padding:2px 9px;font-size:11px;margin-left:auto" data-foto="' + i + '">podrobnosti</button>'
+      + '</div></div>';
+  }).join('')
+  + (videt.length > 400 ? '<p class="popisek">Ukazuje se prvních 400 z ' + videt.length + ' — zužte filtr.</p>' : '');
+
+  cil.querySelectorAll('[data-foto]').forEach(b=>{
+    b.onclick = ()=>ukazFoto(videt[+b.dataset.foto], b);
+  });
+}
+
+const zkrat = (t, n) => (String(t||'').length > n ? String(t).slice(0, n-1) + '…' : String(t||''));
+
+function ukazFoto(f, tlacitko){
+  const karta = tlacitko.closest('.foto');
+  const drive = karta.querySelector('.fotoDetail');
+  if(drive){ drive.remove(); tlacitko.textContent = 'podrobnosti'; return; }
+  const radek = (co, cim) => cim ? '<div><b>' + co + ':</b> ' + esc(cim) + '</div>' : '';
+  const d = document.createElement('div');
+  d.className = 'fotoDetail';
+  d.style.padding = '0 10px 10px';
+  d.innerHTML = radek('soubor', f.soubor)
+    + radek('pořízeno', f.cas_porizeni ? cesky(f.cas_porizeni) : '')
+    + radek('fotograf', f.fotograf)
+    + radek('běžec', [f.jmeno_bezce, f.tym, f.cislo_bezce].filter(Boolean).join(' · '))
+    + radek('jistota určení', f.jistota_id)
+    + radek('popis scény', f.popis_sceny)
+    + radek('proč hodnocení', f.proc_hodnoceni)
+    + radek('nápad na text', f.napad_na_text)
+    + radek('vhodné pro', Array.isArray(f.vhodne_pro) ? f.vhodne_pro.join(', ') : f.vhodne_pro)
+    + radek('použito na FB', f.pouzito_fb)
+    + radek('publikováno', f.fb_publikovano_dne)
+    + radek('zdroj', f.zdroj);
+  karta.appendChild(d);
+  tlacitko.textContent = 'skrýt';
+}
 
 /* ---------- verze webu ----------
    Verze a čas buildu jsou v souboru, poslední commit se doptá GitHubu. Bez klíče,

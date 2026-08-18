@@ -1088,8 +1088,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.49";
-const BUILD = "2026-08-18T11:02+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.50";
+const BUILD = "2026-08-18T11:19+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4437,6 +4437,11 @@ const FOTO_ROKY = ['HB25','HB24','HB23','HB22','HB21','HB20','HB19'];
 let fotky = [];            // načtený ročník
 let fotkyRok = '';         // který to je
 let fotkyNacitam = false;
+// Kolik dlaždic se vykreslí najednou. Odkaz u fotky vede na plnou fotku z webu
+// (klidně pár MB), ne na zmenšeninu — při čtyřech stovkách naráz se prohlížeč
+// na půl minuty zasekne. Zbytek se dokresluje na tlačítko.
+const FOTO_DAVKA = 60;
+let fotoUkazano = FOTO_DAVKA;
 
 // Náhled: horybory.cz jde použít rovnou, u Disku se z odkazu na soubor musí
 // složit adresa náhledu. Co nemá ani jedno, zůstane prázdné.
@@ -4524,7 +4529,11 @@ function fotoProjde(f){
   return true;
 }
 
-function kresliFotky(){
+// nový filtr = zase od začátku
+function kresliFotky(){ fotoUkazano = FOTO_DAVKA; kresliFotoDlazdice(); }
+function vicFotek(){ fotoUkazano += FOTO_DAVKA; kresliFotoDlazdice(); }
+
+function kresliFotoDlazdice(){
   const cil = $('#fotoMrizka'); if(!cil) return;
   if(!fotky.length){
     if(!fotkyNacitam) cil.innerHTML = '<p class="popisek">Zvolte ročník — fotky se načtou z databáze.</p>';
@@ -4535,10 +4544,11 @@ function kresliFotky(){
 
   if(!videt.length){ cil.innerHTML = '<p class="popisek">Pro zvolený filtr tu nic není.</p>'; return; }
 
-  cil.innerHTML = videt.slice(0, 400).map((f, i)=>{
+  const davka = videt.slice(0, fotoUkazano);
+  cil.innerHTML = davka.map((f, i)=>{
     const n = fotoNahled(f.url_zdroj);
     const obr = n
-      ? '<img class="obr" loading="lazy" src="' + esc(n) + '" alt="' + esc(f.popis_sceny || f.soubor || '') + '"'
+      ? '<img class="obr" loading="lazy" decoding="async" src="' + esc(n) + '" alt="' + esc(f.popis_sceny || f.soubor || '') + '"'
         + ' onerror="this.outerHTML=\'<div class=&quot;chybi&quot;>náhled se nenačetl</div>\'">'
       : '<div class="chybi">bez použitelné adresy</div>';
     const hvezdy = f.atraktivita ? '<span class="znak hvezdy">' + '★'.repeat(f.atraktivita) + '</span>' : '';
@@ -4556,12 +4566,23 @@ function kresliFotky(){
       + (f.url_zdroj ? '<a class="otevri" href="' + esc(f.url_zdroj) + '" target="_blank" rel="noopener noreferrer">otevřít</a>' : '')
       + '<button class="tl" style="padding:2px 9px;font-size:11px;margin-left:auto" data-foto="' + i + '">podrobnosti</button>'
       + '</div></div>';
-  }).join('')
-  + (videt.length > 400 ? '<p class="popisek">Ukazuje se prvních 400 z ' + videt.length + ' — zužte filtr.</p>' : '');
+  }).join('');
 
   cil.querySelectorAll('[data-foto]').forEach(b=>{
-    b.onclick = ()=>ukazFoto(videt[+b.dataset.foto], b);
+    b.onclick = ()=>ukazFoto(davka[+b.dataset.foto], b);
   });
+
+  const dalsi = $('#fotoVic');
+  if(dalsi) dalsi.remove();
+  if(videt.length > davka.length){
+    const d = document.createElement('div');
+    d.id = 'fotoVic';
+    d.style.cssText = 'margin-top:14px;display:flex;align-items:center;gap:12px';
+    d.innerHTML = '<button class="tl hlavni" onclick="vicFotek()">Ukázat dalších '
+      + Math.min(FOTO_DAVKA, videt.length - davka.length) + '</button>'
+      + '<span class="stav">zobrazeno ' + davka.length + ' z ' + videt.length + '</span>';
+    cil.parentNode.insertBefore(d, cil.nextSibling);
+  }
 }
 
 const zkrat = (t, n) => (String(t||'').length > n ? String(t).slice(0, n-1) + '…' : String(t||''));

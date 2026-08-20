@@ -228,6 +228,25 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   color:#fff;padding:9px 18px;border-radius:22px;font-size:13px;font-weight:700;
   opacity:0;pointer-events:none;transition:.25s;box-shadow:var(--stin);z-index:90}
 .hlaska.videt{opacity:1}
+
+/* Chyba se nesmí ztratit dřív, než si ji člověk stihne přečíst a zkopírovat.
+   Na rozdíl od běžné hlášky nemizí sama, text jde označit a je u ní tlačítko. */
+.chybovka{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:95;
+  background:#FCF3F4;border:1.5px solid #C2707A;border-left:5px solid #A4443A;
+  border-radius:10px;box-shadow:0 12px 34px rgba(0,0,0,.25);
+  max-width:min(760px,calc(100vw - 32px));display:none}
+.chybovka.videt{display:block}
+.chybovka .hlava{display:flex;align-items:center;gap:10px;padding:9px 12px 4px}
+.chybovka .nadpis{font-weight:800;font-size:13px;color:#8A2F38;flex:1}
+.chybovka .text{margin:0 12px 10px;padding:8px 10px;background:#fff;border:1px solid #EBD8DA;
+  border-radius:7px;font:12.5px/1.55 Nunito,sans-serif;color:#3F372A;
+  white-space:pre-wrap;word-break:break-word;max-height:38vh;overflow:auto;
+  user-select:text;-webkit-user-select:text}
+.chybovka .paticka{display:flex;gap:8px;padding:0 12px 12px;align-items:center}
+.chybovka .zavri{background:none;border:0;font:900 20px Nunito,sans-serif;color:#8A2F38;
+  cursor:pointer;padding:0 6px;line-height:1;border-radius:6px}
+.chybovka .zavri:hover{background:#F3DDE0}
+body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px}
 .pruh{height:7px;background:var(--linka);border-radius:5px;overflow:hidden;margin-top:4px}
 .pruh i{display:block;height:100%;background:var(--olive)}
 .pruh.plno i{background:var(--vinova)}
@@ -309,6 +328,18 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
       <button class="tl" type="button" onclick="zavriPrihlaseni()">Zpět do ukázky</button>
     </div>
   </form>
+</div>
+
+<div class="chybovka" id="chybovka" role="alert" aria-live="assertive">
+  <div class="hlava">
+    <span class="nadpis" id="chybovkaNadpis"></span>
+    <button class="zavri" onclick="zavriChybu()" title="Zavřít hlášení. Zůstane otevřené, dokud ho nezavřete.">×</button>
+  </div>
+  <div class="text" id="chybovkaText"></div>
+  <div class="paticka">
+    <button class="tl" id="chybovkaKopie" onclick="kopirujChybu()">Zkopírovat text</button>
+    <span class="stav">Hlášení nezmizí samo — zavřete ho křížkem.</span>
+  </div>
 </div>
 
 <div class="nahledLista" id="nahledLista">
@@ -1109,7 +1140,9 @@ const BARVA_STAVU = {"plán":"#66713E","nepotvrzeno":"#D08C3A",
                      "potvrzeno":"#1E7A4C","zrušeno":"#A63D4E"};
 const STAV_ZAMCENO = "potvrzeno";
 const ROKY = ["HB19","HB20","HB21","HB22","HB23","HB24","HB25","HB26","HB27"];
-const DOPRAVY = ["","osobní auto","dodávka","veřejná","kolo","pěšky"];
+// Musí sedět s kontrolním pravidlem sloupce doprava v tabulce tymy_org.
+// Když se rozejde, databáze odmítne uložení CELÉ sady grup, ne jen toho jednoho řádku.
+const DOPRAVY = ["","osobní auto","dodávka","veřejná","místní","kolo","pěšky"];
 const NOCI = ["pátek","sobota"];
 const PRAVA = ["zápis","čtení","žádné"];
 const OBLASTI = [
@@ -1135,8 +1168,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.55";
-const BUILD = "2026-08-20T13:29+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.57";
+const BUILD = "2026-08-20T15:24+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1212,6 +1245,31 @@ const grupyLetos = () => D.tymy.filter(t=>t.aktivni !== 'ne');
 const jePartaVDb = k => !!parta(k) && MIMO_DB.indexOf(k)<0;
 const hlaska = t => {const h=$('#hlaska');h.textContent=t;h.classList.add('videt');
   clearTimeout(h._t);h._t=setTimeout(()=>h.classList.remove('videt'),1900);};
+
+/* Chybové hlášení. Běžná hláška zmizí za necelé dvě vteřiny a nedá se označit —
+   u chyby z databáze je to k ničemu, protože právě tu je potřeba přečíst celou
+   a poslat dál. Tahle zůstane, dokud ji nezavřeš křížkem, a jde zkopírovat. */
+function chyba(text, nadpis){
+  const el = $('#chybovka'); if(!el){ hlaska(text); return; }
+  $('#chybovkaNadpis').textContent = nadpis || 'Něco se nepovedlo';
+  $('#chybovkaText').textContent = String(text || '');
+  el.classList.add('videt');
+}
+function zavriChybu(){ const el = $('#chybovka'); if(el) el.classList.remove('videt'); }
+function kopirujChybu(){
+  const t = $('#chybovkaText').textContent;
+  const hotovo = () => { const b = $('#chybovkaKopie');
+    if(b){ const p = b.textContent; b.textContent = 'Zkopírováno'; setTimeout(()=>b.textContent = p, 1600); } };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(hotovo, () => oznacChybu());
+  } else oznacChybu();
+}
+// Když schránka nejde (starší prohlížeč, http), aspoň text označíme, ať stačí Ctrl+C.
+function oznacChybu(){
+  const e = $('#chybovkaText');
+  const r = document.createRange(); r.selectNodeContents(e);
+  const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+}
 function odznakHtml(r, vslotu){
   const v = vslotu ? ' vslotu' : '';
   if(r && r.stav === "nepotvrzeno")
@@ -3283,7 +3341,9 @@ function kresliNocMista(){
     {nadpis:"Kontakt", pole:"kontakt", sirka:"140px"},
     {nadpis:"Telefon", pole:"telefon", sirka:"140px"},
     {nadpis:"Cena", pole:"cena", sirka:"180px"},
-    {nadpis:"Platba", pole:"platba", typ:"select", moznosti:["","nezaplaceno","záloha","zaplaceno"], sirka:"130px"},
+    {nadpis:"Platba", pole:"platba", typ:"select", sirka:"130px",
+      moznosti:["","nezaplaceno","záloha","na místě","faktura","zaplaceno"],
+      napovedaSl:"Musí sedět s kontrolním pravidlem sloupce platba v databázi — hlídá to test."},
     {nadpis:"Rezervace", pole:"rezervace", sirka:"230px"},
     {nadpis:"Poznámka", pole:"poznamka", sirka:"320px", viceradkove:true}
   ]), D.nocMista, ()=>{kresliNocMista();}, true);
@@ -4593,6 +4653,10 @@ async function poPrihlaseni(){
   vseKresli(); kresliNav(); hlidejOtevrenou();
   zmeneno = false; posledniUlozeno = Date.now(); kresliStavUlozeni();
   kresliStavPrihlaseni();
+  if(potize.length) chyba('Při načítání z databáze se tohle nepovedlo:\n\n'
+    + potize.join('\n\n')
+    + '\n\nSady, které se nenačetly, se pro jistotu ani neuloží — nepřepíšou se tím data v databázi.',
+    'Načtení z databáze nebylo úplné');
   const zprava = potize.length
     ? ('Načteno, ale s výhradami: ' + potize.join(' · '))
     : ('Hotovo — data jsou z databáze (' + zDatabaze.join(', ') + '), úroveň '
@@ -4750,7 +4814,11 @@ async function ulozDoDatabaze(){
     ? ' · nepřeneseno (data nejsou z databáze): ' + preskoceno.join(', ') : '';
   if(potize.length){
     // něco se opravdu nepovedlo — příznak neuložených změn zůstává
-    hlaska('Uloženo částečně. Nepovedlo se: ' + potize.join(' · ') + dovetek);
+    hlaska('Uložení se nepovedlo, podrobnosti v hlášení.');
+    chyba('Uloženo částečně, tohle se nepovedlo:\n\n' + potize.join('\n\n')
+      + (dovetek ? '\n\n' + dovetek.replace(/^ · /, '') : '')
+      + '\n\nNeuložené změny zůstávají v prohlížeči, o nic jste nepřišel.',
+      'Uložení do databáze neproběhlo celé');
   }else{
     zmeneno = false; posledniUlozeno = Date.now(); kresliStavUlozeni();
     // uložené řádky už nejsou nové

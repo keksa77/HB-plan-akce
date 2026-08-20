@@ -91,6 +91,11 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
 .tab td.uzka{width:74px}
 .tab td.stred input{text-align:center}
 .tab td.smaz{width:34px;text-align:center}
+/* Čerstvě přidaný řádek. Seznamy se řadí, takže nový řádek nepřistane dole,
+   ale někde uprostřed — bez zvýraznění ho uživatel nenajde. Žlutá drží,
+   dokud se neuloží do databáze. */
+.tab tr.novy > td{background:#FFF8DE}
+.tab tr.novy > td:first-child{box-shadow:inset 3px 0 0 #C9A227}
 /* prázdný sloupec na konci: spolkne místo, které datové sloupce nepotřebují */
 .tab th.dopln{width:auto}
 .tab td.dopln{padding:0;border-bottom:1px solid var(--linka)}
@@ -1088,8 +1093,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.50";
-const BUILD = "2026-08-18T11:19+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.51";
+const BUILD = "2026-08-20T10:57+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1412,7 +1417,7 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
         + (mazatelne?'<th style="width:34px"></th>':'')
         + '<th class="dopln"></th></tr></thead><tbody>';
   radky.forEach((r,i)=>{
-    h += '<tr>';
+    h += '<tr' + (r._nove ? ' class="novy"' : '') + '>';
     if(maOdznak && !odznakVzadu) h += '<td class="odzn">'+odznakHtml(r)+'</td>';
     sloupce.forEach(s=>{
       const v = r[s.pole];
@@ -1492,6 +1497,17 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
       if(poZmene) poZmene(r);
     };
   });
+  const novy = t.querySelector('tr.novy');
+  if(novy && !t.dataset.skoceno){
+    t.dataset.skoceno = '1';
+    setTimeout(()=>{
+      novy.scrollIntoView({block:'center', behavior:'smooth'});
+      const prvni = novy.querySelector('input:not([disabled]),textarea:not([disabled])');
+      if(prvni) prvni.focus();
+      delete t.dataset.skoceno;
+    }, 30);
+  }
+
   t.querySelectorAll('[data-del]').forEach(b=>{
     b.onclick = ()=>{
       const r = radky[+b.dataset.del];
@@ -3870,14 +3886,62 @@ function schovejKontakty(){
 }
 
 /* ---------- přidávání řádků ---------- */
+/* Přidá prázdný řádek. Tři věci, na kterých to dřív padalo:
+   řádek se po přidání ztratil v řazení, nikde se neřeklo, že se něco stalo,
+   a hlavně se plán neoznačil za změněný — plovoucí Uložit nenaskočilo a nový
+   člověk se při odchodu ze stránky ztratil. */
 function pridej(co){
-  if(co==='tymy'){ D.tymy.push({kod:"NOVÁ",nazev:"",poradi:(D.tymy.length+1),doprava:"",barva:"#8a8a8a",poznamka:""}); kresliTymy(); kresliPaletu(); naplnFiltrPart(); }
-  if(co==='clenove'){ const f=$('#filtrParty').value; D.clenove.push({kod_tymu:f||D.tymy[0].kod,jmeno:"",telefon:"",email:"",nocleh_patek:"",nocleh_sobota:"",cislo_uctu:"",poznamka:""}); kresliClenove(); }
-  if(co==='nocMista'){ D.nocMista.push({kod:"NOVÉ",nazev:"",adresa:"",mapa_url:"",kapacita:0,pokoje:"",kontakt:"",telefon:"",cena:"",platba:"",rezervace:"",poznamka:""}); kresliNocMista(); }
-  if(co==='objednavka'){ D.objednavky.push({rok:D.nastaveni.aktivni_rok,vlna:1,datum:"",pocet:0,poznamka:""}); kresliObjednavky(); }
-  if(co==='uroven'){ D.urovne.push({kod:"NOVA",nazev:"Nová úroveň",poradi:D.urovne.length+1,popis:""}); srovnejPrava(); kresliPristupy(); }
-  if(co==='uzivatel'){ D.uzivatele.push({email:"",jmeno:"",uroven:(D.urovne[0]||{}).kod||"",kod_tymu:"",aktivni:"ano",poznamka:""}); kresliUzivatele(); }
-  if(co==='nocLide'){ D.nocLide.push({noc:"pátek",kod_noclehu:"",jmeno:"",kod_tymu:"",poznamka:""}); kresliNocLide(); }
+  let novy = null, kam = '';
+
+  if(co==='tymy'){
+    novy = {kod:"NOVÁ",nazev:"",poradi:(D.tymy.length+1),doprava:"",barva:"#8a8a8a",
+            poznamka:"",stitek:"",aktivni:"ano"};
+    D.tymy.push(novy); kam = 'grupa';
+    kresliTymy(); kresliPaletu(); naplnFiltrPart();
+  }
+  if(co==='clenove'){
+    const f = $('#filtrParty').value;
+    const grupa = f || (grupyLetos()[0]||D.tymy[0]||{}).kod || '';
+    novy = {kod_tymu:grupa, jmeno:"", sef:"ne", telefon:"", email:"",
+            nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", rocniky:"", poznamka:""};
+    D.clenove.push(novy);
+    kam = 'člověk do grupy ' + popisGrupy(grupa);
+    kresliClenove();
+  }
+  if(co==='nocMista'){
+    novy = {kod:"NOVÉ",nazev:"",adresa:"",mapa_url:"",kapacita:0,pokoje:"",kontakt:"",
+            telefon:"",cena:"",platba:"",rezervace:"",poznamka:""};
+    D.nocMista.push(novy); kam = 'nocleh'; kresliNocMista();
+  }
+  if(co==='objednavka'){
+    novy = {rok:D.nastaveni.aktivni_rok,vlna:1,datum:"",pocet:0,poznamka:""};
+    D.objednavky.push(novy); kam = 'vlna objednávky'; kresliObjednavky();
+  }
+  if(co==='uroven'){
+    novy = {kod:"NOVA",nazev:"Nová úroveň",poradi:D.urovne.length+1,popis:""};
+    D.urovne.push(novy); kam = 'úroveň přístupu'; srovnejPrava(); kresliPristupy();
+  }
+  if(co==='uzivatel'){
+    novy = {email:"",jmeno:"",uroven:(D.urovne[0]||{}).kod||"",kod_tymu:"",aktivni:"ano",poznamka:""};
+    D.uzivatele.push(novy); kam = 'uživatel'; kresliUzivatele();
+  }
+  if(co==='nocLide'){
+    novy = {noc:"pátek",kod_noclehu:"",jmeno:"",kod_tymu:"",poznamka:""};
+    D.nocLide.push(novy); kam = 'nocležník'; kresliNocLide();
+  }
+
+  if(!novy) return;
+  novy._nove = true;
+  oznacZmenu();
+  // překreslit ještě jednou, ať se značka nového řádku projeví a stránka na něj sjede
+  if(co==='tymy') kresliTymy();
+  if(co==='clenove') kresliClenove();
+  if(co==='nocMista') kresliNocMista();
+  if(co==='objednavka') kresliObjednavky();
+  if(co==='uroven') kresliPristupy();
+  if(co==='uzivatel') kresliUzivatele();
+  if(co==='nocLide') kresliNocLide();
+  hlaska('Přidán prázdný řádek — ' + kam + '. Je zvýrazněný žlutě, dokud ho neuložíte.');
 }
 
 /* ---------- hromadné akce nad plánem ---------- */
@@ -4365,6 +4429,9 @@ async function ulozDoDatabaze(){
     hlaska('Uloženo částečně. Nepovedlo se: ' + potize.join(' · ') + dovetek);
   }else{
     zmeneno = false; posledniUlozeno = Date.now(); kresliStavUlozeni();
+    // uložené řádky už nejsou nové
+    Object.keys(MAPA).forEach(sada => (D[sada]||[]).forEach(r => { delete r._nove; }));
+    vseKresli();
     hlaska('Uloženo do databáze: ' + (hotovo.join(', ') || 'nic ke změně')
       + (smazano ? (' · smazáno ' + smazano + ' řádků') : '') + dovetek);
   }
@@ -4439,8 +4506,10 @@ let fotkyRok = '';         // který to je
 let fotkyNacitam = false;
 // Kolik dlaždic se vykreslí najednou. Odkaz u fotky vede na plnou fotku z webu
 // (klidně pár MB), ne na zmenšeninu — při čtyřech stovkách naráz se prohlížeč
-// na půl minuty zasekne. Zbytek se dokresluje na tlačítko.
-const FOTO_DAVKA = 60;
+// na půl minuty zasekne. Zmenšeniny na horybory.cz sice existují, ale mají
+// v názvu časové razítko, které se z adresy plné fotky spočítat nedá (ověřeno
+// 18. 8. 2026), takže se stahují plné fotky. Proto malá dávka a zbytek na tlačítko.
+const FOTO_DAVKA = 20;
 let fotoUkazano = FOTO_DAVKA;
 
 // Náhled: horybory.cz jde použít rovnou, u Disku se z odkazu na soubor musí

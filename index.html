@@ -142,6 +142,23 @@ aside p{margin:0 0 10px;font-size:11.5px;color:var(--pisek)}
 .chip .jmeno{font-weight:600;font-size:11.5px;opacity:.92;max-width:112px;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
 .chip.zvyrazneno{outline:2.5px solid var(--hneda);outline-offset:1.5px}
+
+/* Napevno naplánovaný úkol. Po obvodu zlatý kroužek, v pravém horním rohu zámek.
+   Zamčené políčko se nedá přetáhnout ani smazat — nejdřív se musí odemknout
+   dvojklikem, jinak by stačilo omylem drcnout myší a plán je jinde. */
+.chip.zamknuto{
+  position:relative; overflow:visible; cursor:default;
+  box-shadow:0 0 0 2.5px #F0B429, 0 0 0 4.5px rgba(90,60,0,.30);
+}
+.chip.zamknuto::after{
+  content:"\1F512"; position:absolute; top:-7px; right:-7px;
+  width:16px; height:16px; border-radius:50%;
+  background:#F0B429; color:#4A3200; font-size:9.5px; line-height:16px;
+  text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.4); pointer-events:none;
+}
+.chip.zamknuto .smaz{display:none}
+.slot.plny.zamceny{overflow:visible}
+.bunka{overflow:visible}
 .detail{margin-top:13px;font-size:11.5px;color:var(--pisek);border-top:1px solid var(--linka);padding-top:9px}
 .detail b{color:var(--tmava)}
 
@@ -452,7 +469,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
         <datalist id="seznamKodu"></datalist>
       </label>
       <label class="stav">Stav:
-        <select id="filtrStav" title="Ukáže jen úkoly v jednom stavu — plán, nepotvrzeno, zrušeno." onchange="kresliPodrobny()"
+        <select id="filtrStav" title="Ukáže jen úkoly v jednom stavu — plán, nepotvrzeno, potvrzeno, zrušeno." onchange="kresliPodrobny()"
           style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
       </label>
       <button class="tl" title="Zruší všechny čtyři filtry a ukáže celý plán." onclick="zrusFiltryPodrobny()">Zrušit filtry</button>
@@ -755,7 +772,7 @@ td.akce{text-align:center;padding:0 8px;white-space:nowrap}
   <label>Kdy (sloupec kdy_text)</label>
   <input type="text" id="edKdy" placeholder="např. so 8:00 - 10:00">
   <label>Stav</label>
-  <select id="edStav"><option>plán</option><option>nepotvrzeno</option><option>zrušeno</option></select>
+  <select id="edStav"><option>plán</option><option>nepotvrzeno</option><option>potvrzeno</option><option>zrušeno</option></select>
   <label>Popis</label>
   <textarea id="edPopis" rows="2"></textarea>
   <div class="paticka">
@@ -1064,8 +1081,11 @@ const TYPY  = ["T","U","P","PZ","PK","N","A","S","C"];
 const NAZVY_TYPU = {T:"trasa-značení",U:"úklid značení",P:"PŘED obsluha",
   PZ:"PŘED zahájení",PK:"PŘED ukončení",N:"nocleh",A:"přejezd",
   S:"start",C:"cíl"};
-const STAVY = ["plán","nepotvrzeno","zrušeno"];
-const BARVA_STAVU = {"plán":"#66713E","nepotvrzeno":"#D08C3A","zrušeno":"#A63D4E"};
+// „potvrzeno" znamená napevno naplánováno — v mřížce plánu se takový úkol zamkne.
+const STAVY = ["plán","nepotvrzeno","potvrzeno","zrušeno"];
+const BARVA_STAVU = {"plán":"#66713E","nepotvrzeno":"#D08C3A",
+                     "potvrzeno":"#1E7A4C","zrušeno":"#A63D4E"};
+const STAV_ZAMCENO = "potvrzeno";
 const ROKY = ["HB19","HB20","HB21","HB22","HB23","HB24","HB25","HB26","HB27"];
 const DOPRAVY = ["","osobní auto","dodávka","veřejná","kolo","pěšky"];
 const NOCI = ["pátek","sobota"];
@@ -1093,8 +1113,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.51";
-const BUILD = "2026-08-20T10:57+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.52";
+const BUILD = "2026-08-20T11:30+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1281,7 +1301,7 @@ const NAPOVEDA = {
   "Číslo":"Číslo etapy u T a U, číslo předávky u P, PZ a PK. U přejezdů a noclehů zůstává prázdné.",
   "Kdy":"Volný text s časem přesně tak, jak ho píšete: so 8:00 - 10:00.",
   "Co se dělá":"Popis úkolu, včetně poznámek pro grupu.",
-  "Stav":"Plán je běžný stav, nepotvrzeno svítí otazníkem, zrušeno se nedělá.",
+  "Stav":"Plán je běžný stav, nepotvrzeno svítí otazníkem, potvrzeno je napevno naplánováno (zámek v mřížce), zrušeno se nedělá.",
   // grupy a lidé
   "Grupa":"Kód grupy z tabulky tymy_org.",
   "Název":"Delší pojmenování, které vidí lidé.",
@@ -1579,11 +1599,49 @@ function slotChip(u){
   const x = document.createElement('span'); x.className='smaz'; x.textContent='×'; x.title='Odebere úkol z tohoto políčka. Vrátit se to nedá.';
   x.onclick = e=>{ e.stopPropagation(); D.ukoly.splice(D.ukoly.indexOf(u),1); kresliPlan(); };
   c.appendChild(x);
-  c.onclick = e=>{ if(e.target!==x) otevriEditor(u); };
-  c.ondragstart = e=>{ e.dataTransfer.setData('text/plain', u.parta);
-                       e.dataTransfer.setData('zdroj', u.typ+','+u.cislo); };
+
+  const zamceno = u.stav === STAV_ZAMCENO;
+  if(zamceno){
+    c.classList.add('zamknuto');
+    c.draggable = false;
+    c.title += ' — NAPEVNO NAPLÁNOVÁNO. Dvojklikem odemknete.';
+  }else{
+    c.title += ' — dvojklikem zamknete jako napevno naplánované.';
+  }
+
+  // Jeden klik otevírá editor, dvojklik zamyká. Prohlížeč pošle při dvojkliku
+  // i dva obyčejné kliky, tak se otevření editoru o chvíli zdrží a dvojklik ho zruší.
+  let cekaKlik = null;
+  c.onclick = e=>{
+    if(e.target === x) return;
+    clearTimeout(cekaKlik);
+    cekaKlik = setTimeout(()=>otevriEditor(u), 230);
+  };
+  c.ondblclick = e=>{
+    e.preventDefault(); clearTimeout(cekaKlik);
+    prepniZamek(u);
+  };
+  c.ondragstart = e=>{
+    if(u.stav === STAV_ZAMCENO){ e.preventDefault(); return; }
+    e.dataTransfer.setData('text/plain', u.parta);
+    e.dataTransfer.setData('zdroj', u.typ+','+u.cislo);
+  };
   if(zvyraznit && vybrany===u.parta) c.classList.add('zvyrazneno');
   return c;
+}
+
+// Zamknout či odemknout úkol v mřížce. Zámek je jen jiný zápis stavu „potvrzeno",
+// takže se propíše i do Podrobného plánu a uloží se do databáze jako všechno ostatní.
+function prepniZamek(u){
+  if(!smiPsat()){ hlaska('Na tohle nemáte právo — plán jde jen číst.'); return; }
+  const bylo = u.stav === STAV_ZAMCENO;
+  u.stav = bylo ? 'plán' : STAV_ZAMCENO;
+  zrevidovano(u); oznacZmenu();
+  kresliPlan();
+  if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
+  hlaska(bylo
+    ? ('Odemčeno: ' + u.kod + ' ' + popisGrupy(u.parta) + ' — zase se dá přetáhnout.')
+    : ('Zamčeno napevno: ' + u.kod + ' ' + popisGrupy(u.parta) + ' — dvojklikem odemknete.'));
 }
 
 function kresliPlan(){

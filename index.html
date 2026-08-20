@@ -1142,6 +1142,7 @@ const STAV_ZAMCENO = "potvrzeno";
 const ROKY = ["HB19","HB20","HB21","HB22","HB23","HB24","HB25","HB26","HB27"];
 // Musí sedět s kontrolním pravidlem sloupce doprava v tabulce tymy_org.
 // Když se rozejde, databáze odmítne uložení CELÉ sady grup, ne jen toho jednoho řádku.
+// Jen našeptávač, ne číselník — databáze dopravu nehlídá, nic na ní nestojí.
 const DOPRAVY = ["","osobní auto","dodávka","veřejná","místní","kolo","pěšky"];
 const NOCI = ["pátek","sobota"];
 const PRAVA = ["zápis","čtení","žádné"];
@@ -1168,8 +1169,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.57";
-const BUILD = "2026-08-20T15:24+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.58";
+const BUILD = "2026-08-20T17:07+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1501,7 +1502,16 @@ function zmerSloupec(s, radky){
   });
 
   if(s.typ === 'select') sirka += 22;                    // šipka rozbalovátka
+  if(s.typ === 'napoveda') sirka += 24;                  // šipka našeptávače
   if(s.typ === 'number') sirka += 20;                    // šipky nahoru/dolů
+  // Vedle adresy a e-mailu se kreslí ikonka na proklik a ta ubírá místo textu.
+  if(!s.typ || s.typ === 'text'){
+    const maOdkaz = radky.some(r => {
+      const t = String(r[s.pole] == null ? '' : r[s.pole]);
+      return t.indexOf('http') >= 0 || t.indexOf('@') > 0;
+    });
+    if(maOdkaz) sirka += 22;
+  }
   // Políčko na čas si prohlížeč kreslí sám i s ikonkou hodin. Když se mu ubere
   // místo, ořízne čas na „10:0" — tak dostane pevné minimum.
   if(s.typ === 'time') sirka = Math.max(sirka + 34, 118);
@@ -1533,6 +1543,16 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
         h += `<td class="${s.trida||''}"${lbl} style="padding:5px 8px;white-space:nowrap">${s.html(r,i)}</td>`;
       } else if(s.jenCist){
         h += `<td class="${s.trida||''}"${lbl} style="padding:7px 8px;font-size:13px;color:var(--pisek)">${esc(v)}</td>`;
+      } else if(s.typ==='napoveda'){
+        // Volný text s nabídkou obvyklých hodnot. Používá se u popisných polí,
+        // kde databáze nic nehlídá — dá se vybrat ze seznamu i napsat vlastní.
+        const moznosti = (typeof s.moznosti==='function'? s.moznosti(r) : s.moznosti) || [];
+        const id = 'nap-' + s.pole + '-' + Math.abs(String(s.nadpis).length*37 + i);
+        h += `<td class="${s.trida||''}"${lbl}>`
+          + `<input type="text" list="${id}" data-i="${i}" data-p="${s.pole}" value="${esc(v)}">`
+          + `<datalist id="${id}">`
+          + moznosti.filter(x=>x!=='').map(m=>`<option value="${esc(m)}"></option>`).join('')
+          + '</datalist></td>';
       } else if(s.typ==='select'){
         const moznosti = (typeof s.moznosti==='function'? s.moznosti(r) : s.moznosti);
         // volba může být holá hodnota, nebo dvojice {v: hodnota, t: co je vidět}
@@ -1583,8 +1603,13 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
     let v = el.scrollHeight + 2;
     const max = +el.dataset.max || 0;
     if(max && document.activeElement !== el){
-      const radek = parseFloat(getComputedStyle(el).lineHeight) || 18;
-      v = Math.min(v, Math.round(max * radek) + 10);
+      // Strop musí počítat i s vnitřním okrajem pole, jinak se poslední řádek
+      // ořízne vodorovně v půlce písmen a vypadá to jako chyba vykreslení.
+      const st = getComputedStyle(el);
+      const radek = parseFloat(st.lineHeight) || 18;
+      const okraje = parseFloat(st.paddingTop) + parseFloat(st.paddingBottom)
+                   + parseFloat(st.borderTopWidth) + parseFloat(st.borderBottomWidth);
+      v = Math.min(v, Math.ceil(max * radek + okraje) + 2);
     }
     el.style.height = v + 'px';
   };
@@ -2285,14 +2310,15 @@ function najdiVazby(veta){
 
 function rozeberVetu(veta, dnes){
   const t = bezDiakritiky(veta);
-  const druh = (PRAV.druhy.find(d=>d.slova.some(s=>t.indexOf(bezDiakritiky(s))>=0))||{}).kod || "";
+  // Pole „druh" se přestalo plnit — v tabulce to-do pro něj není sloupec, takže
+  // se hodnota nikdy neukázala ani nedala opravit. Zůstává v databázi u řádků,
+  // které ho už mají, ale nové se jím neplní a plánovač na něj nesahá.
   const term = najdiTermin(veta, dnes);
   const vaz = najdiVazby(veta);
   const dulezite = PRAV.priorita.vysoka.some(s=>t.indexOf(bezDiakritiky(s))>=0);
   const vych = PRAV.vychozi || {};
   return {
     text: veta.trim().replace(/^[\s,;.]+|[\s,;.]+$/g,''),
-    druh,
     kdo: vaz.kdo || vych.kdo || "",
     grupa: vaz.grupa, predavka: vaz.predavka, nocleh: vaz.nocleh,
     termin: term.datum, terminSlovy: term.slovy,
@@ -2639,7 +2665,7 @@ function ulozNavrhy(){
 
 function pridejTodo(){
   const v = (PRAV && PRAV.vychozi) || {};
-  D.todo.push({text:"", rok:D.nastaveni.aktivni_rok, druh:"", kdo:v.kdo||"", grupa:"",
+  D.todo.push({text:"", rok:D.nastaveni.aktivni_rok, kdo:v.kdo||"", grupa:"",
     predavka:null, nocleh:"", termin:"", priorita:v.priorita||"běžná",
     stav:v.stav||"nové", zdroj:"ručně", dikt:""});
   kresliTodo();
@@ -2715,7 +2741,6 @@ function pridejRucne(){
   const cislo = $('#r_predavka').value;
   D.todo.push({
     text: text,
-    druh: "",
     kdo: (PRAV.vychozi||{}).kdo || "",
     grupa: $('#r_grupa').value,
     predavka: cislo === '' ? null : +cislo,
@@ -3011,9 +3036,11 @@ function kresliTymy(){
         + "se v plánu zvýrazní."},
     {nadpis:"Název", pole:"nazev"},
     {nadpis:"Pořadí", pole:"poradi", typ:"number", sirka:"90px", trida:"stred"},
-    {nadpis:"Doprava", pole:"doprava", typ:"select", moznosti:DOPRAVY, sirka:"150px"},
+    {nadpis:"Doprava", pole:"doprava", typ:"napoveda", moznosti:DOPRAVY, sirka:"150px",
+      napovedaSl:"Čím se grupa přesouvá. Nabídka je jen návod — dá se napsat cokoli, "
+        + "databáze to nehlídá, protože na tom nic nestojí."},
     {nadpis:"Barva", pole:"barva", typ:"color", sirka:"80px"},
-    {nadpis:"Poznámka", pole:"poznamka"}
+    {nadpis:"Poznámka", pole:"poznamka", viceradkove:true, maxRadky:2}
   ], D.tymy, ()=>{kresliTymy();kresliPaletu();naplnFiltrPart();kresliPlan();
                   if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();}, true);
 
@@ -3065,7 +3092,7 @@ function kresliClenove(){
     {nadpis:"Ročníky", pole:"rocniky", sirka:"160px",
       napovedaSl:"Ve kterých ročnících byl člověk na téhle předávce — třeba „HB22, HB24, HB25\". "
         + "Bere se z tabulek HB24 public a z CRM; u nových lidí zůstává prázdné."},
-    {nadpis:"Poznámka", pole:"poznamka"}
+    {nadpis:"Poznámka", pole:"poznamka", viceradkove:true, maxRadky:2}
   ]), videt, (r)=>{
     if(r && r.sef==='ano'){                     // šéf smí být v grupě jen jeden
       D.clenove.forEach(c=>{ if(c!==r && c.kod_tymu===r.kod_tymu) c.sef = 'ne'; });
@@ -3188,7 +3215,7 @@ function kresliPredavky(){
         + "Počítá se z tabulky vzdalenosti, proto se needituje."},
     {nadpis:"První běžec", pole:"prvni", jenCist:true, sirka:"104px", trida:"stred"},
     {nadpis:"Poslední běžec", pole:"posledni", jenCist:true, sirka:"118px", trida:"stred"},
-    {nadpis:"Poznámka", pole:"pozn"},
+    {nadpis:"Poznámka", pole:"pozn", viceradkove:true, maxRadky:2},
     {nadpis:"Etapa km", pole:"delka", typ:"number", sirka:"96px", trida:"stred",
       napovedaSl:"Běžecká délka etapy z téhle předávky na další, spočítaná z GPX. "
         + "Vede se od HB26; starší ročníky ji nemají."},
@@ -3341,9 +3368,10 @@ function kresliNocMista(){
     {nadpis:"Kontakt", pole:"kontakt", sirka:"140px"},
     {nadpis:"Telefon", pole:"telefon", sirka:"140px"},
     {nadpis:"Cena", pole:"cena", sirka:"180px"},
-    {nadpis:"Platba", pole:"platba", typ:"select", sirka:"130px",
-      moznosti:["","nezaplaceno","záloha","na místě","faktura","zaplaceno"],
-      napovedaSl:"Musí sedět s kontrolním pravidlem sloupce platba v databázi — hlídá to test."},
+    {nadpis:"Platba", pole:"platba", typ:"napoveda", sirka:"130px",
+      moznosti:["nezaplaceno","záloha","na místě","faktura","zaplaceno"],
+      napovedaSl:"Stav platby. Nabídka je jen návod — dá se napsat cokoli. "
+        + "Podrobnosti patří vedle do pole rezervace."},
     {nadpis:"Rezervace", pole:"rezervace", sirka:"230px"},
     {nadpis:"Poznámka", pole:"poznamka", sirka:"320px", viceradkove:true}
   ]), D.nocMista, ()=>{kresliNocMista();}, true);
@@ -4468,7 +4496,9 @@ const MAPA = {
     // To-do jsou přípravné úkoly přes celý rok, včetně příštího ročníku.
     // Ročníkem se proto nefiltrují — každý řádek si ho nese sám ve sloupci rok.
     tabulka:'todo', klic:['id'], konflikt:['id'], rok:'radek', vzdyUkladat:true, jen:['vzit','rozdelitNa','nejiste'],
-    pole:{id:'id', rok:'rok', text:'text', druh:'druh', kdo:'kdo', termin:'termin',
+    // druh se schválně nemapuje: plánovač ho nezobrazuje ani neplní, a kdyby ho
+    // posílal, přepsal by prázdnou hodnotou 15 řádků, které ho v databázi mají.
+    pole:{id:'id', rok:'rok', text:'text', kdo:'kdo', termin:'termin',
           priorita:'priorita', stav:'stav', predavka:'predavka_cislo', grupa:'kod_tymu',
           nocleh:'kod_noclehu', zdroj:'zdroj', dikt:'dikt'}
   }

@@ -1169,8 +1169,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.58";
-const BUILD = "2026-08-20T17:07+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.60";
+const BUILD = "2026-08-21T09:02+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2674,7 +2674,7 @@ function pridejTodo(){
 // překlopení to-do položky na skutečný úkol v závodním plánu
 function todoNaUkol(t){
   if(!t.grupa){ hlaska('Nejdřív vyberte grupu — bez ní se úkol nemá kam zařadit'); return; }
-  D.ukoly.push({parta:t.grupa, typ:"A", kod:"A", cislo:t.predavka||null,
+  D.ukoly.push({parta:t.grupa, typ:"A", kod:novyKodUkolu(t.grupa,"A"), cislo:t.predavka||null,
     kdy_text:"", popis:t.text, stav:"plán", zdroj:"z to-do"});
   t.stav = "hotovo";
   kresliTodo(); kresliPlan();
@@ -2987,7 +2987,9 @@ function kresliPodrobny(){
     + esc(cilovaGrupa) + '. Grupu pak jde změnit v prvním sloupci.">+ Přidat úkol grupě '
     + esc(cilovaGrupa) + '</button>';
   pridat.querySelector('button').onclick = ()=>{
-    D.ukoly.push({parta:cilovaGrupa,typ:"A",kod:"A",cislo:null,kdy_text:"",popis:"",stav:"plán",zdroj:"ručně"});
+    D.ukoly.push({parta:cilovaGrupa,typ:"A",kod:novyKodUkolu(cilovaGrupa,"A"),cislo:null,
+                  kdy_text:"",popis:"",stav:"plán",zdroj:"ručně"});
+    oznacZmenu();
     kresliPodrobny(); kresliPlan();
   };
   telo.appendChild(pridat);
@@ -4453,7 +4455,24 @@ const MAPA = {
           cislo_uctu:'cislo_uctu', poznamka:'poznamka', sef:'sef', historie:'historie',
           rocniky:'rocniky'},
     naJs:  r => ({...r, sef: r.sef ? 'ano' : 'ne'}),
-    naDb:  r => ({...r, sef: r.sef === 'ano'})
+    // historie i nocleh* jsou v databazi NOT NULL — prazdna hodnota z prohlizece
+    // by cely davkovy zapis shodila, takze se prevadi na tvrde ano/ne
+    naDb:  r => ({...r, sef: r.sef === 'ano', historie: !!r.historie})
+  },
+  ukoly: {
+    // Plán úkolů. Do teď v mapě chyběl, takže se tabulka ukoly nikdy neplnila.
+    // Klíč v databázi je ročník + kód, proto musí být kód jedinečný — viz novyKodUkolu().
+    // Dopočítané řádky (přejezdy, noclehy, odvozené časy) se neukládají: generátor
+    // je při každém načtení smaže a spočítá znovu, v databázi by se jen zdvojovaly.
+    tabulka:'ukoly', klic:['kod'], konflikt:['rok','kod'], rok:true,
+    jen:['zRocniku','auto','odvozeno','odhad'],
+    filtr: r => !r.auto && !r.odvozeno,
+    pole:{kod:'kod', parta:'kod_tymu', typ:'typ', cislo:'cislo', den:'den',
+          kdy_od:'kdy_od', kdy_do:'kdy_do', kdy_text:'kdy_text', popis:'popis',
+          stav:'stav', zdroj:'zdroj'},
+    // Databáze vrací čas jako „06:30:00", políčko v tabulce chce „06:30".
+    // Bez oříznutí by se řádek tvářil jako změněný hned po načtení.
+    naJs: r => ({...r, kdy_od: (r.kdy_od||'').slice(0,5), kdy_do: (r.kdy_do||'').slice(0,5)})
   },
   predavky: {
     tabulka:'predavky', klic:['cislo'], konflikt:['rok','cislo'], rok:true, jen:['prvni','posledni','_km'],
@@ -4631,7 +4650,15 @@ async function nactiZDatabaze(){
     }
     // Prázdná tabulka neznamená „smaž, co máš" — data zapečená v souboru
     // zůstanou a při prvním uložení se do databáze pošlou.
-    if(!radky.length){ hlaseni.push(sada + ': v databázi zatím nic, nechávám co je'); continue; }
+    if(!radky.length){
+      // Prazdna tabulka je taky uspesne nacteni. Bez tohohle by se sada uz nikdy
+      // neulozila: uklada se jen to, co je v zDatabaze, a tam se nikdy nedostala.
+      // Mazani je bezpecne — prazdna mnozina videnych klicu nema co smazat.
+      hlaseni.push(sada + ': v databázi zatím nic, při uložení se tam data pošlou');
+      nacteneKlice[sada] = new Set();
+      zDatabaze.push(sada);
+      continue;
+    }
 
     const stare = {};
     (D[sada] || []).forEach(r => { stare[klicRadku(sada, r)] = r; });
@@ -4652,6 +4679,22 @@ async function nactiZDatabaze(){
   return hlaseni;
 }
 const klicRadku = (sada, r) => MAPA[sada].klic.map(k => r[k]).join('|');
+
+/* Kód úkolu je půlka klíče v databázi (ročník + kód). Ruční přidání dřív dávalo
+   všem kód „A", takže druhý takový úkol první tiše přepsal. Teď se doplní pořadí
+   v rámci grupy: A-G3-01, A-G3-02, … Volné číslo se hledá i proti vzoru HB25,
+   ať se kód netrefí do řádku, který se teprve překlopí. */
+function novyKodUkolu(parta, typ){
+  const p = String(parta || 'X').toUpperCase().replace(/[^A-Z0-9]/g,'') || 'X';
+  const t = typ || 'A';
+  const obsazene = new Set();
+  [D.ukoly || [], D.vzorHB25 || []].forEach(z => z.forEach(u => obsazene.add(u.kod)));
+  for(let i = 1; i < 1000; i++){
+    const k = t + '-' + p + '-' + String(i).padStart(2,'0');
+    if(!obsazene.has(k)) return k;
+  }
+  return t + '-' + p + '-' + Date.now();
+}
 
 /* ---------- přihlášení a odhlášení ---------- */
 async function prihlas(ev){
@@ -4777,7 +4820,9 @@ async function ulozDoDatabaze(){
     // zůstalo zapečené ze souboru (nebo se nenačetlo kvůli chybě), by se
     // zápisem mohlo do databáze dostat v ořezané nebo loňské podobě.
     if(!m.vzdyUkladat && zDatabaze.indexOf(sada) < 0){ preskoceno.push(sada); continue; }
-    const radky = D[sada] || [];
+    // m.filtr odsává řádky, které do databáze nepatří (dopočítané úkoly). Mazání
+    // je tím nedotčené: co se nikdy neuložilo, není ani mezi viděnými klíči.
+    const radky = (D[sada] || []).filter(m.filtr || (()=>true));
     try{
       // 1) zápis — nové řádky zvlášť, ať se vrátí jejich id
       const sKlicem = radky.filter(r => m.klic.every(k => r[k] !== undefined && r[k] !== null && r[k] !== ''));

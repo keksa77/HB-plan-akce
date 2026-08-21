@@ -1169,8 +1169,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.60";
-const BUILD = "2026-08-21T09:02+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.61";
+const BUILD = "2026-08-21T09:10+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4635,7 +4635,10 @@ function doDb(sada, r, rok){
 /* ---------- načtení ---------- */
 async function nactiZDatabaze(){
   const rok = D.nastaveni.aktivni_rok;
-  const hlaseni = [];
+  // Dva různé druhy hlášení. „potize" jsou závady — sada se nenačetla a nesmí se
+  // ani uložit. „poznamky" jsou jen na vědomí; prázdná tabulka mezi ně patří,
+  // červený panel na ni vyskakovat nemá.
+  const hlaseni = [], poznamky = [];
   zDatabaze = []; sadySChybou = []; nacteneKlice = {};
   for(const sada of Object.keys(MAPA)){
     const m = MAPA[sada];
@@ -4654,7 +4657,7 @@ async function nactiZDatabaze(){
       // Prazdna tabulka je taky uspesne nacteni. Bez tohohle by se sada uz nikdy
       // neulozila: uklada se jen to, co je v zDatabaze, a tam se nikdy nedostala.
       // Mazani je bezpecne — prazdna mnozina videnych klicu nema co smazat.
-      hlaseni.push(sada + ': v databázi zatím nic, při uložení se tam data pošlou');
+      poznamky.push(sada + ': v databázi zatím nic, při uložení se tam data pošlou');
       nacteneKlice[sada] = new Set();
       zDatabaze.push(sada);
       continue;
@@ -4676,7 +4679,7 @@ async function nactiZDatabaze(){
     const n = await sbDotaz('nastaveni?select=*&id=eq.1');
     if(n.length){ D.nastaveni.aktivni_rok = n[0].aktivni_rok; D.nastaveni.datum_zavodu = n[0].datum_zavodu || ''; }
   }catch(e){ hlaseni.push('nastavení: ' + e.message); }
-  return hlaseni;
+  return {potize: hlaseni, poznamky};
 }
 const klicRadku = (sada, r) => MAPA[sada].klic.map(k => r[k]).join('|');
 
@@ -4721,7 +4724,7 @@ async function poPrihlaseni(){
   zavriPrihlaseni();
   kresliStavPrihlaseni();
   ukazNacitani('Načítám data z databáze…');
-  const potize = await nactiZDatabaze();
+  const {potize, poznamky} = await nactiZDatabaze();
   zjistiUroven();
   vseKresli(); kresliNav(); hlidejOtevrenou();
   zmeneno = false; posledniUlozeno = Date.now(); kresliStavUlozeni();
@@ -4730,10 +4733,11 @@ async function poPrihlaseni(){
     + potize.join('\n\n')
     + '\n\nSady, které se nenačetly, se pro jistotu ani neuloží — nepřepíšou se tím data v databázi.',
     'Načtení z databáze nebylo úplné');
+  const zaklad = 'Hotovo — data jsou z databáze (' + zDatabaze.join(', ') + '), úroveň '
+       + ((uroven(mojeUroven)||{}).nazev || mojeUroven || 'host') + '.';
   const zprava = potize.length
     ? ('Načteno, ale s výhradami: ' + potize.join(' · '))
-    : ('Hotovo — data jsou z databáze (' + zDatabaze.join(', ') + '), úroveň '
-       + ((uroven(mojeUroven)||{}).nazev || mojeUroven || 'host') + '.');
+    : (poznamky.length ? (zaklad + ' Pozn.: ' + poznamky.join(' · ')) : zaklad);
   schovejNacitani(zprava, potize.length ? 'vyhrada' : 'hotovo');
   hlaska(zprava);
 }

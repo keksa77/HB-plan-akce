@@ -544,7 +544,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
           grupy ukazují v paletě u plánu. Barva je jen pro rozlišení v mřížce.</p>
         <div class="obal-tab"><table class="tab" id="tabTymy"></table></div>
         <button class="tl" style="margin-top:10px" title="Přidá do tabulky prázdný řádek pro novou grupu." onclick="pridej('tymy')">+ Přidat grupu</button>
-        <button class="tl" style="margin-top:10px" title="Všem grupám bez štítku doplní kód a jméno šéfa." onclick="doplnStitkyZeSefu()">Doplnit chybějící štítky ze šéfů</button>
+        <button class="tl" style="margin-top:10px" title="Grupám bez štítku — a těm, které v něm mají jen holý kód — doplní kód a jméno šéfa. Vlastní štítky nechá být." onclick="doplnStitkyZeSefu()">Doplnit chybějící štítky ze šéfů</button>
       </div>
     </div>
   </section>
@@ -1169,8 +1169,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.63";
-const BUILD = "2026-08-21T10:16+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.64";
+const BUILD = "2026-08-21T11:07+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1219,13 +1219,20 @@ const prvniJmeno = k => {
 // obvykle kód a šéf („G1 Martin B."). Když štítek vyplněný není, zůstane kód.
 const popisGrupy = k => {
   const t = parta(k);
-  const st = t && t.stitek ? String(t.stitek).trim() : '';
+  let st = t && t.stitek ? String(t.stitek).trim() : '';
+  // štítek, který je jen kód, se chová jako nevyplněný — jinak by přebil jméno
+  if(st && st === String(t.kod||'').trim()) st = '';
   if(st) return st;
   const jm = jmenoGrupy(k);   // sef, a kdyz neni oznaceny, prvni clen
   return jm ? (k + ' ' + jm) : k;
 };
-// návrh štítku podle šéfa grupy — nabízí se tlačítkem, nepřepisuje se sám
-const navrhStitku = k => { const j = prvniJmeno(k); return j ? (k + ' ' + j) : k; };
+// Návrh štítku podle šéfa grupy — nabízí se tlačítkem, nepřepisuje se sám.
+// Když grupa nikoho živého nemá, vrací prázdno. Dřív vracela holý kód, ten se
+// zapsal do štítku a tvářil se jako vyplněný — a tím sám sobě zablokoval
+// doplnění, až šéf přibyl. Přesně tohle se stalo G8.
+const navrhStitku = k => { const j = prvniJmeno(k); return j ? (k + ' ' + j) : ''; };
+// štítek, který je jen holý kód, nenese žádnou informaci navíc
+const stitekJenKod = t => !!t && String(t.stitek||'').trim() === String(t.kod||'').trim();
 // volby do rozbalovacích seznamů: hodnota zůstává kód, vidět je i jméno
 const volbyGrup = (sPrazdnou, seradit, drzet) => {
   // Pořadí grup je dané a platí všude — v paletě, ve filtrech i v rozbalovacích
@@ -3054,15 +3061,32 @@ function kresliTymy(){
 
 }
 
-// doplní štítek všem grupám, které ho nemají
+/* Doplní štítek grupám, které ho nemají — a nově i těm, které v něm mají jen
+   holý kód. Ručně napsané štítky se nepřepisují: když si někdo grupu pojmenoval
+   po svém, je to jeho rozhodnutí, ne chyba k opravě. Co doplnit nešlo, se řekne
+   nahlas — mlčení dřív vypadalo jako že tlačítko nefunguje. */
 function doplnStitkyZeSefu(){
-  let n = 0;
-  D.tymy.forEach(t=>{ if(!t.stitek || !String(t.stitek).trim()){ t.stitek = navrhStitku(t.kod); n++; } });
-  if(!n){ hlaska('Všechny grupy už štítek mají'); return; }
+  const doplneno = [], bezJmena = [];
+  D.tymy.forEach(t=>{
+    const prazdny = !t.stitek || !String(t.stitek).trim();
+    if(!prazdny && !stitekJenKod(t)) return;      // vlastní štítek zůstává
+    const navrh = navrhStitku(t.kod);
+    if(!navrh){ bezJmena.push(t.kod); return; }   // nikdo živý, není z čeho brát
+    t.stitek = navrh; doplneno.push(navrh);
+  });
+
+  if(!doplneno.length){
+    hlaska(bezJmena.length
+      ? ('Není z čeho doplnit — bez šéfa i bez členů: ' + bezJmena.join(', ')
+         + '. Ostatní grupy štítek mají.')
+      : 'Všechny grupy už štítek mají.');
+    return;
+  }
   oznacZmenu();
   kresliTymy(); kresliPaletu(); naplnFiltrPart(); kresliPlan();
   if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
-  hlaska('Doplněno štítků: ' + n);
+  hlaska('Doplněno štítků: ' + doplneno.join(', ')
+    + (bezJmena.length ? (' · nešlo u ' + bezJmena.join(', ') + ' — nemají šéfa ani člena') : ''));
 }
 
 /* ---------- 3. členové ----------

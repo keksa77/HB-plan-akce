@@ -132,7 +132,24 @@ aside{position:sticky;top:104px;background:var(--bila);border:1px solid var(--li
   border-radius:12px;padding:13px}
 aside h3{margin:0 0 3px;font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--olive)}
 aside p{margin:0 0 10px;font-size:11.5px;color:var(--pisek)}
-.tymy{display:flex;flex-wrap:wrap;gap:6px}
+/* Paleta byla vysoká 1189 px, okno má 900 — a sticky přestane držet, jakmile je
+   prvek vyšší než okno. Chipy dole se pak při tažení nedaly dosáhnout. Teď má
+   paleta vlastní strop a vlastní posuvník: doroluješ si v ní, mřížka stojí. */
+.tymy{display:flex;flex-wrap:wrap;gap:6px;
+  max-height:calc(100vh - 330px);min-height:140px;overflow-y:auto;overscroll-behavior:contain;
+  padding-right:4px;align-content:flex-start}
+.tymy::-webkit-scrollbar{width:9px}
+.tymy::-webkit-scrollbar-thumb{background:#CFC6B2;border-radius:5px}
+.tymy::-webkit-scrollbar-track{background:transparent}
+body.mobil .tymy{max-height:none;overflow-y:visible}
+
+/* Místní grupy P2–P30 se používají jen ve sloupci Před obsluha, takže jsou
+   sbalené. Rozbalení si stránka pamatuje po dobu své životnosti. */
+.mistniHlava{width:100%;margin:8px 0 2px;padding:5px 8px;border:1px dashed var(--linka);
+  border-radius:8px;background:#FAF8F4;font-size:11.5px;font-weight:700;color:var(--olive);
+  cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center}
+.mistniHlava:hover{background:#F3EFE4}
+.mistniHlava .sipka{font-size:10px;opacity:.7}
 .chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:16px;
   font-size:12.5px;font-weight:700;color:#fff;cursor:grab;user-select:none;
   border:1px solid rgba(0,0,0,.12)}
@@ -381,7 +398,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     <div class="rozvrh">
       <aside>
         <h3>Grupy</h3>
-        <p>Přetáhni do mřížky vpravo</p>
+        <p>Přetáhni do mřížky vpravo. Seznam roluje sám v sobě — mřížka zůstane stát.</p>
         <div class="tymy" id="paleta"></div>
         <div class="detail" id="detailParty"></div>
       </aside>
@@ -1169,8 +1186,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.64";
-const BUILD = "2026-08-21T11:07+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.65";
+const BUILD = "2026-08-21T11:35+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1673,12 +1690,21 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
 }
 
 /* ---------- 1. plán úkolů — mřížka ---------- */
+// Místní grupa: kód P + číslo předávky. Obsluhují je domácí, do plánu jdou
+// jen do sloupce Před obsluha, a je jich 26 — proto stojí stranou.
+const jeMistni = k => /^P\d+$/.test(String(k||''));
+let mistniRozbalene = false;
+
 function kresliPaletu(){
   const el = $('#paleta'); el.innerHTML='';
   const poc = {};
   D.ukoly.forEach(u=>{ if(u.parta) poc[u.parta]=(poc[u.parta]||0)+1; });
 
-  grupyLetos().slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99)).forEach(t=>{
+  const vsechny = grupyLetos().slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99));
+  const mistni  = vsechny.filter(t=>jeMistni(t.kod));
+  const hlavni  = vsechny.filter(t=>!jeMistni(t.kod));
+
+  const chip = t => {
     const c = document.createElement('span');
     c.className = 'chip' + (MIMO_DB.indexOf(t.kod)>=0?' cizi':'') + ((zvyraznit&&vybrany===t.kod)?' zvyrazneno':'');
     c.style.background = t.barva; c.draggable = true;
@@ -1691,9 +1717,30 @@ function kresliPaletu(){
     c.title = (t.nazev||t.kod) + (sef?' · šéf: '+sef:'')
             + (vsichni?' — '+vsichni:'') + (t.doprava?' · '+t.doprava:'');
     c.ondragstart = e=>e.dataTransfer.setData('text/plain', t.kod);
-    c.onclick = ()=>{ vybrany = vybrany===t.kod?null:t.kod; kresliPlan(); };
-    el.appendChild(c);
-  });
+    c.onclick = ()=>{ vybrany = vybrany===t.kod?null:t.kod; kresliPlan(); kresliPaletu(); };
+    return c;
+  };
+
+  hlavni.forEach(t => el.appendChild(chip(t)));
+
+  if(mistni.length){
+    const obsazeno = mistni.filter(t=>poc[t.kod]).length;
+    const hlava = document.createElement('div');
+    hlava.className = 'mistniHlava';
+    hlava.title = 'Grupy, které na předávce obsluhují domácí. Rozbalí se kliknutím.';
+    hlava.innerHTML = '<span>Místní grupy (' + mistni.length
+      + (obsazeno ? (', v plánu ' + obsazeno) : '') + ')</span>'
+      + '<span class="sipka">' + (mistniRozbalene ? '▲ sbalit' : '▼ rozbalit') + '</span>';
+    hlava.onclick = ()=>{ mistniRozbalene = !mistniRozbalene; kresliPaletu(); };
+    el.appendChild(hlava);
+    // vybraná místní grupa se ukáže vždycky, ať se výběr neschová sám před sebou
+    if(mistniRozbalene) mistni.forEach(t => el.appendChild(chip(t)));
+    else if(vybrany && jeMistni(vybrany)){
+      const t = mistni.find(x=>x.kod===vybrany);
+      if(t) el.appendChild(chip(t));
+    }
+  }
+  dorovnejPaletu();
 
   const d = $('#detailParty');
   if(vybrany){
@@ -5338,7 +5385,22 @@ function zmerHlavicku(){
   const h = document.querySelector('header');
   if(h) document.documentElement.style.setProperty('--hlavicka', h.offsetHeight + 'px');
 }
-window.addEventListener('resize', zmerHlavicku);
+
+/* Kolik místa paleta opravdu má. Samotný strop v CSS nestačí: dokud je stránka
+   úplně nahoře, paleta ještě není přilepená a začíná níž, takže by jí spodní
+   chipy zase utekly pod okraj. Tohle se přepočítá při rolování i při změně okna. */
+function dorovnejPaletu(){
+  const pal = document.querySelector('#paleta');
+  if(!pal) return;
+  if(document.body.classList.contains('mobil')){ pal.style.maxHeight = ''; return; }
+  const det = document.querySelector('#detailParty');
+  const shora = pal.getBoundingClientRect().top;
+  const pod = det ? det.getBoundingClientRect().height + 14 : 0;
+  const misto = window.innerHeight - shora - pod - 22;
+  pal.style.maxHeight = Math.max(140, Math.round(misto)) + 'px';
+}
+window.addEventListener('resize', ()=>{ zmerHlavicku(); dorovnejPaletu(); });
+window.addEventListener('scroll', dorovnejPaletu, {passive:true});
 
 PRAV = slozPravidla('HB');
 nactiVolbuZobrazeni();
@@ -5350,6 +5412,7 @@ obnovRelaci();
 napisJakDiktovat();
 otevriVhodnou('s-ukoly');
 zmerHlavicku();
+dorovnejPaletu();
 </script>
 </body>
 </html>

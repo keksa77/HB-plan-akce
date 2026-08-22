@@ -194,6 +194,9 @@ body.mobil .tymy{max-height:none;overflow-y:visible}
 .mrizka tfoot td.etapa .misto{display:block;font-size:10.5px;color:var(--pisek);font-weight:400}
 body.mobil .mrizka tfoot tr.soucty > td{position:static}
 
+/* Hodnota, která si odporuje s jinou v témže řádku. */
+.tab input.chybnaHodnota{background:#FDF3F4;border-color:#C2707A;color:#8A2F38;font-weight:700}
+
 /* ---- mřížka úkolů ---- */
 .mrizka{border:1px solid var(--linka);border-radius:12px;background:var(--bila)}
 .mrizka table{border-collapse:collapse;width:100%}
@@ -1219,8 +1222,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.67";
-const BUILD = "2026-08-22T12:01+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.68";
+const BUILD = "2026-08-22T15:43+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -3195,11 +3198,41 @@ function kresliTymy(){
     {nadpis:"Doprava", pole:"doprava", typ:"napoveda", moznosti:DOPRAVY, sirka:"150px",
       napovedaSl:"Čím se grupa přesouvá. Nabídka je jen návod — dá se napsat cokoli, "
         + "databáze to nehlídá, protože na tom nic nestojí."},
+    {nadpis:"Min značení", pole:"min_znaceni", typ:"number", sirka:"105px", trida:"stred",
+      napovedaSl:"Nejmíň etap trasování, které grupa vezme. Jednotka je počet etap, ne kilometry — "
+        + "mřížka přiděluje značení po etapách. Nechte prázdné, když grupa neznačí."},
+    {nadpis:"Max značení", pole:"max_znaceni", typ:"number", sirka:"105px", trida:"stred",
+      napovedaSl:"Nejvíc etap trasování, které grupa zvládne. Když je menší než minimum, "
+        + "políčko zčervená — databáze to nehlídá, hlídá to tahle tabulka."},
+    {nadpis:"Min úklid", pole:"min_uklid", typ:"number", sirka:"95px", trida:"stred",
+      napovedaSl:"Nejmíň etap úklidu značení. Nechte prázdné, když grupa neuklízí."},
+    {nadpis:"Max úklid", pole:"max_uklid", typ:"number", sirka:"95px", trida:"stred",
+      napovedaSl:"Nejvíc etap úklidu značení, které grupa zvládne."},
     {nadpis:"Barva", pole:"barva", typ:"color", sirka:"80px"},
     {nadpis:"Poznámka", pole:"poznamka", viceradkove:true, maxRadky:2}
   ], D.tymy, ()=>{kresliTymy();kresliPaletu();naplnFiltrPart();kresliPlan();
                   if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();}, true);
+  hlidejKapacitu();
+}
 
+/* Maximum menší než minimum je nesmysl, ale v databázi to schválně nehlídá žádné
+   pravidlo — CHECK by neumožnil vyplnit maximum dřív než minimum a shodil by celý
+   zápis grup. Hlídá to tedy tabulka: políčko zčervená a řekne proč. */
+function hlidejKapacitu(){
+  const t = $('#tabTymy'); if(!t) return;
+  const cislo = h => (h === '' || h == null) ? null : +h;
+  [['min_znaceni','max_znaceni','značení'], ['min_uklid','max_uklid','úklidu']].forEach(dvojice=>{
+    const [poleMin, poleMax, co] = dvojice;
+    t.querySelectorAll('input[data-p="' + poleMax + '"]').forEach(el=>{
+      const r = D.tymy[+el.dataset.i];
+      const mn = r ? cislo(r[poleMin]) : null;
+      const mx = r ? cislo(r[poleMax]) : null;
+      const spatne = mn != null && mx != null && mx < mn;
+      el.classList.toggle('chybnaHodnota', spatne);
+      if(spatne) el.title = 'Maximum ' + co + ' (' + mx + ') je menší než minimum (' + mn + ').';
+      else el.removeAttribute('title');
+    });
+  });
 }
 
 /* Doplní štítek grupám, které ho nemají — a nově i těm, které v něm mají jen
@@ -4487,7 +4520,8 @@ function pridej(co){
 
   if(co==='tymy'){
     novy = {kod:"NOVÁ",nazev:"",poradi:(D.tymy.length+1),doprava:"",barva:"#8a8a8a",
-            poznamka:"",stitek:"",aktivni:"ano"};
+            poznamka:"",stitek:"",aktivni:"ano",
+            min_znaceni:"",max_znaceni:"",min_uklid:"",max_uklid:""};
     D.tymy.push(novy); kam = 'grupa';
     kresliTymy(); kresliPaletu(); naplnFiltrPart();
   }
@@ -4638,7 +4672,9 @@ const MAPA = {
   tymy: {
     tabulka:'tymy_org', klic:['kod'], konflikt:['rok','kod'], rok:true, jen:['barva','zRocniku'],
     pole:{kod:'kod', nazev:'nazev', poradi:'poradi', doprava:'doprava',
-          poznamka:'poznamka', stitek:'stitek', aktivni:'aktivni'},
+          poznamka:'poznamka', stitek:'stitek', aktivni:'aktivni',
+          min_znaceni:'min_znaceni', max_znaceni:'max_znaceni',
+          min_uklid:'min_uklid',     max_uklid:'max_uklid'},
     naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano'}),
     naDb: r => ({...r, aktivni: r.aktivni !== 'ne'})
   },

@@ -1311,8 +1311,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.85";
-const BUILD = "2026-08-22T22:02+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.86";
+const BUILD = "2026-08-22T22:08+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4430,6 +4430,21 @@ function popisPredavky(cislo){
   return (p && p.nazev) ? p.nazev : ('předávka ' + cislo);
 }
 
+/* Posun na čerstvě vykreslený panel. Musí se počkat na překreslení — jinak si
+   prohlížeč spočítá cíl ze staré výšky stránky a skončí jinde. A odečítá se
+   hlavička s lištou, aby panel nezalezl pod ně. */
+function posunNa(el){
+  if(!el) return;
+  requestAnimationFrame(()=>{
+    const h = document.querySelector('header');
+    const lista = document.querySelector('.sekce.videt .nastroje.lista');
+    const nad = (h ? h.offsetHeight : 0)
+              + (lista ? Math.round(lista.getBoundingClientRect().height) : 0) + 10;
+    const kam = el.getBoundingClientRect().top + window.scrollY - nad;
+    window.scrollTo({top: Math.max(0, Math.round(kam)), behavior: 'smooth'});
+  });
+}
+
 function zkontrolujNavaznosti(){
   const nalezy = [];
   const neposouzeno = [];
@@ -4524,7 +4539,15 @@ function zkontrolujNavaznosti(){
     h += '</div></div>';
     cil.innerHTML = h + tabulkaNeposouzeno();
   }
-  hlaska(nalezy.length ? (nalezy.length + " nemožných návazností") : "Návaznosti sedí");
+  // Výsledek se kreslí nad tabulku podrobného plánu. Když je člověk rozkoukaný
+  // někde uprostřed třiceti řádků, panel mu zůstane nad hlavou a hláška vypadá,
+  // že se nedá zjistit kde. Tak se k němu stránka posune sama.
+  posunNa(cil);
+  hlaska(nalezy.length
+    ? (nalezy.length + ' nemožných návazností — rozepsané nad tabulkou'
+       + (bezCasu ? (', k tomu ' + bezCasu + ' neposouzených') : ''))
+    : (bezCasu ? ('Návaznosti sedí · ' + bezCasu + ' dvojic nešlo posoudit, nad tabulkou')
+               : 'Návaznosti sedí'));
   return nalezy.length;
 }
 

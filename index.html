@@ -256,6 +256,10 @@ body.mobil .mrizka tfoot tr.soucty > td{position:static}
 td.etapa{padding:7px 10px;white-space:nowrap}
 td.etapa .cislo{font-weight:800;color:var(--hneda)}
 td.etapa .misto{font-size:12px;color:var(--pisek);display:block}
+/* Název předávky, ke které řádek patří, je tučně; za šipkou je jen to, kam
+   etapa vede. */
+td.etapa .misto b{color:var(--tmava);font-weight:700}
+td.etapa .cislo .deli{color:var(--pisek);font-weight:600;margin:0 4px}
 td.km{text-align:center;font-size:11.5px;color:var(--pisek);padding:0 6px;white-space:nowrap}
 td.km b{color:var(--olive);font-size:12.5px}
 /* Odvozený řádek podrobného plánu — vznikl výpočtem, ne rukou. */
@@ -476,7 +480,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
           <table>
             <thead>
               <tr>
-                <th data-nap="Etapa">Etapa</th>
+                <th data-nap="Etapa">Etapa / předávka</th>
                 <th class="uzky" data-nap="Cesta autem">Cesta autem</th>
                 <th data-nap="Trasování">Trasa-značení</th>
                 <th data-nap="Úklid fáborků">Úklid značení</th>
@@ -1289,8 +1293,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.77";
-const BUILD = "2026-08-22T20:24+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.78";
+const BUILD = "2026-08-22T20:35+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1506,11 +1510,13 @@ function prepni(id){
 // nápověda ke sloupcům a polím — klíčem je popisek, ať se nemusí psát u každé tabulky zvlášť
 const NAPOVEDA = {
   // plán úkolů
-  "Etapa":"Úsek mezi dvěma předávkami. E1 je z Dolní Lomné do Horní Lomné.",
+  "Etapa":"Úsek mezi dvěma předávkami a předávka, kterou začíná. Řádek E1 / PŘED 1 "
+    + "je etapa z Dolní Lomné do Horní Lomné a k ní předávka 1 Dolní Lomná.",
   "Cesta autem":"Skutečná vzdálenost a čas autem na následující předávku, z tabulky vzdalenosti.",
   "Trasování":"Kdo etapu předem naznačí fáborky a šipkami. Kód T a číslo etapy.",
   "Úklid fáborků":"Kdo po závodě etapu projde a značení sesbírá. Kód U a číslo etapy.",
-  "Obsluha předávky":"Kdo stojí na předávce po celou dobu. Kód P a číslo předávky, tedy etapa plus jedna.",
+  "Obsluha předávky":"Kdo stojí na předávce po celou dobu. Kód P a číslo předávky — "
+    + "to je předávka, kterou etapa v tomhle řádku začíná, tedy stejné číslo jako etapa.",
   "Zahájení předávky":"Kdo předávku ráno postaví a otevře. Kód PZ.",
   "Ukončení předávky":"Kdo předávku sbalí a odveze banner. Kód PK.",
   "Kopie":"Zkopíruje do řádku všech pět rolí z loňského ročníku. Zamčená políčka nechá být.",
@@ -1942,9 +1948,16 @@ function kresliPlan(){
     const cil = D.predavky[i+1] ? D.predavky[i+1].nazev : '';
     const tr = document.createElement('tr');
     if(jeCil) tr.className = 'cilovy';
-    tr.innerHTML = '<td class="etapa"><span class="cislo">'
-      + (jeCil ? ('31 <span class="znacka">cíl</span>') : ('E'+e))+'</span>'
-      + '<span class="misto">'+esc(m.nazev)+(jeCil ? '' : ' → '+esc(cil))+'</span></td>'
+    // V řádku jsou dvě různá čísla: etapa (trasování, úklid) a předávka, kterou
+    // ta etapa začíná (obsluha, zahájení, ukončení). Číslo jsou stejná, ale
+    // znamenají jinou věc, tak se píšou obě — jinak se v mřížce hledá, jestli
+    // „E1" je etapa nebo předávka.
+    const cisloRadku = jeCil
+      ? ('PŘED ' + m.cislo + ' <span class="znacka">cíl</span>')
+      : ('E' + e + '<span class="deli">/</span>PŘED ' + m.cislo);
+    tr.innerHTML = '<td class="etapa"><span class="cislo">' + cisloRadku + '</span>'
+      + '<span class="misto"><b>' + esc(m.nazev) + '</b>'
+      + (jeCil ? '' : ' → '+esc(cil))+'</span></td>'
       + '<td class="km">' + (jeCil ? '<span class="nic">—</span>'
           : ('<b>'+(m.km==null?'—':m.km)+'</b> km<br>'+(m.min==null?'—':m.min)+' min')) + '</td>';
     ROLE.forEach((typ,s)=>{

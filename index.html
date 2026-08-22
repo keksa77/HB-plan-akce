@@ -1293,8 +1293,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.78";
-const BUILD = "2026-08-22T20:35+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.79";
+const BUILD = "2026-08-22T20:46+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4092,9 +4092,51 @@ function volnyKod(zaklad){
 }
 
 /* Spočítá návrh, ale ničeho se nedotkne. Vrací seznam změn k odsouhlasení. */
+/* Čas na desetiminutovky, na stranu bezpečí: začátek dolů, konec nahoru.
+   Obsluha má být na místě spíš dřív a odjíždět spíš později, než kdy tam
+   někdo poběží. */
+const naDesitky = (m, nahoru) => nahoru ? Math.ceil(m/10)*10 : Math.floor(m/10)*10;
+// „8:50" — bez nuly vpředu, ať to sedí se zápisem, který je v plánu odjakživa
+const hodinaMinuta = m => {
+  const x = ((m % (4*1440)) + 4*1440) % (4*1440);
+  return Math.floor((x%1440)/60) + ':' + String(x%60).padStart(2,'0');
+};
+
 function spocitejGenerovani(){
   const pridat = [], casy = [];
   const smazat = D.ukoly.filter(jeOdvozeny);
+
+  /* ---- 0) chybějící zahájení a ukončení tam, kde už stojí obsluha
+     Kdo předávku celý den drží, ji zpravidla i otevírá a zavírá. Když tedy
+     v mřížce visí obsluha a políčko PZ nebo PK je prázdné, nabídne se stejná
+     grupa i tam — i s časem a popisem. Nic se nepřepisuje: co už vyplněné je,
+     zůstane, a provede se to teprve po odklepnutí návrhu. */
+  [{typ:'PZ', slovo:'Zahájení předávky', cas:p=>p.prvni, posun:-ODSTUP_ZAHAJENI, nahoru:false,
+    proc:'první běžec'},
+   {typ:'PK', slovo:'Ukončení předávky', cas:p=>p.posledni, posun:ODSTUP_UKONCENI, nahoru:true,
+    proc:'poslední běžec'}].forEach(r => {
+    (D.predavky||[]).forEach(p => {
+      if(najdi(r.typ, p.cislo)) return;                 // políčko už obsazené
+      const kod = r.typ + p.cislo;
+      if(D.ukoly.some(u => u.kod === kod)) return;      // kód by se pral s jiným úkolem
+      const obsluha = najdi('P', p.cislo);
+      if(!obsluha || !obsluha.parta) return;            // bez obsluhy nemáme koho tam napsat
+      const zdroj = r.cas(p);
+      const zaklad = casNaMinuty(zdroj);
+      const od = (zaklad == null) ? null : naDesitky(zaklad + r.posun, r.nahoru);
+      const text = (od == null) ? '' : (minutyNaCas(od) + ' – ' + hodinaMinuta(od + 10));
+      const c = text ? rozeberCas(text) : {den:'', od:'', do:''};
+      pridat.push({
+        parta: obsluha.parta, typ: r.typ, kod: kod, cislo: p.cislo,
+        den: c.den, kdy_od: c.od, kdy_do: c.do, kdy_text: text,
+        popis: r.slovo + ' ' + String(p.cislo).padStart(2,'0') + ' ' + (p.nazev||'')
+             + (r.typ === 'PK' ? ', odvoz materiálu — banner, flag (pokud bude)' : ''),
+        stav: 'plán', zdroj: 'generováno', odhad: !!text,
+        _proc: 'obsluhu drží ' + popisGrupy(obsluha.parta)
+             + (text ? (', ' + r.proc + ' ' + zdroj) : ', čas předávky neznáme')
+      });
+    });
+  });
 
   // ---- 1) chybějící časy zahájení a ukončení předávky
   rucni().forEach(u => {
@@ -4202,7 +4244,12 @@ function ukazNavrhGenerovani(){
   cil.innerHTML = '<div class="karta"><h2>Návrh změn v podrobném plánu</h2><div class="telo">'
     + '<p class="popisek">Zatím se nic nezměnilo. Projděte si, co by přibylo a co zmizelo, '
     + 'a teprve pak potvrďte. Ručně zadaných úkolů se to nedotkne.</p>'
-    + seznam('Přibude', pridat.map(x =>
+    + seznam('Přibude do mřížky — zahájení a ukončení podle obsluhy',
+        pridat.filter(x => x.typ === 'PZ' || x.typ === 'PK').map(x =>
+        '<b>' + esc(x.kod) + '</b> ' + esc(popisGrupy(x.parta))
+        + ' · ' + esc(x.kdy_text || 'bez času')
+        + ' <span class="popisek">(' + esc(x._proc) + ')</span>'))
+    + seznam('Přibude', pridat.filter(x => x.typ !== 'PZ' && x.typ !== 'PK').map(x =>
         '<b>' + esc(popisGrupy(x.parta)) + '</b> · ' + esc(NAZVY_TYPU[x.typ]||x.typ)
         + ' · ' + esc(x.popis) + ' <span class="popisek">(' + esc(x._proc) + ')</span>'))
     + seznam('Doplní se čas', casy.map(c =>
@@ -5506,7 +5553,20 @@ async function ulozDoDatabaze(volby){
     vseKresli();
     hlaska('Uloženo do databáze: ' + (hotovo.join(', ') || 'nic ke změně')
       + (smazano ? (' · smazáno ' + smazano + ' řádků') : '') + dovetek);
+    // Po uložení se dopočítá zahájení a ukončení předávek, přejezdy a noclehy.
+    // Neprovede se nic — jen se ukáže návrh, co by přibylo, a rozhodne uživatel.
+    nabidniDopocet();
   }
+}
+
+/* Po uložení: spočítat, co by šlo doplnit, a jen když je co, ukázat návrh.
+   Když není co, mlčí — po každém uložení vyskakující panel by otravoval. */
+function nabidniDopocet(){
+  if(!smiPsat()) return;
+  let n;
+  try{ n = spocitejGenerovani(); }catch(e){ return; }
+  if(!n.pridat.length && !n.casy.length) return;      // mazání samo o sobě panel nevyvolá
+  ukazNavrhGenerovani();
 }
 
 

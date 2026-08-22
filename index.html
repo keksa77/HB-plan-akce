@@ -135,6 +135,16 @@ body.mobil .tab td.dopln{display:none}
   padding:4px 8px;border-radius:6px}
 .smazX:hover{color:var(--vinova);background:#F7ECED}
 .obal-tab{overflow-x:auto;border:1px solid var(--linka);border-radius:12px;background:var(--bila)}
+/* Zelený řádek s názvy sloupců zůstává vidět i při rolování dlouhé tabulky —
+   stejně jako v podrobném plánu. Tyhle tabulky jsou širší než okno (grupy mají
+   1800 px), takže musí zůstat v obalu s posuvníkem; jenže uvnitř posuvného obalu
+   se sticky lepí k obalu, ne k oknu. Proto obal dostane výšku na jednu obrazovku
+   a roluje se tabulka v něm — hlavička pak stojí na jeho horním okraji. Zbytek
+   sekce (tlačítka, historie, graf) zůstává pod ním a dá se k němu odrolovat. */
+.obal-tab.lepivaHlava{overflow:auto;
+  max-height:calc(100vh - var(--hlavicka,92px) - var(--listaVyska,0px) - 24px)}
+.obal-tab.lepivaHlava table.tab thead th{position:sticky;top:0;z-index:6}
+body.mobil .obal-tab.lepivaHlava{overflow:visible;max-height:none}
 
 /* ---- fotoarchiv: dlaždice ---- */
 .fotoMrizka{display:grid;grid-template-columns:repeat(auto-fill,minmax(208px,1fr));gap:12px}
@@ -620,7 +630,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
       <div class="telo">
         <p class="popisek">Kdo všechno se na závodě podílí. Pořadí určuje, v jakém sledu se
           grupy ukazují v paletě u plánu. Barva je jen pro rozlišení v mřížce.</p>
-        <div class="obal-tab"><table class="tab" id="tabTymy"></table></div>
+        <div class="obal-tab lepivaHlava"><table class="tab" id="tabTymy"></table></div>
         <button class="tl" style="margin-top:10px" title="Přidá do tabulky prázdný řádek pro novou grupu." onclick="pridej('tymy')">+ Přidat grupu</button>
         <button class="tl" style="margin-top:10px" title="Grupám bez štítku — a těm, které v něm mají jen holý kód — doplní kód a jméno šéfa. Vlastní štítky nechá být." onclick="doplnStitkyZeSefu()">Doplnit chybějící štítky ze šéfů</button>
       </div>
@@ -640,7 +650,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
           </label>
           <span class="stav" id="stavClenove"></span>
         </div>
-        <div class="obal-tab"><table class="tab" id="tabClenove"></table></div>
+        <div class="obal-tab lepivaHlava"><table class="tab" id="tabClenove"></table></div>
         <button class="tl" style="margin-top:10px" title="Přidá do tabulky prázdný řádek pro nového člena grupy." onclick="pridej('clenove')">+ Přidat člověka</button>
 
         <h3 style="margin:26px 0 6px;font-size:15px" id="nadpisHistorie">Historie — kdo už v seznamu není</h3>
@@ -666,7 +676,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
           z tabulky vzdalenosti, proto se needitují. Časy prvního a posledního běžce jsou
           průměr skutečných hodnot z HB24 a HB25 a slouží k odhadu, jak dlouho musí být
           předávka otevřená.</p>
-        <div class="obal-tab"><table class="tab" id="tabPredavky"></table></div>
+        <div class="obal-tab lepivaHlava"><table class="tab" id="tabPredavky"></table></div>
       </div>
     </div>
 
@@ -1264,8 +1274,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.71";
-const BUILD = "2026-08-22T16:19+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.72";
+const BUILD = "2026-08-22T16:39+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -5682,6 +5692,10 @@ function dorovnejPaletu(){
    u grup. Hlavička tabulky se musí lepit přesně pod ni, jinak buď plave, nebo
    překryje první řádek. Měří se při přepnutí sekce a při změně okna. */
 function dorovnejListu(){
+  // Hlavička je vysoká podle toho, na kolik řádků se zalomí navigace — a to se
+  // mění s šířkou okna i s tím, kolik záložek je vidět. Bez přeměření by strop
+  // tabulek počítal se starou výškou.
+  zmerHlavicku();
   const sekce = document.querySelector('.sekce.videt');
   const lista = sekce ? sekce.querySelector('.nastroje.lista') : null;
   const v = (lista && !document.body.classList.contains('mobil'))

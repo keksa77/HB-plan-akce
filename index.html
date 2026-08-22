@@ -624,6 +624,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
         <input type="checkbox" id="filtrNeuplne" onchange="kresliPodrobny()" style="margin-right:5px">
         Jen neúplné
       </label>
+      <button class="tl hlavni" title="Přidá prázdný řádek úkolu. Grupu mu vyberete v prvním sloupci — do té doby stojí na konci seznamu a je zvýrazněný." onclick="pridejUkolPodrobny()">+ Přidat úkol</button>
       <button class="tl" title="Zruší všechny filtry a ukáže celý plán." onclick="zrusFiltryPodrobny()">Zrušit filtry</button>
       <button class="tl" title="Vytiskne jen to, co je právě vidět — když máte nastavený filtr grupy, vyjede plán jen pro ni. Volbou Uložit jako PDF z toho uděláte PDF." onclick="tiskniPodrobny()">Tisk / PDF</button>
       <button class="tl hlavni" title="Spočítá, co v podrobném plánu chybí — přejezdy, noclehy a časy předávek — a nejdřív ukáže, co by se změnilo. Ručně zadané úkoly nechá být." onclick="ukazNavrhGenerovani()">Přegenerovat podrobný plán</button>
@@ -1312,8 +1313,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.90";
-const BUILD = "2026-08-22T23:23+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.91";
+const BUILD = "2026-08-22T23:41+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -3263,6 +3264,8 @@ function kresliPodrobny(){
 
   const fn = $('#filtrNeuplne') && $('#filtrNeuplne').checked;
   const u = vsechny.filter(x =>
+       // rozdělaný řádek bez grupy je vidět vždycky, jinak by po přidání zmizel
+       (x._nove && !x.parta) ||
        (!fp || x.parta===fp)
     && (!ft || x.typ===ft)
     && (!fk || String(x.kod||'').toLowerCase().indexOf(fk)>=0)
@@ -3272,7 +3275,8 @@ function kresliPodrobny(){
   const cil = $('#podrobny'); cil.innerHTML = '';
 
   if(!u.length){
-    cil.innerHTML = '<div class="karta"><div class="telo">Pro zvolený filtr tu nic není.</div></div>';
+    cil.innerHTML = '<div class="karta"><div class="telo">Pro zvolený filtr tu nic není. '
+      + 'Nový úkol se přidává tlačítkem v liště nahoře.</div></div>';
     $('#stavPodrobny').textContent = 'zobrazeno 0 z ' + D.ukoly.length + ' úkolů';
     return;
   }
@@ -3323,7 +3327,13 @@ function kresliPodrobny(){
     // stejně nic neupravuje. Prázdný čas se tak celý neukáže.
     .map(x => (x.typ === 'time') ? {nadpis:x.nadpis, pole:x.pole, jenCist:true} : x);
 
-  tabulka(tab, sloupcePodrobny, u, ()=>{kresliPodrobny();kresliPlan();},
+  tabulka(tab, sloupcePodrobny, u, (r)=>{
+            // Nový řádek dostal kód ještě bez grupy (A-X-01). Jakmile grupu vybereš,
+            // přepíše se na její — pak je z kódu poznat, komu úkol patří.
+            if(r && r._nove && r.parta && /^A-X-\d+$/.test(String(r.kod||'')))
+              r.kod = novyKodUkolu(r.parta, r.typ || 'A');
+            kresliPodrobny(); kresliPlan();
+          },
           !jenCteMobil, jenCteMobil ? false : 'konec', D.ukoly);
 
   // zvýraznění odvozených řádků
@@ -3335,21 +3345,6 @@ function kresliPodrobny(){
   u.forEach((x,i)=>{
     if(i>0 && x.parta!==u[i-1].parta) radky[i].classList.add('novaGrupa');
   });
-
-  // přidání úkolu — grupě z filtru, jinak té první v pořadí
-  const pridat = document.createElement('div');
-  pridat.style.padding = '10px 14px';
-  const cilovaGrupa = fp || (D.tymy.slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))[0]||{}).kod || '';
-  pridat.innerHTML = '<button class="tl" title="Přidá nový prázdný úkol grupě '
-    + esc(cilovaGrupa) + '. Grupu pak jde změnit v prvním sloupci.">+ Přidat úkol grupě '
-    + esc(cilovaGrupa) + '</button>';
-  pridat.querySelector('button').onclick = ()=>{
-    D.ukoly.push({parta:cilovaGrupa,typ:"A",kod:novyKodUkolu(cilovaGrupa,"A"),cislo:null,
-                  kdy_text:"",popis:"",stav:"plán",zdroj:"ručně"});
-    oznacZmenu();
-    kresliPodrobny(); kresliPlan();
-  };
-  telo.appendChild(pridat);
 
   const filtrovano = (fp||ft||fk||fs);
   $('#stavPodrobny').textContent = 'zobrazeno ' + u.length + ' z ' + D.ukoly.length + ' úkolů'
@@ -3585,6 +3580,20 @@ function kresliClenove(){
     + (nezarazeni.length ? ' · nezařazených ' + nezarazeni.length : '')
     + (vHistorii ? ' · v historii ' + vHistorii : '');
   kresliHistorii();
+}
+
+/* Nový úkol v podrobném plánu. Grupa se nehádá — dokud si ji nevybereš, stojí
+   řádek na konci seznamu a je zvýrazněný; po vybrání grupy se zařadí, kam patří. */
+function pridejUkolPodrobny(){
+  if(!smiPsat()){ hlaska('Na tohle nemáte právo — plán jde jen číst.'); return; }
+  const novy = {parta:"", typ:"A", kod:novyKodUkolu("", "A"), cislo:null,
+                den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"plán", zdroj:"ručně"};
+  novy._nove = true;
+  D.ukoly.push(novy);
+  oznacZmenu();
+  planZmenen = true;
+  kresliPodrobny(); kresliPlan();
+  hlaska('Přidán prázdný úkol — vyberte mu grupu v prvním sloupci.');
 }
 
 /* ---------- odložení do historie a vyvolání zpět ----------

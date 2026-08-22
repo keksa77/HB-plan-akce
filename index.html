@@ -1311,8 +1311,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.86";
-const BUILD = "2026-08-22T22:08+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.87";
+const BUILD = "2026-08-22T22:24+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4156,7 +4156,8 @@ function dopoctiPrejezdy(){
    2. Jakmile do odvozeného řádku někdo sáhne, příznak spadne a řádek se stane
       ručním. Bez toho by generátor tiše mazal opravy. */
 
-const ODSTUP_ZAHAJENI = 25;   // minut PŘED prvním běžcem
+const ODSTUP_ZAHAJENI = 25;   // minut PŘED prvním běžcem — kdo předávku otevírá, přijede jak stíhá
+const ODSTUP_OBSLUHA  = 40;   // minut PŘED prvním běžcem — kdo předávku drží, má tam být dřív
 const ODSTUP_UKONCENI = 20;   // minut PO posledním běžci
 const NOCNI_MEZERA    = 4*60; // kratší pauza mezi sobotou a nedělí se za nocleh nepovažuje
 const NOCLEH_OD       = 22*60; // ve kolik se jde spát, když se stihne
@@ -4201,6 +4202,10 @@ const hodinaMinuta = m => {
   const x = ((m % (4*1440)) + 4*1440) % (4*1440);
   return Math.floor((x%1440)/60) + ':' + String(x%60).padStart(2,'0');
 };
+/* Rozsah „so 5:20 – 12:00". Den se opakuje, jen když se přes něj přehoupne:
+   „pá 23:00 – so 6:10". */
+const rozsahCasu = (od, doKdy) => minutyNaCas(od) + ' – '
+  + (Math.floor(od/1440) === Math.floor(doKdy/1440) ? hodinaMinuta(doKdy) : minutyNaCas(doKdy));
 // do databáze naopak s nulou: „08:50"
 const hodinaMinutaDb = m => {
   const x = ((m % (4*1440)) + 4*1440) % (4*1440);
@@ -4216,18 +4221,33 @@ const podpisOdvozeneho = u => [u.typ, u.parta, String(u.popis||'').trim()].join(
 function spocitejGenerovani(){
   const pridat = [], casy = [], navrhy = [];
 
-  // ---- 1) chybějící časy zahájení a ukončení předávky
+  // ---- 1) chybějící časy obsluhy, zahájení a ukončení předávky
   rucni().forEach(u => {
-    if(u.typ !== 'PZ' && u.typ !== 'PK') return;
+    if(['P','PZ','PK'].indexOf(u.typ) < 0) return;
     if((u.kdy_text||'').trim()) return;                 // vyplněné se nepřepisuje
     const p = D_predavka(u.cislo); if(!p) return;
+
+    /* Obsluha drží předávku celou. Je to jiná role než zahájení: kdo předávku
+       otevírá, přijede jak stíhá, ale kdo ji drží, má tam být dřív — proto
+       čtyřicet minut, ne pětadvacet. */
+    if(u.typ === 'P'){
+      const zac = casNaMinuty(p.prvni), kon = casNaMinuty(p.posledni);
+      if(zac == null || kon == null) return;
+      const od = naDesitky(zac - ODSTUP_OBSLUHA, false);
+      const doKdy = naDesitky(kon + ODSTUP_UKONCENI, true);
+      casy.push({u, text: rozsahCasu(od, doKdy),
+                 proc: 'první běžec ' + p.prvni + ' − ' + ODSTUP_OBSLUHA + ' min'
+                     + ' až poslední ' + p.posledni + ' + ' + ODSTUP_UKONCENI + ' min'});
+      return;
+    }
+
     const zdroj = (u.typ === 'PZ') ? p.prvni : p.posledni;
     const zaklad = casNaMinuty(zdroj); if(zaklad == null) return;
     // Zaokrouhlení na desetiminutovky na stranu bezpečí a „do" o deset minut dál:
     // zahájení i ukončení je okamžik, ne směna.
     const jeZahajeni = (u.typ === 'PZ');
     const novy = naDesitky(zaklad + (jeZahajeni ? -ODSTUP_ZAHAJENI : ODSTUP_UKONCENI), !jeZahajeni);
-    casy.push({u, text: minutyNaCas(novy) + ' – ' + hodinaMinuta(novy + 10),
+    casy.push({u, text: rozsahCasu(novy, novy + 10),
                proc: (jeZahajeni
                  ? ('první běžec ' + zdroj + ' − ' + ODSTUP_ZAHAJENI + ' min')
                  : ('poslední běžec ' + zdroj + ' + ' + ODSTUP_UKONCENI + ' min'))
@@ -5714,8 +5734,13 @@ function kresliJakSePocita(){
       + 'časů z HB24 a HB25. Nejsou to plánované hodnoty, ale co se opravdu stalo.',
       'Kilometry a minuty mezi předávkami jsou z tabulky vzdáleností a needitují se.'])
     + h('Zahájení a ukončení předávky', [
-      'Zahájení (PZ) = první běžec ' + b('mínus ' + ODSTUP_ZAHAJENI + ' minut') + '.',
+      'Zahájení (PZ) = první běžec ' + b('mínus ' + ODSTUP_ZAHAJENI + ' minut') + '. '
+      + 'Kdo předávku otevírá, přijede jak stíhá.',
       'Ukončení (PK) = poslední běžec ' + b('plus ' + ODSTUP_UKONCENI + ' minut') + '.',
+      'Obsluha (P) drží předávku celou: od prvního běžce '
+      + b('mínus ' + ODSTUP_OBSLUHA + ' minut') + ' do posledního '
+      + b('plus ' + ODSTUP_UKONCENI + ' minut') + '. Je tam dřív než ten, kdo otevírá — '
+      + 'proto větší odstup než u zahájení.',
       'Obojí se zaokrouhlí na desetiminutovky na stranu bezpečí: '
       + b('začátky dolů, konce nahoru') + '. Obsluha je tak na místě spíš dřív a odjíždí spíš '
       + 'později, než kdy tam někdo poběží.',

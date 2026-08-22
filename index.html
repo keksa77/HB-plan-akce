@@ -282,7 +282,12 @@ td.km b{color:var(--olive);font-size:12.5px}
   background:var(--hneda);color:#fff;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
 .slot.prazdny{border:0;color:#CFC6B6;justify-content:center}
 td.km .nic{color:#CFC6B6}
-.bunka{padding:5px 6px;min-width:132px;height:46px;vertical-align:middle}
+.bunka{padding:5px 6px;min-width:132px;min-height:46px;vertical-align:middle}
+/* Rozdělené políčko: dvě grupy pod sebou, oddělené vlasovou linkou, ať je na
+   první pohled jasné, že se o předávku dělí. */
+.slot.deleny{border:1px solid var(--linka);background:#FCFAF6}
+.slot.deleny .radka + .radka{border-top:1px dashed var(--linka);margin-top:2px;padding-top:2px}
+.slot .radka{width:100%;display:flex;flex-direction:column;align-items:center;gap:1px}
 .slot{min-height:34px;border:1.5px dashed var(--linka);border-radius:8px;display:flex;
   align-items:center;justify-content:center;font-size:11.5px;color:#C9BFB0;transition:.12s;
   flex-direction:column;gap:1px;padding:2px}
@@ -1302,8 +1307,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.81";
-const BUILD = "2026-08-22T21:24+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.83";
+const BUILD = "2026-08-22T21:49+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1435,6 +1440,19 @@ const cisloRole = (etapa, s) => etapa;
 // Poslední řádek mřížky není etapa, ale cíl — za Mikulovem se už nikam neběží.
 const RADKU_MRIZKY = 31, RADEK_CILE = 31;
 const najdi = (typ, cislo) => D.ukoly.find(u=>u.typ===typ && u.cislo===cislo);
+// Políčko v mřížce může držet víc grup — obsluhu předávky si dvě grupy klidně
+// rozdělí. Každá grupa má vlastní úkol, jen sedí na stejném místě mřížky.
+const najdiVse = (typ, cislo) => D.ukoly.filter(u=>u.typ===typ && u.cislo===cislo);
+/* Kód úkolu v mřížce je typ + číslo. Druhá grupa na tomtéž políčku dostane
+   za kód písmeno: P5, P5b, P5c. Databáze má kód jako klíč, dvakrát stejný
+   by neprošel. */
+function volnyKodMrizky(typ, cislo){
+  const obsazene = new Set(D.ukoly.map(u=>u.kod));
+  const zaklad = typ + cislo;
+  if(!obsazene.has(zaklad)) return zaklad;
+  for(const p of 'bcdefgh'){ if(!obsazene.has(zaklad + p)) return zaklad + p; }
+  return zaklad + Date.now();
+}
 
 /* ---------- záložky ---------- */
 const ZALOZKY = [
@@ -1979,13 +1997,19 @@ function kresliPlan(){
         tr.appendChild(td); return;
       }
       const slot = document.createElement('div'); slot.className='slot';
-      const u = najdi(typ, cislo);
-      if(u){
+      slot.dataset.kam = typ + cislo;          // ať se dá políčko najít podle role, ne podle pořadí
+      const ukoly = najdiVse(typ, cislo);
+      if(ukoly.length){
         slot.classList.add('plny');
-        slot.appendChild(slotChip(u));
-        const cas = document.createElement('span'); cas.className='cas';
-        cas.innerHTML = odznakHtml(u,true) + ' ' + esc(u.kdy_text||'');
-        slot.appendChild(cas);
+        if(ukoly.length > 1) slot.classList.add('deleny');
+        ukoly.forEach(u=>{
+          const radka = document.createElement('div'); radka.className='radka';
+          radka.appendChild(slotChip(u));
+          const cas = document.createElement('span'); cas.className='cas';
+          cas.innerHTML = odznakHtml(u,true) + ' ' + esc(u.kdy_text||'');
+          radka.appendChild(cas);
+          slot.appendChild(radka);
+        });
       } else {
         slot.textContent = typ+cislo;
         slot.title = (NAPOVEDA[NAPOVEDA_ROLE[s]]||'') + ' Sem přetáhněte grupu z palety vlevo.';
@@ -1998,22 +2022,43 @@ function kresliPlan(){
         const k = ev.dataTransfer.getData('text/plain');
         const z = ev.dataTransfer.getData('zdroj');
         if(!k) return;
-        const zamcenyCil = najdi(typ, cislo);
-        if(zamcenyCil && zamcenyCil.stav === STAV_ZAMCENO){
+        const vCili = najdiVse(typ, cislo);
+        const zamcenyCil = vCili.find(u => u.stav === STAV_ZAMCENO);
+        if(zamcenyCil){
           hlaska('Políčko ' + zamcenyCil.kod + ' je zamčené — nejdřív ho odemkněte dvojklikem.');
           return;
         }
+        let hlaseni = '';
         if(z){
           const [zt,zc] = z.split(',');
-          const zdroj = najdi(zt, +zc);
-          const cilovy = najdi(typ, cislo);
-          if(zdroj && cilovy && zdroj!==cilovy){ const p=cilovy.parta; cilovy.parta=zdroj.parta; zdroj.parta=p;
-            zrevidovano(zdroj); zrevidovano(cilovy); }
-          else if(zdroj){ zdroj.typ=typ; zdroj.cislo=cislo; zdroj.kod=typ+cislo; zrevidovano(zdroj); }
+          const zdroj = D.ukoly.find(u => u.typ===zt && u.cislo===+zc
+                                       && u.parta===ev.dataTransfer.getData('text/plain'))
+                     || najdi(zt, +zc);
+          if(!zdroj) return;
+          if(vCili.indexOf(zdroj) >= 0) return;            // puštěno tam, odkud se táhlo
+          // Výměna dvou políček dává smysl, jen když je na obou po jedné grupě.
+          // Jinak se tažená grupa prostě přesune a na cílovém políčku přibude.
+          if(vCili.length === 1 && najdiVse(zt, +zc).length === 1){
+            const cilovy = vCili[0];
+            const p = cilovy.parta; cilovy.parta = zdroj.parta; zdroj.parta = p;
+            zrevidovano(zdroj); zrevidovano(cilovy);
+            hlaseni = 'Prohozeno: ' + popisGrupy(cilovy.parta) + ' ↔ ' + popisGrupy(zdroj.parta);
+          }else{
+            if(vCili.some(u => u.parta === zdroj.parta)){
+              hlaska(popisGrupy(zdroj.parta) + ' na ' + typ + cislo + ' už je.'); return;
+            }
+            zdroj.typ = typ; zdroj.cislo = cislo; zdroj.kod = volnyKodMrizky(typ, cislo);
+            zrevidovano(zdroj);
+            hlaseni = 'Přesunuto: ' + popisGrupy(zdroj.parta) + ' → ' + typ + cislo;
+          }
         } else {
-          const cilovy = najdi(typ, cislo);
-          if(cilovy){ cilovy.parta = k; zrevidovano(cilovy); }
-          else D.ukoly.push({parta:k,typ:typ,kod:typ+cislo,cislo:cislo,kdy_text:"",popis:"",stav:"plán",zdroj:"ručně"});
+          if(vCili.some(u => u.parta === k)){
+            hlaska(popisGrupy(k) + ' na ' + typ + cislo + ' už je.'); return;
+          }
+          D.ukoly.push({parta:k, typ:typ, kod:volnyKodMrizky(typ,cislo), cislo:cislo,
+                        kdy_text:"", popis:"", stav:"plán", zdroj:"ručně"});
+          if(vCili.length) hlaseni = typ + cislo + ' si dělí ' + (vCili.length + 1) + ' grupy: '
+            + vCili.map(u=>popisGrupy(u.parta)).concat(popisGrupy(k)).join(' + ');
         }
         // Bez tohohle se přetažení do mřížky nepočítalo jako změna: tlačítko
         // „Uložit do databáze" se neobjevilo a naplánovaná grupa se dala ztratit
@@ -2021,7 +2066,7 @@ function kresliPlan(){
         oznacZmenu();
         planZmenen = true;
         kresliPlan();
-        hlaska(k+' → '+typ+cislo+' · '+NAZVY[s]);
+        hlaska(hlaseni || (k+' → '+typ+cislo+' · '+NAZVY[s]));
       };
       td.appendChild(slot); tr.appendChild(td);
     });
@@ -2040,16 +2085,20 @@ function kresliPlan(){
 
   kresliSouctyPlanu();
   kresliPaletu();
-  const videt = new Set(), dvakrat = new Set();
+  const videt = new Set(), dvakrat = new Set(), obsazenaPolicka = new Set();
   let vMrizce = 0;
   D.ukoly.forEach(u=>{
     if(ROLE.indexOf(u.typ)<0 || !u.cislo) return;
     const vRozsahu = (u.typ==='T'||u.typ==='U') ? (u.cislo>=1 && u.cislo<=30) : (u.cislo>=1 && u.cislo<=RADEK_CILE);
     if(!vRozsahu) return;
-    const k = u.typ+u.cislo;
-    if(videt.has(k)) dvakrat.add(k); else { videt.add(k); vMrizce++; }
+    // Dvě různé grupy na jednom políčku jsou v pořádku — dělí se o práci.
+    // Chyba je až tatáž grupa dvakrát.
+    const k = u.typ + u.cislo + '|' + (u.parta || '');
+    if(videt.has(k)) dvakrat.add(u.typ + u.cislo + ' ' + popisGrupy(u.parta));
+    else videt.add(k);
+    if(!obsazenaPolicka.has(u.typ + u.cislo)){ obsazenaPolicka.add(u.typ + u.cislo); vMrizce++; }
   });
-  const mimo = D.ukoly.length - vMrizce - dvakrat.size;
+  const mimo = D.ukoly.filter(u => ROLE.indexOf(u.typ) < 0 || !u.cislo).length;
   const cizi = new Set();
   D.ukoly.forEach(u=>{ if(u.parta && !jePartaVDb(u.parta)) cizi.add(u.parta); });
   $('#stavPlan').textContent = 'obsazeno ' + vMrizce + ' ze 150 políček · dalších '
@@ -2114,8 +2163,13 @@ function kopirujEtapu(e){
   ROLE.forEach((typ,s)=>{
     const cislo = cisloRole(e,s);
     const vzor = D.vzorLonsky.find(u=>u.typ===typ && u.cislo===cislo);
-    const cilovy = najdi(typ, cislo);
-    if(cilovy && cilovy.stav === STAV_ZAMCENO){ zamcene.push(cilovy.kod); return; }
+    const cilove = najdiVse(typ, cislo);
+    const zamcenyCil = cilove.find(u => u.stav === STAV_ZAMCENO);
+    if(zamcenyCil){ zamcene.push(zamcenyCil.kod); return; }
+    // Rozdělené políčko se přepisuje celé: loňský vzor zná jednu grupu, tak
+    // druhá zmizí — jinak by po zkopírování zůstala viset bez souvislosti.
+    cilove.slice(1).forEach(u => D.ukoly.splice(D.ukoly.indexOf(u), 1));
+    const cilovy = cilove[0];
     if(!vzor){ if(cilovy) D.ukoly.splice(D.ukoly.indexOf(cilovy),1); return; }
     const kopie = JSON.parse(JSON.stringify(vzor));
     if(vzorRok()) kopie.zRocniku = vzorRok();
@@ -4068,7 +4122,7 @@ function dopoctiPrejezdy(){
    2. Jakmile do odvozeného řádku někdo sáhne, příznak spadne a řádek se stane
       ručním. Bez toho by generátor tiše mazal opravy. */
 
-const ODSTUP_ZAHAJENI = 40;   // minut PŘED prvním běžcem
+const ODSTUP_ZAHAJENI = 25;   // minut PŘED prvním běžcem
 const ODSTUP_UKONCENI = 20;   // minut PO posledním běžci
 const NOCNI_MEZERA    = 4*60; // kratší pauza mezi sobotou a nedělí se za nocleh nepovažuje
 const NOCLEH_OD       = 22*60; // ve kolik se jde spát, když se stihne

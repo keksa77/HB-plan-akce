@@ -179,6 +179,21 @@ body.mobil .tymy{max-height:none;overflow-y:visible}
 .detail{margin-top:13px;font-size:11.5px;color:var(--pisek);border-top:1px solid var(--linka);padding-top:9px}
 .detail b{color:var(--tmava)}
 
+/* Součtový řádek pod mřížkou. Drží se dole při rolování, ať je vidět,
+   kolik ještě chybí, i když je člověk uprostřed třiceti etap. */
+.mrizka tfoot tr.soucty > td{position:sticky;bottom:0;z-index:3;
+  background:#F1F3EA;border-top:2px solid var(--zelena);padding:7px 9px;
+  font-size:12px;text-align:center;vertical-align:middle}
+.mrizka tfoot td.soucet b{font-size:15px;color:var(--olive)}
+.mrizka tfoot td.soucet.plny{background:#E4F0CB}
+.mrizka tfoot td.soucet.plny b{color:#2A3D12}
+.mrizka tfoot td.soucet .chybi{display:block;font-size:10.5px;color:#8A2F38;margin-top:1px}
+.mrizka tfoot td.soucet .zam{margin-left:6px;font-size:10.5px;color:#7A5A00;white-space:nowrap}
+.mrizka tfoot td.soucet.celkem{background:#E8E3D6;font-weight:700}
+.mrizka tfoot td.etapa .cislo{font-size:12px;font-weight:700;color:var(--olive)}
+.mrizka tfoot td.etapa .misto{display:block;font-size:10.5px;color:var(--pisek);font-weight:400}
+body.mobil .mrizka tfoot tr.soucty > td{position:static}
+
 /* ---- mřížka úkolů ---- */
 .mrizka{border:1px solid var(--linka);border-radius:12px;background:var(--bila)}
 .mrizka table{border-collapse:collapse;width:100%}
@@ -419,6 +434,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
               </tr>
             </thead>
             <tbody id="teloPlan"></tbody>
+            <tfoot id="patickaPlan"></tfoot>
           </table>
         </div>
 
@@ -1203,8 +1219,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.66";
-const BUILD = "2026-08-21T12:49+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.67";
+const BUILD = "2026-08-22T12:01+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1914,6 +1930,7 @@ function kresliPlan(){
     telo.appendChild(tr);
   });
 
+  kresliSouctyPlanu();
   kresliPaletu();
   const videt = new Set(), dvakrat = new Set();
   let vMrizce = 0;
@@ -1943,6 +1960,47 @@ function kresliPlan(){
 /* Zamčené políčko je rozhodnutí, ne rozpracovanost. Kopírování z loňska ho ani
    nepřepíše, ani nesmaže — jinak by stačilo jedno kliknutí a napevno naplánovaná
    věc by byla pryč. Přeskočené se vypíšou, ať to není tiché. */
+/* Součty pod mřížkou: kolik políček je v každém sloupci obsazeno a z kolika.
+   Trasování a úklid patří etapě, těch je 30; obsluha, zahájení a ukončení patří
+   předávce, těch je 31 včetně cíle. Proto nemají všechny sloupce stejný jmenovatel. */
+function kresliSouctyPlanu(){
+  const pat = $('#patickaPlan'); if(!pat) return;
+  const tr = document.createElement('tr'); tr.className = 'soucty';
+  tr.innerHTML = '<td class="etapa"><span class="cislo">Součet</span>'
+    + '<span class="misto">naplánováno v mřížce</span></td><td class="km"></td>';
+
+  let celkemJe = 0, celkemZ = 0;
+  ROLE.forEach((typ,sl)=>{
+    // kolik políček sloupec vůbec nabízí
+    const zCelkem = (typ==='T' || typ==='U') ? (RADKU_MRIZKY - 1) : RADKU_MRIZKY;
+    let je = 0, zamceno = 0;
+    for(let e = 1; e <= RADKU_MRIZKY; e++){
+      if((typ==='T' || typ==='U') && e === RADEK_CILE) continue;
+      const u = najdi(typ, cisloRole(e, sl));
+      if(u && u.parta){ je++; if(u.stav === STAV_ZAMCENO) zamceno++; }
+    }
+    celkemJe += je; celkemZ += zCelkem;
+    const hotovo = je === zCelkem;
+    const td = document.createElement('td');
+    td.className = 'soucet' + (hotovo ? ' plny' : '');
+    td.innerHTML = '<b>' + je + '</b> / ' + zCelkem
+      + (zamceno ? ('<span class="zam">' + zamceno + '\u00A0\uD83D\uDD12</span>') : '')
+      + (je < zCelkem ? ('<span class="chybi">chybí ' + (zCelkem - je) + '</span>') : '');
+    td.title = NAZVY[sl] + ': obsazeno ' + je + ' z ' + zCelkem + ' políček'
+      + (zamceno ? (', z toho ' + zamceno + ' zamčených') : '')
+      + (je < zCelkem ? ('. Chybí ' + (zCelkem - je) + '.') : '. Hotovo.');
+    tr.appendChild(td);
+  });
+
+  const konec = document.createElement('td');
+  konec.className = 'soucet celkem';
+  konec.innerHTML = '<b>' + celkemJe + '</b> / ' + celkemZ;
+  konec.title = 'Celkem obsazeno ' + celkemJe + ' ze ' + celkemZ + ' políček mřížky.';
+  tr.appendChild(konec);
+
+  pat.innerHTML = ''; pat.appendChild(tr);
+}
+
 function kopirujEtapu(e){
   const prepsano = [], zamcene = [];
   ROLE.forEach((typ,s)=>{
@@ -3207,6 +3265,9 @@ function kresliClenove(){
     {nadpis:"E-mail", pole:"email", sirka:"230px"},
     {nadpis:"Nocleh pátek", pole:"nocleh_patek", typ:"select", moznosti:volbyNoclehu, sirka:"140px"},
     {nadpis:"Nocleh sobota", pole:"nocleh_sobota", typ:"select", moznosti:volbyNoclehu, sirka:"140px"},
+    {nadpis:"Odjezd", pole:"odjezd", sirka:"150px",
+      napovedaSl:"Kdy člověk ze závodu odjíždí — třeba „ne dopoledne\" nebo „so po 20:00\". "
+        + "Volný text, nic se nehlídá; slouží k plánování odvozů a noclehů."},
     {nadpis:"Číslo účtu", pole:"cislo_uctu", sirka:"160px"},
     {nadpis:"Ročníky", pole:"rocniky", sirka:"160px",
       napovedaSl:"Ve kterých ročnících byl člověk na téhle předávce — třeba „HB22, HB24, HB25\". "
@@ -4437,7 +4498,8 @@ function pridej(co){
     // Grupa se teď nehádá: buď je z filtru, nebo zůstane prázdná a musí se vybrat.
     const grupa = $('#filtrParty').value || '';
     novy = {kod_tymu:grupa, jmeno:"", sef:"ne", telefon:"", email:"",
-            nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", rocniky:"", poznamka:""};
+            nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", rocniky:"", poznamka:"",
+            odjezd:""};
     D.clenove.push(novy);
     kam = grupa ? ('člověk do grupy ' + popisGrupy(grupa))
                 : 'člověk — nejdřív mu v prvním sloupci vyberte grupu';
@@ -4585,7 +4647,7 @@ const MAPA = {
     pole:{id:'id', kod_tymu:'kod_tymu', jmeno:'jmeno', telefon:'telefon', email:'email',
           nocleh_patek:'nocleh_patek', nocleh_sobota:'nocleh_sobota',
           cislo_uctu:'cislo_uctu', poznamka:'poznamka', sef:'sef', historie:'historie',
-          rocniky:'rocniky'},
+          rocniky:'rocniky', odjezd:'odjezd'},
     // Bez grupy se člověk uložit nedá — kod_tymu je v databázi povinný a musí
     // ukazovat na existující grupu. Takový řádek se přeskočí a save o něm nahlas
     // řekne, místo aby celá dávka spadla na cizí klíč.

@@ -681,10 +681,14 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
         <p class="popisek" style="margin:0 0 10px">Křížek u řádku člověka nesmaže. Odloží ho sem
           i s kontakty, aby se dal kdykoli vyvolat zpátky. Hledá se přes kód grupy, jméno
           i příjmení a přes číslo nebo název kterékoli předávky, na které ta grupa byla.</p>
-        <input id="hledejHistorii" type="search" oninput="kresliHistorii()"
+        <input id="hledejHistorii" type="search" list="nabidkaHistorie" oninput="kresliHistorii()"
                placeholder="např. G7, Novák nebo Bumbálka"
-               title="Hledá v odložených členech podle grupy, jména nebo předávky."
+               title="Hledá v odložených členech podle grupy, jména nebo předávky. Kliknutím do políčka se rozbalí, kdo v historii je."
                style="width:340px;padding:7px 10px;border:1px solid var(--linka);border-radius:8px;font:inherit">
+        <datalist id="nabidkaHistorie"></datalist>
+        <button class="tl" style="margin-left:8px;padding:5px 12px"
+                title="Ukáže všechny odložené lidi bez hledání."
+                onclick="ukazCelouHistorii()">Ukázat všechny</button>
         <div id="historieClenu" style="margin-top:10px"></div>
       </div>
     </div>
@@ -1015,7 +1019,7 @@ body.mobil table.podrobnyTab td[data-th="Úkol"]::before {
 }
 body.mobil table.podrobnyTab td[data-th="Úkol"] textarea { font-size: 15.5px; line-height: 1.45; }
 body.mobil table.podrobnyTab td[data-th="Grupa"] .grupaOdznak select { font-size: 15px; }
-body.mobil table.podrobnyTab td[data-th="Kdo"] { font-weight: 700; }
+body.mobil table.podrobnyTab td[data-th="Grupa"] .grupaJmeno { font-weight: 700; }
 body.mobil table.podrobnyTab td[data-th="Od"],
 body.mobil table.podrobnyTab td[data-th="Do"] { padding: 2px 0 !important; }
 /* odznak grupy je štítek, ne pruh přes celou šířku */
@@ -1307,8 +1311,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.83";
-const BUILD = "2026-08-22T21:49+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.85";
+const BUILD = "2026-08-22T22:02+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -3286,20 +3290,15 @@ function kresliPodrobny(){
   // vědět kdo, co a kdy. Zbytek (číslo, typ, kód, den, stav, odznak ročníku) by
   // na malém displeji jen překážel, tak se neukazuje.
   const jenCteMobil = mobil && !prihlasen;
-  const PRO_MOBIL = ['Grupa','Kdo','Úkol','Od','Do'];
+  const PRO_MOBIL = ['Grupa','Úkol','Od','Do'];
 
   let sloupcePodrobny = [
-    {nadpis:"Grupa", sirka:"96px", html:grupaBunka,
-      napovedaSl:"Kód grupy. Dá se tu i přehodit — úkol se rovnou přesune jinam."},
-    {nadpis:"Kdo",  sirka:"120px", html:sefBunka,
-      napovedaSl:"Kdo grupu vede. Mění se u členů grup, tady se jen ukazuje."},
+    {nadpis:"Grupa", sirka:"215px", html:grupaSKymBunka,
+      napovedaSl:"Grupa i její šéf pohromadě, stejně jako v mřížce plánu. Kód se dá "
+        + "přehodit — úkol se rovnou přesune jinam. Jméno se mění u členů grup, tady se "
+        + "jen ukazuje."},
     {nadpis:"Typ",  pole:"typ",  typ:"select", sirka:"132px",
       moznosti:TYPY.map(t=>({v:t, t:NAZVY_TYPU[t] || t}))},
-    {nadpis:"Původ", sirka:"84px", jenCist:true,
-      napovedaSl:"Odvozeno = spočítal to generátor a přegenerování to přepíše. "
-        + "Odhad = doplněný čas podle časů běžců, dokud ho nepotvrdíte. Prázdné = zadané ručně.",
-      html:(r)=> (r.odvozeno ? '<span class="znak-odv">odvozeno</span>' : '')
-               + (r.odhad ? ' <span class="znak-odh">odhad</span>' : '')},
     {nadpis:"Úkol", pole:"popis", viceradkove:true, maxRadky:3},
     {nadpis:"Kód",  pole:"kod",  sirka:"74px"},
     {nadpis:"Kdy",  pole:"kdy_text", sirka:"120px",
@@ -3308,7 +3307,13 @@ function kresliPodrobny(){
       napovedaSl:"Den závodního víkendu. Čtvrtek je tam kvůli grupám, které vyjíždějí den předem."},
     {nadpis:"Od",   pole:"kdy_od", typ:"time", sirka:"92px"},
     {nadpis:"Do",   pole:"kdy_do", typ:"time", sirka:"92px"},
-    {nadpis:"Stav", pole:"stav", typ:"select", moznosti:STAVY, sirka:"118px"}
+    {nadpis:"Stav", pole:"stav", typ:"select", moznosti:STAVY, sirka:"118px"},
+    // Původ je poznámka o tom, odkud se řádek vzal — čte se nejmíň často, tak stojí na konci.
+    {nadpis:"Původ", sirka:"84px", jenCist:true,
+      napovedaSl:"Odvozeno = spočítal to generátor a přegenerování to přepíše. "
+        + "Odhad = doplněný čas podle časů běžců, dokud ho nepotvrdíte. Prázdné = zadané ručně.",
+      html:(r)=> (r.odvozeno ? '<span class="znak-odv">odvozeno</span>' : '')
+               + (r.odhad ? ' <span class="znak-odh">odhad</span>' : '')}
   ];
   if(jenCteMobil) sloupcePodrobny = sloupcePodrobny
     .filter(x => PRO_MOBIL.indexOf(x.nadpis) >= 0)
@@ -3372,6 +3377,12 @@ function grupaBunka(r, i){
 function sefBunka(r){
   const jm = prvniJmeno(r.parta);
   return jm ? '<span class="grupaJmeno" style="margin-left:0;max-width:none">' + esc(jm) + '</span>' : '';
+}
+// Grupa a její šéf v jednom políčku — stejně, jako to vypadá na chipu v mřížce.
+function grupaSKymBunka(r, i){
+  const jm = prvniJmeno(r.parta);
+  return grupaBunka(r, i)
+    + (jm ? '<span class="grupaJmeno" style="max-width:none">' + esc(jm) + '</span>' : '');
 }
 
 /* ---------- 2. grupy ---------- */
@@ -3617,10 +3628,32 @@ function sediHledani(c, dotaz){
 // „1 člen / 3 členové / 7 členů" — čeština počítá po svém
 const poctemClenu = n => n + ' ' + (n === 1 ? 'člen' : (n >= 2 && n <= 4 ? 'členové' : 'členů'));
 
-function kresliHistorii(){
+function ukazCelouHistorii(){
+  const el = $('#hledejHistorii'); if(!el) return;
+  el.value = '';
+  kresliHistorii(true);
+}
+
+function kresliHistorii(vseBezHledani){
   const cil = $('#historieClenu'); if(!cil) return;
   const dotaz = ($('#hledejHistorii') || {}).value || '';
   const vsichni = D.clenove.map((c,i)=>({c,i})).filter(x=>x.c.historie);
+
+  /* Nabídka do políčka: koho a co v historii vůbec jde najít. Bez ní člověk hádá,
+     jestli hledat jméno, grupu nebo předávku — a když nic nenapíše, nevidí nic. */
+  const seznam = $('#nabidkaHistorie');
+  if(seznam){
+    const volby = [];
+    const pridej = (v, popis) => { if(v && !volby.some(x=>x.v===v)) volby.push({v, popis}); };
+    vsichni.forEach(x=>{
+      pridej(x.c.jmeno, popisGrupy(x.c.kod_tymu));
+      pridej(x.c.kod_tymu, 'grupa ' + (parta(x.c.kod_tymu)||{}).nazev || 'grupa');
+      predavkyGrupy(x.c.kod_tymu).forEach(q => pridej(q.nazev, 'předávka ' + q.cislo));
+    });
+    volby.sort((a,b)=>String(a.v).localeCompare(String(b.v),'cs'));
+    seznam.innerHTML = volby.map(o=>'<option value="' + esc(o.v) + '">'
+      + esc(o.popis || '') + '</option>').join('');
+  }
 
   const nadpis = $('#nadpisHistorie');
   if(nadpis) nadpis.textContent = 'Historie — kdo už v seznamu není ('
@@ -3631,12 +3664,13 @@ function kresliHistorii(){
       + 'Křížek u řádku člověka nesmaže — jen ho sem odloží.</p>';
     return;
   }
-  if(!dotaz.trim()){
+  if(!dotaz.trim() && !vseBezHledani){
     cil.innerHTML = '<p class="popisek">Napište kód grupy, jméno, příjmení, '
-      + 'číslo nebo název předávky.</p>';
+      + 'číslo nebo název předávky — nebo si v políčku rozbalte nabídku. '
+      + 'Tlačítkem vedle si vypíšete rovnou všechny.</p>';
     return;
   }
-  const nalezeni = vsichni.filter(x=>sediHledani(x.c, dotaz));
+  const nalezeni = dotaz.trim() ? vsichni.filter(x=>sediHledani(x.c, dotaz)) : vsichni;
   if(!nalezeni.length){
     cil.innerHTML = '<p class="popisek">Nic takového v historii není.</p>';
     return;

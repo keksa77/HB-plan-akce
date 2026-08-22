@@ -1289,8 +1289,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.76";
-const BUILD = "2026-08-22T19:31+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.77";
+const BUILD = "2026-08-22T20:24+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1880,7 +1880,13 @@ function slotChip(u){
     c.title += ' — POZOR: grupa letos nejede, úkol je potřeba přerozdělit';
   }
   const x = document.createElement('span'); x.className='smaz'; x.textContent='×'; x.title='Odebere úkol z tohoto políčka. Vrátit se to nedá.';
-  x.onclick = e=>{ e.stopPropagation(); D.ukoly.splice(D.ukoly.indexOf(u),1); kresliPlan(); };
+  x.onclick = e=>{
+    e.stopPropagation();
+    if(!smiPsat()){ hlaska('Na tohle nemáte právo — plán jde jen číst.'); return; }
+    D.ukoly.splice(D.ukoly.indexOf(u),1);
+    oznacZmenu(); planZmenen = true;
+    kresliPlan();
+  };
   c.appendChild(x);
 
   const zamceno = u.stav === STAV_ZAMCENO;
@@ -1966,6 +1972,7 @@ function kresliPlan(){
       slot.ondragleave = ()=>slot.classList.remove('nad');
       slot.ondrop = ev=>{
         ev.preventDefault(); slot.classList.remove('nad');
+        if(!smiPsat()){ hlaska('Na tohle nemáte právo — plán jde jen číst.'); return; }
         const k = ev.dataTransfer.getData('text/plain');
         const z = ev.dataTransfer.getData('zdroj');
         if(!k) return;
@@ -1986,6 +1993,10 @@ function kresliPlan(){
           if(cilovy){ cilovy.parta = k; zrevidovano(cilovy); }
           else D.ukoly.push({parta:k,typ:typ,kod:typ+cislo,cislo:cislo,kdy_text:"",popis:"",stav:"plán",zdroj:"ručně"});
         }
+        // Bez tohohle se přetažení do mřížky nepočítalo jako změna: tlačítko
+        // „Uložit do databáze" se neobjevilo a naplánovaná grupa se dala ztratit
+        // zavřením okna. Zámek to zachraňoval jen náhodou — ten oznacZmenu volá.
+        oznacZmenu();
         planZmenen = true;
         kresliPlan();
         hlaska(k+' → '+typ+cislo+' · '+NAZVY[s]);
@@ -4772,6 +4783,7 @@ function kopirujVse(){
 function vycisti(){ otevriZamek(vycistiOpravdu); }
 function vycistiOpravdu(){
   D.ukoly = [];
+  oznacZmenu(); planZmenen = true;
   kresliPlan(); if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
   hlaska('Plán vyprázdněn');
 }

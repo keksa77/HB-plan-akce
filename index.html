@@ -774,6 +774,15 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     </div>
 
     <div class="karta">
+      <h2>Jak se co počítá</h2>
+      <div class="telo">
+        <p class="popisek">Čísla v tomhle přehledu nejsou přepsaná ručně — berou se ze stejných
+          konstant, podle kterých se opravdu počítá. Když se pravidlo změní, změní se i tady.</p>
+        <div id="jakSePocita" style="font-size:13px;line-height:1.75"></div>
+      </div>
+    </div>
+
+    <div class="karta">
       <h2>Verze webu</h2>
       <div class="telo">
         <p class="popisek">Co přesně je právě nahrané. Číslo commitu a jeho čas se berou
@@ -1293,8 +1302,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.79";
-const BUILD = "2026-08-22T20:46+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.80";
+const BUILD = "2026-08-22T21:03+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1499,7 +1508,7 @@ function prepni(id){
   if(id==="s-todo") kresliTodo();
   if(id==="s-podrobny") kresliPodrobny();
   if(id==="s-pristupy") kresliPristupy();
-  if(id==="s-nastaveni") kresliVerzi();
+  if(id==="s-nastaveni"){ kresliVerzi(); kresliJakSePocita(); }
   if(id==="s-fotky")     nactiFotky();
   if(id==="s-tricka") kresliTricka();
   if(id==="s-noclehy-lide") kresliNocLide();
@@ -4102,9 +4111,14 @@ const hodinaMinuta = m => {
   return Math.floor((x%1440)/60) + ':' + String(x%60).padStart(2,'0');
 };
 
+/* Dva dopočítané řádky jsou tentýž řádek, když sedí grupa, druh a popis. Kód
+   se do porovnání nepočítá — ten se při zakládání odvozuje z pořadí a měnil by
+   se při každém přepočtu. Bez tohohle generátor pořád dokola mazal a znovu
+   zakládal ty samé přejezdy, takže návrh po uložení nikdy nezmizel. */
+const podpisOdvozeneho = u => [u.typ, u.parta, String(u.popis||'').trim()].join('|');
+
 function spocitejGenerovani(){
-  const pridat = [], casy = [];
-  const smazat = D.ukoly.filter(jeOdvozeny);
+  const pridat = [], casy = [], navrhy = [];
 
   /* ---- 0) chybějící zahájení a ukončení tam, kde už stojí obsluha
      Kdo předávku celý den drží, ji zpravidla i otevírá a zavírá. Když tedy
@@ -4173,7 +4187,7 @@ function spocitejGenerovani(){
       if(a.typ === 'A' || b.typ === 'A') continue;      // ruční přejezd už tam je
       const v = vzdal(a.cislo, b.cislo);
       if(!v) continue;                                   // vzdálenost neznáme, nehádáme
-      pridat.push({
+      navrhy.push({
         parta: t.kod, typ: 'A', kod: volnyKod('A-'+t.kod+'-g'+(i+1)), cislo: null,
         kdy_text: '', den: b.den || a.den,
         kdy_od: a.kdy_do || a.kdy_od || '', kdy_do: b.kdy_od || '',
@@ -4196,7 +4210,7 @@ function spocitejGenerovani(){
       const konec = pred[pred.length-1], zacatek = po[0];
       if(znak === 'so' && (zacatek.m - konec.m) < NOCNI_MEZERA) return;
       const kde = noclehGrupy(t.kod, znak);
-      pridat.push({
+      navrhy.push({
         parta: t.kod, typ: 'N', kod: volnyKod('N-'+t.kod+'-'+znak), cislo: null,
         kdy_text: '', den: odDen, kdy_od: '', kdy_do: '',
         popis: 'nocleh ' + (znak === 'p' ? 'z pátku na sobotu' : 'ze soboty na neděli')
@@ -4205,6 +4219,21 @@ function spocitejGenerovani(){
         _proc: 'mezi ' + (konec.u.kod||konec.u.typ) + ' a ' + (zacatek.u.kod||zacatek.u.typ)
       });
     });
+  });
+
+  // Co už v plánu je a pořád to sedí, zůstane i s kódem. Zmizí jen to, co dnešní
+  // výpočet nezná; přibude jen to, co v plánu ještě není.
+  const stavajici = D.ukoly.filter(jeOdvozeny);
+  const mam = new Map();
+  stavajici.forEach(u => { if(!mam.has(podpisOdvozeneho(u))) mam.set(podpisOdvozeneho(u), u); });
+  const chci = new Set(navrhy.map(podpisOdvozeneho));
+  const smazat = stavajici.filter(u => !chci.has(podpisOdvozeneho(u)));
+  const videne = new Set();
+  navrhy.forEach(n => {
+    const p = podpisOdvozeneho(n);
+    if(mam.has(p) || videne.has(p)) return;            // už tam je, nebo se navrhlo dvakrát
+    videne.add(p);
+    pridat.push(n);
   });
 
   return {pridat, smazat, casy};
@@ -5557,6 +5586,46 @@ async function ulozDoDatabaze(volby){
     // Neprovede se nic — jen se ukáže návrh, co by přibylo, a rozhodne uživatel.
     nabidniDopocet();
   }
+}
+
+/* Přehled pravidel pro Nastavení. Skládá se z týchž konstant, které používá
+   výpočet, aby nešel popis a skutečnost rozejít. */
+function kresliJakSePocita(){
+  const el = $('#jakSePocita'); if(!el) return;
+  const h = (nadpis, radky) => '<h4 style="margin:14px 0 4px;font-size:13px;color:var(--olive)">'
+    + nadpis + '</h4>' + radky.map(r=>'<div>' + r + '</div>').join('');
+  const b = t => '<b>' + t + '</b>';
+  el.innerHTML =
+    h('Odkud se berou časy', [
+      'Sloupce <i>První běžec</i> a <i>Poslední běžec</i> u předávek jsou průměr skutečných '
+      + 'časů z HB24 a HB25. Nejsou to plánované hodnoty, ale co se opravdu stalo.',
+      'Kilometry a minuty mezi předávkami jsou z tabulky vzdáleností a needitují se.'])
+    + h('Zahájení a ukončení předávky', [
+      'Zahájení (PZ) = první běžec ' + b('mínus ' + ODSTUP_ZAHAJENI + ' minut') + '.',
+      'Ukončení (PK) = poslední běžec ' + b('plus ' + ODSTUP_UKONCENI + ' minut') + '.',
+      'Obojí se zaokrouhlí na desetiminutovky na stranu bezpečí: '
+      + b('začátky dolů, konce nahoru') + '. Obsluha je tak na místě spíš dřív a odjíždí spíš '
+      + 'později, než kdy tam někdo poběží.',
+      'Hodnota <i>do</i> je vždycky <i>od</i> plus 10 minut — je to okamžik, ne směna.'])
+    + h('Kdo to dělá', [
+      'Když v mřížce stojí obsluha (P) a zahájení nebo ukončení chybí, nabídne se tam '
+      + b('stejná grupa, která předávku drží') + '. Kde obsluha není, se grupa nevymýšlí.'])
+    + h('Přejezdy (A)', [
+      'Vznikají mezi dvěma po sobě jdoucími místy jedné grupy, seřazenými podle času. '
+      + 'Kilometry a minuty se berou z tabulky vzdáleností; když vzdálenost neznáme, přejezd nevznikne.'])
+    + h('Noclehy (N)', [
+      'Vznikají v mezeře přes noc mezi posledním úkolem jednoho dne a prvním úkolem dalšího. '
+      + 'Ze soboty na neděli jen tehdy, když je pauza aspoň ' + b(NOCNI_MEZERA/60 + ' hodiny')
+      + ' — kratší přestávka není nocleh.',
+      'Místo se odvodí z toho, co má vyplněná ' + b('většina členů grupy') + ' ve sloupcích '
+      + 'Nocleh pátek a Nocleh sobota.'])
+    + h('Čeho se výpočet nedotkne', [
+      'Ručně zadaného času. Co je vyplněné, zůstává, i když se odhad liší.',
+      'Obsazeného políčka v mřížce — grupa se nikdy nepřepíše.',
+      'Zamčených úkolů. Ty přežijí i kopírování celého loňska.'])
+    + h('Kdy to běží', [
+      'Tlačítkem ' + b('Přegenerovat podrobný plán') + ', a pak sám ' + b('po každém uložení')
+      + ' do databáze. V obou případech se jen ukáže návrh — mění se to až po odklepnutí.']);
 }
 
 /* Po uložení: spočítat, co by šlo doplnit, a jen když je co, ukázat návrh.

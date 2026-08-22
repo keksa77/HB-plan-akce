@@ -1312,8 +1312,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.89";
-const BUILD = "2026-08-22T23:05+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.90";
+const BUILD = "2026-08-22T23:23+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4179,12 +4179,12 @@ const PRAVIDLA_VYCHOZI = {
   zahajeni_pred:   25,      // minut PŘED prvním běžcem — kdo předávku otevírá, přijede jak stíhá
   obsluha_pred:    40,      // minut PŘED prvním běžcem — kdo ji drží, má tam být dřív
   ukonceni_po:     20,      // minut PO posledním běžci
-  usek:            10,      // délka okamžiku: „do" = „od" + tolik minut
+  usek_zahajeni:   20,      // jak dlouho trvá otevřít předávku: „do" = „od" + tolik minut
+  usek_ukonceni:   10,      // a jak dlouho trvá ji sbalit
   zaokrouhleni:    10,      // na kolik minut se časy zaokrouhlují
   nocleh_od:      '22:00',  // ve kolik se jde spát, když se stihne
   nocleh_do:      '07:00',  // a kdy se vstává, když nic nezačíná dřív
-  nocleh_po_ukolu: 60,      // minut od konce posledního úkolu na cestu a spaní
-  nocni_mezera:   240       // kratší pauza mezi sobotou a nedělí se za nocleh nepovažuje
+  nocleh_po_ukolu: 60       // minut od konce posledního úkolu na cestu a spaní
 };
 const PR = klic => {
   const v = (D.nastaveni.pravidla || {})[klic];
@@ -4283,7 +4283,7 @@ function spocitejGenerovani(){
     // zahájení i ukončení je okamžik, ne směna.
     const jeZahajeni = (u.typ === 'PZ');
     const novy = naDesitky(zaklad + (jeZahajeni ? -PR('zahajeni_pred') : PR('ukonceni_po')), !jeZahajeni);
-    casy.push({u, text: rozsahCasu(novy, novy + PR('usek')),
+    casy.push({u, text: rozsahCasu(novy, novy + PR(jeZahajeni ? 'usek_zahajeni' : 'usek_ukonceni')),
                proc: (jeZahajeni
                  ? ('první běžec ' + zdroj + ' − ' + PR('zahajeni_pred') + ' min')
                  : ('poslední běžec ' + zdroj + ' + ' + PR('ukonceni_po') + ' min'))
@@ -4343,7 +4343,6 @@ function spocitejGenerovani(){
       const po   = rada.filter(x => (rozeberCas(nahled.get(x.u) || x.u.kdy_text).den || x.u.den) === doDen);
       if(!pred.length || !po.length) return;
       const konec = pred[pred.length-1], zacatek = po[0];
-      if(znak === 'so' && (zacatek.m - konec.m) < PR('nocni_mezera')) return;
       const kde = noclehGrupy(t.kod, znak);
       /* Kdy se spí. Začátek je 22:00, a když se grupa do té doby nestihne dostat
          z posledního úkolu, tak hodinu po jeho konci. Konec je 7:00, a když
@@ -5817,12 +5816,12 @@ function kresliJakSePocita(){
         pole('obsluha_pred',  'Obsluha přijede před prvním běžcem', 'min'),
         pole('zahajeni_pred', 'Zahájení začíná před prvním běžcem', 'min'),
         pole('ukonceni_po',   'Ukončení končí po posledním běžci', 'min'),
-        pole('usek',          'Zahájení a ukončení trvá', 'min')])
+        pole('usek_zahajeni', 'Zahájení předávky trvá', 'min'),
+        pole('usek_ukonceni', 'Ukončení předávky trvá', 'min')])
     + skupina('Nocleh', [
         pole('nocleh_od',      'Spát se jde v'),
         pole('nocleh_do',      'Vstává se v'),
-        pole('nocleh_po_ukolu','Nejdřív po posledním úkolu za', 'min'),
-        pole('nocni_mezera',   'Nejkratší noční pauza so → ne', 'min')])
+        pole('nocleh_po_ukolu','Nejdřív po posledním úkolu za', 'min')])
     + skupina('Zaokrouhlení', [
         pole('zaokrouhleni', 'Časy zaokrouhlit na', 'min')])
     + '</div>'
@@ -5842,8 +5841,8 @@ function kresliJakSePocita(){
       + b('mínus ' + PR('obsluha_pred') + ' minut') + ' do posledního '
       + b('plus ' + PR('ukonceni_po') + ' minut') + '. Je tam dřív než ten, kdo otevírá.',
       'Ukončení (PK) = poslední běžec ' + b('plus ' + PR('ukonceni_po') + ' minut') + '.',
-      'Zahájení a ukončení jsou okamžiky, ne směny — hodnota <i>do</i> je <i>od</i> plus '
-      + b(PR('usek') + ' minut') + '.'])
+      'Otevřít předávku trvá ' + b(PR('usek_zahajeni') + ' minut') + ', sbalit ji '
+      + b(PR('usek_ukonceni') + ' minut') + ' — o tolik je <i>do</i> dál než <i>od</i>.'])
     + h('Zaokrouhlení', [
       'Na ' + b(PR('zaokrouhleni') + ' minut') + ' na stranu bezpečí: '
       + b('začátky dolů, konce nahoru') + '. Obsluha je tak na místě spíš dřív a odjíždí '
@@ -5861,8 +5860,7 @@ function kresliJakSePocita(){
       + 'tak ' + b(PR('nocleh_po_ukolu') + ' minut po jeho konci') + '.',
       'Konec je ' + b(cas(PR('nocleh_do'))) + ', a když ráno začíná něco dřív, tak '
       + b('v tu chvíli') + '.',
-      'Ze soboty na neděli nocleh vznikne jen tehdy, když je pauza aspoň '
-      + b(Math.round(PR('nocni_mezera')/60*10)/10 + ' hodiny') + ' — kratší přestávka není nocleh.',
+      'Na délku pauzy se nehledí — nocleh vznikne, i když je noc krátká.',
       'Když má většina grupy u té noci ' + b('„' + NERESI + '"') + ', nocleh se nezakládá vůbec '
       + '— ani na pátek, ani na sobotu.',
       'Místo se odvodí z toho, co má vyplněná ' + b('většina členů grupy') + ' ve sloupcích '

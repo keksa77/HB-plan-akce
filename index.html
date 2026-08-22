@@ -84,7 +84,7 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
   @page{margin:12mm 10mm}
   header, nav, .nastroje, .varovani, #plovouciUlozit, #hlaska, #chybovka,
   .sekce:not(.videt), .rozvrh aside, td.smaz, th.smaz, .smazX,
-  #kontrola, #navrhGenerovani, #pruhGenerovani{display:none !important}
+  #kontrola, #navrhGenerovani, #pruhGenerovani, #kolize{display:none !important}
   body{background:#fff;font-size:11px}
   .obal-tab{overflow:visible !important;max-height:none !important}
   .tab{width:100% !important;table-layout:auto !important}
@@ -431,6 +431,9 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
 </div>
 
 <main>
+  <!-- Sem se vypíše, co by uložení přepsalo. Musí to být nad sekcemi, ať to
+       člověk vidí, ať zrovna stojí kdekoli. -->
+  <div id="kolize" style="display:none"></div>
   <div class="varovani vysvetlivky" style="background:#F5F1E7;border-color:#E2D6BF;color:#6b5a3e">
     <b>Značky u řádků.</b> Červená <span class="odznak stary">HB25</span> (loňský ročník) znamená hodnotu jen
     překopírovanou z minulého ročníku, kterou pro letošek nikdo neprošel. Zelená
@@ -1274,8 +1277,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.72";
-const BUILD = "2026-08-22T16:39+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.73";
+const BUILD = "2026-08-22T17:52+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4782,6 +4785,10 @@ let zDatabaze = [];         // které sady se opravdu načetly z databáze
 // Klíče řádků tak, jak vypadaly při načtení. Smazat se pak smí jen to, co v nich
 // bylo a ze stránky zmizelo — řádek, který mezitím přibyl odjinud, zůstane.
 let nacteneKlice = {};
+/* Hodnoty řádků tak, jak vypadaly při načtení. Bez nich se nedá poznat rozdíl
+   mezi „tohle jsem právě smazal" a „tohle jsem nikdy neviděl, protože moje
+   stránka je stará". Podle toho se pozná, co se smí přepsat. */
+let nacteno = {};
 let sadySChybou = [];       // a které se načíst nepovedly — ty se nesmí ukládat
 
 /* ---------- co odkud a jak se jmenuje ----------
@@ -4904,7 +4911,7 @@ function relaceNacti(){
   }catch(e){ relace = null; }
 }
 function relaceZahod(){
-  relace = null; prihlasen = false; mojeUroven = ""; zDatabaze = []; nacteneKlice = {};
+  relace = null; prihlasen = false; mojeUroven = ""; zDatabaze = []; nacteneKlice = {}; nacteno = {};
   try{
     localStorage.removeItem(SB.ulozKlic);
     sessionStorage.removeItem(SB.ulozKlic);
@@ -4995,7 +5002,7 @@ async function nactiZDatabaze(){
   // ani uložit. „poznamky" jsou jen na vědomí; prázdná tabulka mezi ně patří,
   // červený panel na ni vyskakovat nemá.
   const hlaseni = [], poznamky = [];
-  zDatabaze = []; sadySChybou = []; nacteneKlice = {};
+  zDatabaze = []; sadySChybou = []; nacteneKlice = {}; nacteno = {};
   for(const sada of Object.keys(MAPA)){
     const m = MAPA[sada];
     const filtr = (m.rok === true) ? ('&rok=eq.' + encodeURIComponent(rok)) : '';
@@ -5015,6 +5022,7 @@ async function nactiZDatabaze(){
       // Mazani je bezpecne — prazdna mnozina videnych klicu nema co smazat.
       poznamky.push(sada + ': v databázi zatím nic, při uložení se tam data pošlou');
       nacteneKlice[sada] = new Set();
+      nacteno[sada] = {};
       zDatabaze.push(sada);
       continue;
     }
@@ -5028,6 +5036,8 @@ async function nactiZDatabaze(){
       return novy;
     });
     nacteneKlice[sada] = new Set(radky.map(r => klicRadku(sada, zDb(sada, r))));
+    nacteno[sada] = {};
+    D[sada].forEach(r => { nacteno[sada][klicRadku(sada, r)] = snimekRadku(sada, r); });
     zDatabaze.push(sada);
   }
   // Vzor loňska: když už loňský ročník v databázi je, bere se odtud, ne ze
@@ -5187,11 +5197,132 @@ async function obnovRelaci(){
    vrátí jejich id. Maže se jen to, co tahle stránka při načtení viděla a co
    z ní zmizelo — řádek, který mezitím přibyl odjinud, zůstane. Sada, která se
    nepovedla načíst, se přeskočí celá. */
-async function ulozDoDatabaze(){
+/* ---------- ochrana proti přepsání starou stránkou ----------
+   Stránka otevřená před hodinou nese hodnoty, jaké byly tehdy. Když se z ní
+   uloží, přepíše všechno, co mezitím zapsal někdo jiný — a nejhorší je, když
+   přepíše vyplněné políčko prázdnem, protože to nikde nezasvítí. Stalo se to
+   dvakrát: 15. srpna členům grup, 22. srpna limitům značení a úklidu.
+
+   Proto se před zápisem tabulka načte znovu a porovnají se tři stavy: co jsem
+   viděl při načtení, co mám na stránce teď a co je v databázi. Když se pole
+   změnilo v databázi a na stránce jsem se ho nedotkl, převezme se databáze —
+   nemám co přepisovat. Když se změnilo na obou stranách, ukládání se zastaví
+   a rozhodne uživatel. */
+const normHodnota = h => (h === null || h === undefined || h === false) ? ''
+  : (h === true ? 'ano' : String(h).trim());
+function snimekRadku(sada, r){
+  const m = MAPA[sada], v = {};
+  Object.keys(m.pole).forEach(js => { v[js] = normHodnota(r[js]); });
+  return v;
+}
+const NAZVY_POLI = {
+  min_znaceni:'Min značení', max_znaceni:'Max značení', min_uklid:'Min úklid',
+  max_uklid:'Max úklid', kod_tymu:'grupa', stitek:'štítek', poradi:'pořadí',
+  nazev:'název', poznamka:'poznámka', telefon:'telefon', email:'e-mail',
+  cislo_uctu:'číslo účtu', nocleh_patek:'nocleh pátek', nocleh_sobota:'nocleh sobota',
+  odjezd:'odjezd', jmeno:'jméno', popis:'popis', kdy_od:'od', kdy_do:'do',
+  kdy_text:'čas', stav:'stav', parta:'grupa', doprava:'doprava', aktivni:'jede letos'
+};
+const nazevPole = js => NAZVY_POLI[js] || js;
+const NAZVY_SAD = {tymy:'Grupy', clenove:'Členové grup', ukoly:'Úkoly',
+  predavky:'Předávky', nocMista:'Noclehy — místa', nocLide:'Noclehy — lidé',
+  todo:'To-do', velikosti:'Trička', objednavky:'Objednávky triček', uzivatele:'Přístupy'};
+const popisRadku = r => String(r.kod || r.jmeno || r.nazev || r.text || r.cislo || '?');
+
+async function zkontrolujPrepsani(rok){
+  const kolize = [], prevzato = [];
+  for(const sada of Object.keys(MAPA)){
+    const m = MAPA[sada];
+    if(zDatabaze.indexOf(sada) < 0 || !nacteno[sada]) continue;
+    const filtr = (m.rok === true) ? ('&rok=eq.' + encodeURIComponent(rok)) : '';
+    let radky;
+    try{ radky = await sbVse(m.tabulka + '?select=*' + filtr); }
+    catch(e){ continue; }              // nejde přečíst → ať to řekne až samotný zápis
+    const vDb = {};
+    radky.forEach(r => { const js = zDb(sada, r); vDb[klicRadku(sada, js)] = js; });
+    (D[sada] || []).filter(m.filtr || (()=>true)).forEach(r => {
+      const k = klicRadku(sada, r);
+      const pri = nacteno[sada][k], db = vDb[k];
+      if(!pri || !db) return;          // řádek je nový nebo v databázi už není
+      const dbSnim = snimekRadku(sada, db);
+      Object.keys(m.pole).forEach(js => {
+        if(m.klic.indexOf(js) >= 0 || js === 'id') return;
+        const puvod = pri[js], ted = normHodnota(r[js]), vDbH = dbSnim[js];
+        if(vDbH === puvod) return;                       // databáze se nezměnila
+        if(ted === puvod){ r[js] = db[js]; prevzato.push(sada); return; }
+        kolize.push({sada, klic:k, popis:popisRadku(r), pole:js,
+                     moje:ted, vDb:vDbH, puvodni:puvod, radek:r, dbHodnota:db[js]});
+      });
+    });
+  }
+  return {kolize, prevzato};
+}
+
+let cekajiciKolize = null;
+function ukazKolize(kolize, prevzato){
+  cekajiciKolize = kolize;
+  const cil = $('#kolize');
+  const radek = x => '<li><b>' + esc(NAZVY_SAD[x.sada] || x.sada) + ' · ' + esc(x.popis)
+    + '</b> — ' + esc(nazevPole(x.pole)) + ': moje <b>'
+    + esc(x.moje === '' ? '(prázdné)' : x.moje) + '</b>, v databázi <b>'
+    + esc(x.vDb === '' ? '(prázdné)' : x.vDb) + '</b></li>';
+  const mazani = kolize.filter(x => x.moje === '');
+  cil.innerHTML = '<div class="karta"><h2>Uložení zastaveno — přepsalo by cizí změny</h2>'
+    + '<div class="telo">'
+    + '<p class="popisek">Tahle stránka má jiné hodnoty, než co je teď v databázi, a jiné '
+    + 'i než co viděla při načtení. Někdo (nebo jiná otevřená záložka) je mezitím změnil. '
+    + 'Nic se zatím neuložilo.'
+    + (mazani.length ? ' <b>Pozor: ' + mazani.length + ' z toho by vyplněnou hodnotu smazalo.</b>' : '')
+    + '</p>'
+    + (prevzato ? '<p class="popisek">Beze slova jsem převzal ' + prevzato
+        + ' polí, kterých ses na téhle stránce nedotkl.</p>' : '')
+    + '<ul>' + kolize.slice(0,60).map(radek).join('') + '</ul>'
+    + (kolize.length > 60 ? '<p class="popisek">…a dalších ' + (kolize.length-60) + '.</p>' : '')
+    + '<div style="margin-top:14px;display:flex;gap:9px;flex-wrap:wrap">'
+    + '<button class="tl hlavni" title="Vezme hodnoty z databáze a teprve pak uloží. Tvoje verze těch políček se zahodí." onclick="prevezmiZDatabaze()">Nechat, co je v databázi</button>'
+    + '<button class="tl" title="Uloží tvoje hodnoty a cizí změny přepíše. Použij, jen když víš, že tvoje verze je ta správná." onclick="prepisPresto()">Přepsat mým</button>'
+    + '<button class="tl" title="Zavře tenhle panel a neuloží nic." onclick="zrusKolize()">Zrušit</button>'
+    + '</div></div></div>';
+  cil.style.display = '';
+  cil.scrollIntoView({block:'start', behavior:'smooth'});
+}
+function zrusKolize(){
+  cekajiciKolize = null;
+  $('#kolize').style.display = 'none';
+  hlaska('Neuloženo, na stránce se nic nezměnilo.');
+}
+function prevezmiZDatabaze(){
+  if(!cekajiciKolize){ zrusKolize(); return; }
+  cekajiciKolize.forEach(x => { x.radek[x.pole] = x.dbHodnota; });
+  const kolik = cekajiciKolize.length;
+  cekajiciKolize = null;
+  $('#kolize').style.display = 'none';
+  vseKresli();
+  hlaska('Převzato ' + kolik + ' hodnot z databáze, ukládám…');
+  ulozDoDatabaze({bezKontroly:true});
+}
+function prepisPresto(){
+  cekajiciKolize = null;
+  $('#kolize').style.display = 'none';
+  ulozDoDatabaze({bezKontroly:true});
+}
+
+async function ulozDoDatabaze(volby){
   if(!prihlasen){ hlaska('Nejste přihlášen, ukládat není kam'); return; }
   const tl = $('#tlUlozitDb');
   if(tl){ tl.disabled = true; tl.textContent = 'Ukládám…'; }
   const rok = D.nastaveni.aktivni_rok;
+  if(!(volby && volby.bezKontroly)){
+    try{
+      const {kolize, prevzato} = await zkontrolujPrepsani(rok);
+      if(kolize.length){
+        if(tl){ tl.disabled = false; tl.textContent = 'Uložit do databáze'; }
+        ukazKolize(kolize, prevzato.length);
+        return;
+      }
+      if(prevzato.length){ vseKresli(); }
+    }catch(e){ /* kontrola nesmí zabránit uložení, jen ho hlídá */ }
+  }
   const hotovo = [], potize = [], preskoceno = [], nedodelky = [];
   let smazano = 0;
 
@@ -5252,6 +5383,9 @@ async function ulozDoDatabaze(){
         // po uložení platí nový stav
         nacteneKlice[sada] = ted;
       }
+      // Uložené hodnoty jsou od téhle chvíle to, proti čemu se příště porovnává.
+      nacteno[sada] = {};
+      radky.forEach(r => { nacteno[sada][klicRadku(sada, r)] = snimekRadku(sada, r); });
 
       hotovo.push(sada + ' (' + radky.length + ')');
     }catch(e){

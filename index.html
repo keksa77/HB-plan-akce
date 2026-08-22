@@ -702,8 +702,8 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
         <p class="popisek">Jedenatřicet míst, poslední je cíl v Mikulově. GPS a soubor GPX se
           plní od ročníku HB26 dál. Kilometry na následující předávku jsou dopočítané
           z tabulky vzdalenosti, proto se needitují. Časy prvního a posledního běžce jsou
-          průměr skutečných hodnot z HB24 a HB25 a slouží k odhadu, jak dlouho musí být
-          předávka otevřená.</p>
+          skutečné hodnoty z HB25 a slouží k odhadu, jak dlouho musí být předávka otevřená.
+          Berou se ze stejného zdroje jako graf níž, takže se nemůžou rozejít; needitují se.</p>
         <div class="obal-tab lepivaHlava"><table class="tab" id="tabPredavky"></table></div>
       </div>
     </div>
@@ -713,8 +713,8 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
       <div class="telo">
         <p class="popisek">Každý pruh je jedna předávka. Světlá část je od prvního
           po posledního běžce, tmavá půlka pole uprostřed a bílá čárka medián.
-          Skutečné časy z ročníku 2025, tabulka nad grafem má stejná čísla zprůměrovaná
-          s HB24. Šedý pás je tma mezi západem a východem slunce.</p>
+          Skutečné časy z ročníku 2025 — tabulka nad grafem bere první a poslední
+          běžce odsud, takže sedí na minutu. Šedý pás je tma mezi západem a východem slunce.</p>
         <div id="grafPredavky" style="position:relative"></div>
       </div>
     </div>
@@ -785,8 +785,9 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     <div class="karta">
       <h2>Jak se co počítá</h2>
       <div class="telo">
-        <p class="popisek">Čísla v tomhle přehledu nejsou přepsaná ručně — berou se ze stejných
-          konstant, podle kterých se opravdu počítá. Když se pravidlo změní, změní se i tady.</p>
+        <p class="popisek">Podle těchhle čísel se dopočítávají časy v plánu. Dají se změnit
+          a popis pod nimi se změní s nimi — je vypsaný z týchž hodnot, podle kterých se počítá,
+          takže se nemůže rozejít se skutečností.</p>
         <div id="jakSePocita" style="font-size:13px;line-height:1.75"></div>
       </div>
     </div>
@@ -1054,7 +1055,7 @@ body.mobil.host .vysvetlivky { display: none; }
    ============================================================ */
 
 const D = {
-  nastaveni: { aktivni_rok: "HB26", datum_zavodu: "" },
+  nastaveni: { aktivni_rok: "HB26", datum_zavodu: "", pravidla: {} },
 
   // tymy_org (HB25) + barva a doprava pro potřeby prototypu
   tymy: [
@@ -1311,8 +1312,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.88";
-const BUILD = "2026-08-22T22:39+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.89";
+const BUILD = "2026-08-22T23:05+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -3735,6 +3736,21 @@ function kresliPredavky(){
 // minuty od půlnoci soboty; z HB25_vysledky_etap.csv, jeden chybný zápis vyřazen
 const GRAF_HB25 = [[1,360,420,520,615,700,84],[2,410,484,567,666,749,84],[3,489,560,641,737,810,84],[4,533,603,684,774,848,84],[5,579,654,724,814,884,84],[6,626,705,769,859,918,84],[7,668,752,816,903,960,84],[8,745,812,882,967,1020,84],[9,792,865,930,1010,1071,84],[10,859,938,999,1083,1131,83],[11,909,987,1046,1120,1170,83],[12,988,1064,1129,1189,1258,83],[13,1053,1123,1183,1243,1317,83],[14,1120,1195,1245,1298,1381,83],[15,1183,1266,1312,1361,1446,83],[16,1248,1325,1376,1419,1501,83],[17,1304,1380,1431,1482,1572,82],[18,1380,1459,1510,1553,1627,83],[19,1430,1517,1560,1605,1687,83],[20,1512,1591,1630,1672,1792,83],[21,1570,1662,1692,1737,1805,83],[22,1616,1714,1749,1787,1922,83],[23,1686,1773,1809,1843,1980,83],[24,1761,1850,1886,1921,2063,83],[25,1828,1911,1949,1989,2145,83],[26,1897,1977,2026,2055,2213,83],[27,1943,2031,2072,2099,2261,83],[28,1987,2076,2113,2150,2322,83],[29,2043,2130,2174,2202,2380,83],[30,2085,2175,2228,2254,2435,83],[31,2152,2241,2287,2327,2497,83]];
 
+/* Časy prvního a posledního běžce jsou SKUTEČNÉ časy z HB25 — ne průměr přes
+   ročníky. Berou se z téhož zdroje jako graf pod tabulkou předávek, aby se
+   nemohly rozejít: r[1] je první běžec, r[5] poslední, v minutách od sobotní
+   půlnoci. */
+function casyZavoduHB25(cislo){
+  const r = GRAF_HB25.find(x => x[0] === cislo);
+  return r ? {prvni: grafCas(r[1]), posledni: grafCas(r[5])} : null;
+}
+function doplnCasyBezcu(){
+  (D.predavky || []).forEach(p => {
+    const c = casyZavoduHB25(p.cislo);
+    if(c){ p.prvni = c.prvni; p.posledni = c.posledni; }
+  });
+}
+
 function grafCas(m){
   const d = Math.floor(m/1440), h = Math.floor((m%1440)/60), mi = Math.round(m%60);
   return (d===0?"so ":"ne ") + h + ":" + String(mi).padStart(2,"0");
@@ -4156,13 +4172,30 @@ function dopoctiPrejezdy(){
    2. Jakmile do odvozeného řádku někdo sáhne, příznak spadne a řádek se stane
       ručním. Bez toho by generátor tiše mazal opravy. */
 
-const ODSTUP_ZAHAJENI = 25;   // minut PŘED prvním běžcem — kdo předávku otevírá, přijede jak stíhá
-const ODSTUP_OBSLUHA  = 40;   // minut PŘED prvním běžcem — kdo předávku drží, má tam být dřív
-const ODSTUP_UKONCENI = 20;   // minut PO posledním běžci
-const NOCNI_MEZERA    = 4*60; // kratší pauza mezi sobotou a nedělí se za nocleh nepovažuje
-const NOCLEH_OD       = 22*60; // ve kolik se jde spát, když se stihne
-const NOCLEH_DO       = 7*60;  // a kdy se vstává, když nic nezačíná dřív
-const NOCLEH_PO_UKOLU = 60;    // hodina od konce posledního úkolu na cestu a spaní
+/* Čísla, podle kterých se počítá, nejsou v kódu — sedí v nastavení a dají se
+   změnit bez zásahu do programu. Tohle jsou jen výchozí hodnoty pro případ,
+   že v databázi ještě nic není. */
+const PRAVIDLA_VYCHOZI = {
+  zahajeni_pred:   25,      // minut PŘED prvním běžcem — kdo předávku otevírá, přijede jak stíhá
+  obsluha_pred:    40,      // minut PŘED prvním běžcem — kdo ji drží, má tam být dřív
+  ukonceni_po:     20,      // minut PO posledním běžci
+  usek:            10,      // délka okamžiku: „do" = „od" + tolik minut
+  zaokrouhleni:    10,      // na kolik minut se časy zaokrouhlují
+  nocleh_od:      '22:00',  // ve kolik se jde spát, když se stihne
+  nocleh_do:      '07:00',  // a kdy se vstává, když nic nezačíná dřív
+  nocleh_po_ukolu: 60,      // minut od konce posledního úkolu na cestu a spaní
+  nocni_mezera:   240       // kratší pauza mezi sobotou a nedělí se za nocleh nepovažuje
+};
+const PR = klic => {
+  const v = (D.nastaveni.pravidla || {})[klic];
+  const z = PRAVIDLA_VYCHOZI[klic];
+  if(typeof z === 'string'){                       // čas „22:00" → minuty
+    const t = String(v == null || v === '' ? z : v).match(/^(\d{1,2}):(\d{2})$/);
+    return t ? (+t[1])*60 + (+t[2]) : (String(z).split(':').reduce((a,b)=>a*60+ +b, 0));
+  }
+  const c = Number(v);
+  return (v == null || v === '' || !isFinite(c)) ? z : c;
+};
 
 // „so 06:54" → minuty od začátku čtvrtka; a zpátky
 function casNaMinuty(t){
@@ -4196,7 +4229,10 @@ function volnyKod(zaklad){
 /* Čas na desetiminutovky, na stranu bezpečí: začátek dolů, konec nahoru.
    Obsluha má být na místě spíš dřív a odjíždět spíš později, než kdy tam
    někdo poběží. */
-const naDesitky = (m, nahoru) => nahoru ? Math.ceil(m/10)*10 : Math.floor(m/10)*10;
+const naDesitky = (m, nahoru) => {
+  const k = Math.max(1, PR('zaokrouhleni'));
+  return (nahoru ? Math.ceil(m/k) : Math.floor(m/k)) * k;
+};
 // „8:50" — bez nuly vpředu, ať to sedí se zápisem, který je v plánu odjakživa
 const hodinaMinuta = m => {
   const x = ((m % (4*1440)) + 4*1440) % (4*1440);
@@ -4233,11 +4269,11 @@ function spocitejGenerovani(){
     if(u.typ === 'P'){
       const zac = casNaMinuty(p.prvni), kon = casNaMinuty(p.posledni);
       if(zac == null || kon == null) return;
-      const od = naDesitky(zac - ODSTUP_OBSLUHA, false);
-      const doKdy = naDesitky(kon + ODSTUP_UKONCENI, true);
+      const od = naDesitky(zac - PR('obsluha_pred'), false);
+      const doKdy = naDesitky(kon + PR('ukonceni_po'), true);
       casy.push({u, text: rozsahCasu(od, doKdy),
-                 proc: 'první běžec ' + p.prvni + ' − ' + ODSTUP_OBSLUHA + ' min'
-                     + ' až poslední ' + p.posledni + ' + ' + ODSTUP_UKONCENI + ' min'});
+                 proc: 'první běžec ' + p.prvni + ' − ' + PR('obsluha_pred') + ' min'
+                     + ' až poslední ' + p.posledni + ' + ' + PR('ukonceni_po') + ' min'});
       return;
     }
 
@@ -4246,11 +4282,11 @@ function spocitejGenerovani(){
     // Zaokrouhlení na desetiminutovky na stranu bezpečí a „do" o deset minut dál:
     // zahájení i ukončení je okamžik, ne směna.
     const jeZahajeni = (u.typ === 'PZ');
-    const novy = naDesitky(zaklad + (jeZahajeni ? -ODSTUP_ZAHAJENI : ODSTUP_UKONCENI), !jeZahajeni);
-    casy.push({u, text: rozsahCasu(novy, novy + 10),
+    const novy = naDesitky(zaklad + (jeZahajeni ? -PR('zahajeni_pred') : PR('ukonceni_po')), !jeZahajeni);
+    casy.push({u, text: rozsahCasu(novy, novy + PR('usek')),
                proc: (jeZahajeni
-                 ? ('první běžec ' + zdroj + ' − ' + ODSTUP_ZAHAJENI + ' min')
-                 : ('poslední běžec ' + zdroj + ' + ' + ODSTUP_UKONCENI + ' min'))
+                 ? ('první běžec ' + zdroj + ' − ' + PR('zahajeni_pred') + ' min')
+                 : ('poslední běžec ' + zdroj + ' + ' + PR('ukonceni_po') + ' min'))
                  + ', zaokrouhleno na 10 min ' + (jeZahajeni ? 'dolů' : 'nahoru')});
   });
 
@@ -4307,7 +4343,7 @@ function spocitejGenerovani(){
       const po   = rada.filter(x => (rozeberCas(nahled.get(x.u) || x.u.kdy_text).den || x.u.den) === doDen);
       if(!pred.length || !po.length) return;
       const konec = pred[pred.length-1], zacatek = po[0];
-      if(znak === 'so' && (zacatek.m - konec.m) < NOCNI_MEZERA) return;
+      if(znak === 'so' && (zacatek.m - konec.m) < PR('nocni_mezera')) return;
       const kde = noclehGrupy(t.kod, znak);
       /* Kdy se spí. Začátek je 22:00, a když se grupa do té doby nestihne dostat
          z posledního úkolu, tak hodinu po jeho konci. Konec je 7:00, a když
@@ -4316,9 +4352,9 @@ function spocitejGenerovani(){
       const cK = casUkoluCely(konec.u);
       const konecMinuty = minuty(cK.den || odDen, cK.do || cK.od);
       const denOd = Math.max(0, DNY.indexOf(odDen)), denDo = Math.max(0, DNY.indexOf(doDen));
-      const od = Math.max(denOd*1440 + NOCLEH_OD,
-                          (konecMinuty == null ? -Infinity : konecMinuty + NOCLEH_PO_UKOLU));
-      const doKdy = Math.min(denDo*1440 + NOCLEH_DO,
+      const od = Math.max(denOd*1440 + PR('nocleh_od'),
+                          (konecMinuty == null ? -Infinity : konecMinuty + PR('nocleh_po_ukolu')));
+      const doKdy = Math.min(denDo*1440 + PR('nocleh_do'),
                              (zacatek.m == null ? Infinity : zacatek.m));
       const maCas = isFinite(od) && isFinite(doKdy) && doKdy > od;
       navrhy.push({
@@ -5368,8 +5404,10 @@ async function nactiZDatabaze(){
   // nastavení je jediný řádek, jde mimo mapu
   try{
     const n = await sbDotaz('nastaveni?select=*&id=eq.1');
-    if(n.length){ D.nastaveni.aktivni_rok = n[0].aktivni_rok; D.nastaveni.datum_zavodu = n[0].datum_zavodu || ''; }
+    if(n.length){ D.nastaveni.aktivni_rok = n[0].aktivni_rok; D.nastaveni.datum_zavodu = n[0].datum_zavodu || '';
+      D.nastaveni.pravidla = n[0].pravidla || {}; }
   }catch(e){ hlaseni.push('nastavení: ' + e.message); }
+  doplnCasyBezcu();          // časy běžců se berou z HB25, ne z toho, co přišlo z databáze
   return {potize: hlaseni, poznamky};
 }
 const klicRadku = (sada, r) => MAPA[sada].klic.map(k => r[k]).join('|');
@@ -5702,7 +5740,9 @@ async function ulozDoDatabaze(volby){
     await sbDotaz('nastaveni?on_conflict=id', {
       method:'POST',
       headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
-      body: JSON.stringify([{id:1, aktivni_rok:D.nastaveni.aktivni_rok, datum_zavodu:D.nastaveni.datum_zavodu || null}])
+      body: JSON.stringify([{id:1, aktivni_rok:D.nastaveni.aktivni_rok,
+                             datum_zavodu:D.nastaveni.datum_zavodu || null,
+                             pravidla:D.nastaveni.pravidla || {}}])
     });
   }catch(e){ potize.push('nastavení: ' + e.message); }
 
@@ -5740,40 +5780,89 @@ async function ulozDoDatabaze(volby){
    výpočet, aby nešel popis a skutečnost rozejít. */
 function kresliJakSePocita(){
   const el = $('#jakSePocita'); if(!el) return;
-  const h = (nadpis, radky) => '<h4 style="margin:14px 0 4px;font-size:13px;color:var(--olive)">'
+  const h = (nadpis, radky) => '<h4 style="margin:16px 0 4px;font-size:13px;color:var(--olive)">'
     + nadpis + '</h4>' + radky.map(r=>'<div>' + r + '</div>').join('');
   const b = t => '<b>' + t + '</b>';
+  const cas = m => Math.floor(m/60) + ':' + String(m%60).padStart(2,'0');
+
+  // ---- políčka, kterými se ta čísla mění
+  const smi = smiPsat();
+  const pole = (klic, popis, jednotka) => {
+    const vych = PRAVIDLA_VYCHOZI[klic];
+    const je = (D.nastaveni.pravidla || {})[klic];
+    const hodnota = (je == null || je === '') ? vych : je;
+    const jeCas = (typeof vych === 'string');
+    return '<label style="display:flex;align-items:center;gap:8px;margin:0">'
+      + '<span style="flex:1 1 auto;font-size:12.5px">' + popis + '</span>'
+      + '<input type="' + (jeCas ? 'time' : 'number') + '" value="' + esc(hodnota) + '"'
+      + (jeCas ? '' : ' min="0" step="1"')
+      + (smi ? '' : ' disabled')
+      + ' title="Výchozí hodnota je ' + esc(vych) + '. Prázdné políčko se vrátí na ni."'
+      + ' onchange="zmenPravidlo(\'' + klic + '\', this.value)"'
+      + ' style="width:96px;padding:5px 7px;border:1px solid var(--linka);border-radius:7px;font:inherit">'
+      + (jednotka ? '<span class="popisek" style="width:34px">' + jednotka + '</span>'
+                  : '<span style="width:34px"></span>')
+      + '</label>';
+  };
+  const skupina = (nadpis, radky) =>
+    '<div style="background:#FAF8F4;border:1px solid var(--linka);border-radius:10px;'
+    + 'padding:10px 13px;flex:1 1 320px;min-width:300px">'
+    + '<div style="font-size:11.5px;font-weight:800;color:var(--olive);text-transform:uppercase;'
+    + 'letter-spacing:.04em;margin-bottom:7px">' + nadpis + '</div>'
+    + '<div style="display:flex;flex-direction:column;gap:6px">' + radky.join('') + '</div></div>';
+
   el.innerHTML =
-    h('Odkud se berou časy', [
-      'Sloupce <i>První běžec</i> a <i>Poslední běžec</i> u předávek jsou průměr skutečných '
-      + 'časů z HB24 a HB25. Nejsou to plánované hodnoty, ale co se opravdu stalo.',
+    '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px">'
+    + skupina('Předávka', [
+        pole('obsluha_pred',  'Obsluha přijede před prvním běžcem', 'min'),
+        pole('zahajeni_pred', 'Zahájení začíná před prvním běžcem', 'min'),
+        pole('ukonceni_po',   'Ukončení končí po posledním běžci', 'min'),
+        pole('usek',          'Zahájení a ukončení trvá', 'min')])
+    + skupina('Nocleh', [
+        pole('nocleh_od',      'Spát se jde v'),
+        pole('nocleh_do',      'Vstává se v'),
+        pole('nocleh_po_ukolu','Nejdřív po posledním úkolu za', 'min'),
+        pole('nocni_mezera',   'Nejkratší noční pauza so → ne', 'min')])
+    + skupina('Zaokrouhlení', [
+        pole('zaokrouhleni', 'Časy zaokrouhlit na', 'min')])
+    + '</div>'
+    + '<p class="popisek" style="margin:4px 0 0">Změna se projeví hned ve výpočtu i v popisu níž. '
+    + 'Uloží se do databáze spolu se zbytkem — platí pak pro každého. '
+    + 'Prázdné políčko znamená výchozí hodnotu.</p>'
+
+    + h('Odkud se berou časy', [
+      'Sloupce <i>První běžec</i> a <i>Poslední běžec</i> u předávek jsou '
+      + b('skutečné časy z HB25') + ' — ne odhad a ne průměr přes ročníky. Berou se ze '
+      + 'stejného zdroje jako graf pod tabulkou předávek, aby se nemohly rozejít.',
       'Kilometry a minuty mezi předávkami jsou z tabulky vzdáleností a needitují se.'])
-    + h('Zahájení a ukončení předávky', [
-      'Zahájení (PZ) = první běžec ' + b('mínus ' + ODSTUP_ZAHAJENI + ' minut') + '. '
-      + 'Kdo předávku otevírá, přijede jak stíhá.',
-      'Ukončení (PK) = poslední běžec ' + b('plus ' + ODSTUP_UKONCENI + ' minut') + '.',
+    + h('Zahájení, obsluha a ukončení předávky', [
+      'Zahájení (PZ) = první běžec ' + b('mínus ' + PR('zahajeni_pred') + ' minut')
+      + '. Kdo předávku otevírá, přijede jak stíhá.',
       'Obsluha (P) drží předávku celou: od prvního běžce '
-      + b('mínus ' + ODSTUP_OBSLUHA + ' minut') + ' do posledního '
-      + b('plus ' + ODSTUP_UKONCENI + ' minut') + '. Je tam dřív než ten, kdo otevírá — '
-      + 'proto větší odstup než u zahájení.',
-      'Obojí se zaokrouhlí na desetiminutovky na stranu bezpečí: '
-      + b('začátky dolů, konce nahoru') + '. Obsluha je tak na místě spíš dřív a odjíždí spíš '
-      + 'později, než kdy tam někdo poběží.',
-      'Hodnota <i>do</i> je vždycky <i>od</i> plus 10 minut — je to okamžik, ne směna.'])
+      + b('mínus ' + PR('obsluha_pred') + ' minut') + ' do posledního '
+      + b('plus ' + PR('ukonceni_po') + ' minut') + '. Je tam dřív než ten, kdo otevírá.',
+      'Ukončení (PK) = poslední běžec ' + b('plus ' + PR('ukonceni_po') + ' minut') + '.',
+      'Zahájení a ukončení jsou okamžiky, ne směny — hodnota <i>do</i> je <i>od</i> plus '
+      + b(PR('usek') + ' minut') + '.'])
+    + h('Zaokrouhlení', [
+      'Na ' + b(PR('zaokrouhleni') + ' minut') + ' na stranu bezpečí: '
+      + b('začátky dolů, konce nahoru') + '. Obsluha je tak na místě spíš dřív a odjíždí '
+      + 'spíš později, než kdy tam někdo poběží.'])
     + h('Kdo to dělá', [
       'Nikdo — ' + b('grupy výpočet nepřiděluje') + '. Kdo předávku otevírá a zavírá, '
       + 'rozhoduješ ty v mřížce; dopočítá se jen čas u políček, která už grupu mají.'])
     + h('Přejezdy (A)', [
       'Vznikají mezi dvěma po sobě jdoucími místy jedné grupy, seřazenými podle času. '
-      + 'Kilometry a minuty se berou z tabulky vzdáleností; když vzdálenost neznáme, přejezd nevznikne.'])
+      + 'Trvají od konce dřívějšího úkolu do začátku pozdějšího. Kilometry a minuty se berou '
+      + 'z tabulky vzdáleností; když vzdálenost neznáme, přejezd nevznikne.'])
     + h('Noclehy (N)', [
       'Jen dvě noci: ' + b('z pátku na sobotu') + ' a ' + b('ze soboty na neděli') + '.',
-      'Začátek je ' + b(hodinaMinuta(NOCLEH_OD)) + ', a když se to z posledního úkolu '
-      + 'nestihne, tak ' + b('hodinu po jeho konci') + '.',
-      'Konec je ' + b(hodinaMinuta(NOCLEH_DO)) + ', a když ráno začíná něco dřív, tak '
+      'Začátek je ' + b(cas(PR('nocleh_od'))) + ', a když se to z posledního úkolu nestihne, '
+      + 'tak ' + b(PR('nocleh_po_ukolu') + ' minut po jeho konci') + '.',
+      'Konec je ' + b(cas(PR('nocleh_do'))) + ', a když ráno začíná něco dřív, tak '
       + b('v tu chvíli') + '.',
       'Ze soboty na neděli nocleh vznikne jen tehdy, když je pauza aspoň '
-      + b(NOCNI_MEZERA/60 + ' hodiny') + ' — kratší přestávka není nocleh.',
+      + b(Math.round(PR('nocni_mezera')/60*10)/10 + ' hodiny') + ' — kratší přestávka není nocleh.',
       'Když má většina grupy u té noci ' + b('„' + NERESI + '"') + ', nocleh se nezakládá vůbec '
       + '— ani na pátek, ani na sobotu.',
       'Místo se odvodí z toho, co má vyplněná ' + b('většina členů grupy') + ' ve sloupcích '
@@ -5785,6 +5874,19 @@ function kresliJakSePocita(){
     + h('Kdy to běží', [
       'Tlačítkem ' + b('Přegenerovat podrobný plán') + ', a pak sám ' + b('po každém uložení')
       + ' do databáze. V obou případech se jen ukáže návrh — mění se to až po odklepnutí.']);
+}
+
+/* Změna jednoho čísla v pravidlech. Prázdná hodnota se vrátí na výchozí. */
+function zmenPravidlo(klic, hodnota){
+  if(!smiPsat()){ hlaska('Na tohle nemáte právo — nastavení jde jen číst.'); return; }
+  if(!D.nastaveni.pravidla) D.nastaveni.pravidla = {};
+  const v = String(hodnota == null ? '' : hodnota).trim();
+  if(v === '') delete D.nastaveni.pravidla[klic];
+  else D.nastaveni.pravidla[klic] = (typeof PRAVIDLA_VYCHOZI[klic] === 'string') ? v : Number(v);
+  oznacZmenu();
+  kresliJakSePocita();
+  planZmenen = true; kresliPruhGenerovani();
+  hlaska('Pravidlo změněno — projeví se při nejbližším dopočtu.');
 }
 
 /* Po uložení: spočítat, co by šlo doplnit, a jen když je co, ukázat návrh.
@@ -6207,6 +6309,7 @@ function dorovnejListu(){
 window.addEventListener('resize', ()=>{ zmerHlavicku(); dorovnejPaletu(); dorovnejListu(); });
 window.addEventListener('scroll', dorovnejPaletu, {passive:true});
 
+doplnCasyBezcu();
 PRAV = slozPravidla('HB');
 nactiVolbuZobrazeni();
 kresliNav();

@@ -642,6 +642,18 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
 
   <!-- 3. ČLENOVÉ PART -->
   <section class="sekce" id="s-clenove">
+    <div class="karta" id="kartaNezarazeni">
+      <h2>Nezařazení</h2>
+      <div class="telo">
+        <p class="popisek">Lidé, kteří se přihlásili, ale ještě nevíš, do které grupy patří.
+          Mají stejná políčka jako členové grup a ukládají se do stejné tabulky — jen zatím
+          bez grupy. Jakmile jim v prvním sloupci grupu vybereš, přeskočí dolů mezi členy.</p>
+        <div class="obal-tab"><table class="tab" id="tabNezarazeni"></table></div>
+        <button class="tl" style="margin-top:10px" title="Přidá prázdný řádek pro člověka, kterého zatím nemáš kam zařadit." onclick="pridej('nezarazeny')">+ Přidat nezařazeného</button>
+        <span class="stav" id="stavNezarazeni" style="margin-left:10px"></span>
+      </div>
+    </div>
+
     <div class="karta">
       <h2>Členové grup — tabulka clenove_tymu</h2>
       <div class="telo">
@@ -1277,8 +1289,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.73";
-const BUILD = "2026-08-22T17:52+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.74";
+const BUILD = "2026-08-22T19:02+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1758,9 +1770,10 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
       novy.scrollIntoView({block:'center', behavior:'smooth'});
       // Když má řádek nevyplněný rozbalovací seznam (typicky Grupa u nového
       // člověka), kurzor patří tam — bez něj se řádek nedá uložit a dřív se
-      // snadno přehlédl, protože kurzor skočil rovnou do jména.
-      const nevybrano = [...novy.querySelectorAll('select:not([disabled])')]
-        .find(s => !s.value);
+      // snadno přehlédl, protože kurzor skočil rovnou do jména. V tabulce
+      // Nezařazení je ale prázdná grupa smyslem věci, tam patří kurzor do jména.
+      const nevybrano = (t.id === 'tabNezarazeni') ? null
+        : [...novy.querySelectorAll('select:not([disabled])')].find(s => !s.value);
       const prvni = nevybrano
         || novy.querySelector('input:not([disabled]),textarea:not([disabled])');
       if(prvni) prvni.focus();
@@ -3404,13 +3417,11 @@ function naplnFiltrPart(){
   f.innerHTML = '<option value="">všechny grupy</option>' +
     volbyGrup(false).map(o=>`<option value="${esc(o.v)}"${o.v===drive?' selected':''}>${esc(o.t)}</option>`).join('');
 }
-function kresliClenove(){
-  const f = $('#filtrParty').value;
-  const vsichni = zivi();
-  // rozdělaný řádek bez grupy je vidět vždycky, i když filtr ukazuje jednu grupu
-  const videt = (f ? vsichni.filter(c=>c.kod_tymu===f || (!c.kod_tymu && c._nove)) : vsichni.slice())
-                 .sort(poradiClenu);
-  tabulka('#tabClenove', bezCitlivych([
+/* Nezařazení a členové grup jsou jedna a ta samá data, jen rozdělená podle toho,
+   jestli už člověk grupu má. Sloupce proto musí být doslova stejné — kdyby se
+   rozešly, vypadalo by přeřazení jako ztráta údajů. */
+function sloupceClenu(){
+  return bezCitlivych([
     {nadpis:"Grupa", pole:"kod_tymu", typ:"select", sirka:"175px",
       moznosti:(r)=>(r && !r.kod_tymu) ? volbyGrup('— vyberte grupu —', false)
                                        : volbyGrup(false, false, r && r.kod_tymu)},
@@ -3430,16 +3441,39 @@ function kresliClenove(){
       napovedaSl:"Ve kterých ročnících byl člověk na téhle předávce — třeba „HB22, HB24, HB25\". "
         + "Bere se z tabulek HB24 public a z CRM; u nových lidí zůstává prázdné."},
     {nadpis:"Poznámka", pole:"poznamka", viceradkove:true, maxRadky:2}
-  ]), videt, (r)=>{
-    if(r && r.sef==='ano'){                     // šéf smí být v grupě jen jeden
-      D.clenove.forEach(c=>{ if(c!==r && c.kod_tymu===r.kod_tymu) c.sef = 'ne'; });
-    }
-    kresliClenove(); kresliPaletu(); kresliPlan(); kresliTymy(); naplnFiltrPart(); kresliSouhrnNoclehu();
-    if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
-  }, true, undefined, D.clenove, odlozDoHistorie);
+  ]);
+}
+
+function poZmeneClena(r){
+  // šéf smí být v grupě jen jeden; mezi nezařazenými se šéf neřeší
+  if(r && r.sef === 'ano' && r.kod_tymu){
+    D.clenove.forEach(c=>{ if(c !== r && c.kod_tymu === r.kod_tymu) c.sef = 'ne'; });
+  }
+  kresliClenove(); kresliPaletu(); kresliPlan(); kresliTymy(); naplnFiltrPart(); kresliSouhrnNoclehu();
+  if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
+}
+
+function kresliClenove(){
+  const f = $('#filtrParty').value;
+  const vsichni = zivi();
+  const nezarazeni = vsichni.filter(c => !c.kod_tymu)
+    .sort((a,b)=>String(a.jmeno||'').localeCompare(String(b.jmeno||''), 'cs'));
+  const zarazeni = vsichni.filter(c => !!c.kod_tymu);
+  const videt = (f ? zarazeni.filter(c=>c.kod_tymu===f) : zarazeni.slice()).sort(poradiClenu);
+
+  // Nezařazení stojí nad členy a filtr grupy se jich netýká — bez grupy není co filtrovat.
+  tabulka('#tabNezarazeni', sloupceClenu(), nezarazeni, poZmeneClena,
+          true, undefined, D.clenove, odlozDoHistorie);
+  $('#stavNezarazeni').textContent = nezarazeni.length
+    ? (nezarazeni.length === 1 ? 'čeká 1 člověk' : 'čeká ' + nezarazeni.length + ' lidí')
+    : 'nikdo nečeká na zařazení';
+
+  tabulka('#tabClenove', sloupceClenu(), videt, poZmeneClena,
+          true, undefined, D.clenove, odlozDoHistorie);
   schovejKontakty();
   const vHistorii = D.clenove.length - vsichni.length;
-  $('#stavClenove').textContent = videt.length + ' z ' + vsichni.length + ' lidí'
+  $('#stavClenove').textContent = videt.length + ' z ' + zarazeni.length + ' lidí'
+    + (nezarazeni.length ? ' · nezařazených ' + nezarazeni.length : '')
     + (vHistorii ? ' · v historii ' + vHistorii : '');
   kresliHistorii();
 }
@@ -4660,7 +4694,16 @@ function pridej(co){
             odjezd:""};
     D.clenove.push(novy);
     kam = grupa ? ('člověk do grupy ' + popisGrupy(grupa))
-                : 'člověk — nejdřív mu v prvním sloupci vyberte grupu';
+                : 'člověk zatím bez grupy — čeká nahoře mezi nezařazenými, '
+                  + 'grupu mu vyberte v prvním sloupci';
+    kresliClenove();
+  }
+  if(co==='nezarazeny'){
+    novy = {kod_tymu:"", jmeno:"", sef:"ne", telefon:"", email:"",
+            nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", rocniky:"", poznamka:"",
+            odjezd:""};
+    D.clenove.push(novy);
+    kam = 'člověk bez grupy — grupu mu doplníš, až se rozhodneš';
     kresliClenove();
   }
   if(co==='nocMista'){
@@ -4690,7 +4733,7 @@ function pridej(co){
   oznacZmenu();
   // překreslit ještě jednou, ať se značka nového řádku projeví a stránka na něj sjede
   if(co==='tymy') kresliTymy();
-  if(co==='clenove') kresliClenove();
+  if(co==='clenove' || co==='nezarazeny') kresliClenove();
   if(co==='nocMista') kresliNocMista();
   if(co==='objednavka') kresliObjednavky();
   if(co==='uroven') kresliPristupy();
@@ -4812,12 +4855,14 @@ const MAPA = {
           nocleh_patek:'nocleh_patek', nocleh_sobota:'nocleh_sobota',
           cislo_uctu:'cislo_uctu', poznamka:'poznamka', sef:'sef', historie:'historie',
           rocniky:'rocniky', odjezd:'odjezd'},
-    // Bez grupy se člověk uložit nedá — kod_tymu je v databázi povinný a musí
-    // ukazovat na existující grupu. Takový řádek se přeskočí a save o něm nahlas
-    // řekne, místo aby celá dávka spadla na cizí klíč.
-    filtr: r => !!r.kod_tymu,
-    nedodelky: r => !r.kod_tymu
-      ? ((r.jmeno || 'řádek bez jména') + ' nemá vybranou grupu') : null,
+    // Člověk bez grupy je od v4.74 platný řádek — sedí v tabulce Nezařazení a
+    // v databázi má kod_tymu prázdný (sloupec je nullable, cizí klíč se na NULL
+    // neptá). Dřív se takový řádek při ukládání tiše zahazoval. Beze jména se
+    // ale uložit nedá, jméno je povinné.
+    filtr: r => !!String(r.jmeno || '').trim(),
+    nedodelky: r => !String(r.jmeno || '').trim()
+      ? ('řádek bez jména' + (r.kod_tymu ? ' v grupě ' + r.kod_tymu : ' mezi nezařazenými')
+         + ' se neuloží') : null,
     naJs:  r => ({...r, sef: r.sef ? 'ano' : 'ne'}),
     // historie je v databázi povinná, prázdná hodnota by shodila celou dávku
     naDb:  r => ({...r, sef: r.sef === 'ano', historie: !!r.historie})

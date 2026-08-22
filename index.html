@@ -1302,8 +1302,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.80";
-const BUILD = "2026-08-22T21:03+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.81";
+const BUILD = "2026-08-22T21:24+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4071,6 +4071,9 @@ function dopoctiPrejezdy(){
 const ODSTUP_ZAHAJENI = 40;   // minut PŘED prvním běžcem
 const ODSTUP_UKONCENI = 20;   // minut PO posledním běžci
 const NOCNI_MEZERA    = 4*60; // kratší pauza mezi sobotou a nedělí se za nocleh nepovažuje
+const NOCLEH_OD       = 22*60; // ve kolik se jde spát, když se stihne
+const NOCLEH_DO       = 7*60;  // a kdy se vstává, když nic nezačíná dřív
+const NOCLEH_PO_UKOLU = 60;    // hodina od konce posledního úkolu na cestu a spaní
 
 // „so 06:54" → minuty od začátku čtvrtka; a zpátky
 function casNaMinuty(t){
@@ -4110,6 +4113,11 @@ const hodinaMinuta = m => {
   const x = ((m % (4*1440)) + 4*1440) % (4*1440);
   return Math.floor((x%1440)/60) + ':' + String(x%60).padStart(2,'0');
 };
+// do databáze naopak s nulou: „08:50"
+const hodinaMinutaDb = m => {
+  const x = ((m % (4*1440)) + 4*1440) % (4*1440);
+  return String(Math.floor((x%1440)/60)).padStart(2,'0') + ':' + String(x%60).padStart(2,'0');
+};
 
 /* Dva dopočítané řádky jsou tentýž řádek, když sedí grupa, druh a popis. Kód
    se do porovnání nepočítá — ten se při zakládání odvozuje z pořadí a měnil by
@@ -4120,38 +4128,6 @@ const podpisOdvozeneho = u => [u.typ, u.parta, String(u.popis||'').trim()].join(
 function spocitejGenerovani(){
   const pridat = [], casy = [], navrhy = [];
 
-  /* ---- 0) chybějící zahájení a ukončení tam, kde už stojí obsluha
-     Kdo předávku celý den drží, ji zpravidla i otevírá a zavírá. Když tedy
-     v mřížce visí obsluha a políčko PZ nebo PK je prázdné, nabídne se stejná
-     grupa i tam — i s časem a popisem. Nic se nepřepisuje: co už vyplněné je,
-     zůstane, a provede se to teprve po odklepnutí návrhu. */
-  [{typ:'PZ', slovo:'Zahájení předávky', cas:p=>p.prvni, posun:-ODSTUP_ZAHAJENI, nahoru:false,
-    proc:'první běžec'},
-   {typ:'PK', slovo:'Ukončení předávky', cas:p=>p.posledni, posun:ODSTUP_UKONCENI, nahoru:true,
-    proc:'poslední běžec'}].forEach(r => {
-    (D.predavky||[]).forEach(p => {
-      if(najdi(r.typ, p.cislo)) return;                 // políčko už obsazené
-      const kod = r.typ + p.cislo;
-      if(D.ukoly.some(u => u.kod === kod)) return;      // kód by se pral s jiným úkolem
-      const obsluha = najdi('P', p.cislo);
-      if(!obsluha || !obsluha.parta) return;            // bez obsluhy nemáme koho tam napsat
-      const zdroj = r.cas(p);
-      const zaklad = casNaMinuty(zdroj);
-      const od = (zaklad == null) ? null : naDesitky(zaklad + r.posun, r.nahoru);
-      const text = (od == null) ? '' : (minutyNaCas(od) + ' – ' + hodinaMinuta(od + 10));
-      const c = text ? rozeberCas(text) : {den:'', od:'', do:''};
-      pridat.push({
-        parta: obsluha.parta, typ: r.typ, kod: kod, cislo: p.cislo,
-        den: c.den, kdy_od: c.od, kdy_do: c.do, kdy_text: text,
-        popis: r.slovo + ' ' + String(p.cislo).padStart(2,'0') + ' ' + (p.nazev||'')
-             + (r.typ === 'PK' ? ', odvoz materiálu — banner, flag (pokud bude)' : ''),
-        stav: 'plán', zdroj: 'generováno', odhad: !!text,
-        _proc: 'obsluhu drží ' + popisGrupy(obsluha.parta)
-             + (text ? (', ' + r.proc + ' ' + zdroj) : ', čas předávky neznáme')
-      });
-    });
-  });
-
   // ---- 1) chybějící časy zahájení a ukončení předávky
   rucni().forEach(u => {
     if(u.typ !== 'PZ' && u.typ !== 'PK') return;
@@ -4159,11 +4135,15 @@ function spocitejGenerovani(){
     const p = D_predavka(u.cislo); if(!p) return;
     const zdroj = (u.typ === 'PZ') ? p.prvni : p.posledni;
     const zaklad = casNaMinuty(zdroj); if(zaklad == null) return;
-    const novy = zaklad + (u.typ === 'PZ' ? -ODSTUP_ZAHAJENI : ODSTUP_UKONCENI);
-    casy.push({u, text: minutyNaCas(novy),
-               proc: (u.typ === 'PZ')
+    // Zaokrouhlení na desetiminutovky na stranu bezpečí a „do" o deset minut dál:
+    // zahájení i ukončení je okamžik, ne směna.
+    const jeZahajeni = (u.typ === 'PZ');
+    const novy = naDesitky(zaklad + (jeZahajeni ? -ODSTUP_ZAHAJENI : ODSTUP_UKONCENI), !jeZahajeni);
+    casy.push({u, text: minutyNaCas(novy) + ' – ' + hodinaMinuta(novy + 10),
+               proc: (jeZahajeni
                  ? ('první běžec ' + zdroj + ' − ' + ODSTUP_ZAHAJENI + ' min')
-                 : ('poslední běžec ' + zdroj + ' + ' + ODSTUP_UKONCENI + ' min')});
+                 : ('poslední běžec ' + zdroj + ' + ' + ODSTUP_UKONCENI + ' min'))
+                 + ', zaokrouhleno na 10 min ' + (jeZahajeni ? 'dolů' : 'nahoru')});
   });
 
   // časy se do řetězce musí promítnout hned, jinak by přejezdy počítaly ze starého
@@ -4204,15 +4184,33 @@ function spocitejGenerovani(){
       u.typ === 'N' && u.parta === t.kod && String(u.kod||'').endsWith('-' + noc));
     [['PÁ','SO','p'], ['SO','NE','so']].forEach(([odDen, doDen, znak]) => {
       if(maRucniNocleh(znak)) return;
+      // Když má grupa u té noci „neřeší se", není co plánovat — řádek nevznikne.
+      // Platí to stejně pro pátek i pro sobotu.
+      if(noclehGrupyHodnota(t.kod, znak) === NERESI) return;
       const pred = rada.filter(x => (rozeberCas(nahled.get(x.u) || x.u.kdy_text).den || x.u.den) === odDen);
       const po   = rada.filter(x => (rozeberCas(nahled.get(x.u) || x.u.kdy_text).den || x.u.den) === doDen);
       if(!pred.length || !po.length) return;
       const konec = pred[pred.length-1], zacatek = po[0];
       if(znak === 'so' && (zacatek.m - konec.m) < NOCNI_MEZERA) return;
       const kde = noclehGrupy(t.kod, znak);
+      /* Kdy se spí. Začátek je 22:00, a když se grupa do té doby nestihne dostat
+         z posledního úkolu, tak hodinu po jeho konci. Konec je 7:00, a když
+         ráno začíná něco dřív, tak v tu chvíli. Konec předchozího úkolu je jeho
+         „do"; když ho nemá, bere se „od". */
+      const konecMinuty = minuty(konec.u.den || odDen, konec.u.kdy_do || konec.u.kdy_od);
+      const denOd = Math.max(0, DNY.indexOf(odDen)), denDo = Math.max(0, DNY.indexOf(doDen));
+      const od = Math.max(denOd*1440 + NOCLEH_OD,
+                          (konecMinuty == null ? -Infinity : konecMinuty + NOCLEH_PO_UKOLU));
+      const doKdy = Math.min(denDo*1440 + NOCLEH_DO,
+                             (zacatek.m == null ? Infinity : zacatek.m));
+      const maCas = isFinite(od) && isFinite(doKdy) && doKdy > od;
       navrhy.push({
         parta: t.kod, typ: 'N', kod: volnyKod('N-'+t.kod+'-'+znak), cislo: null,
-        kdy_text: '', den: odDen, kdy_od: '', kdy_do: '',
+        kdy_text: maCas ? (odDen.toLowerCase() + ' ' + hodinaMinuta(od) + ' – '
+                           + doDen.toLowerCase() + ' ' + hodinaMinuta(doKdy)) : '',
+        den: odDen,
+        kdy_od: maCas ? hodinaMinutaDb(od) : '',
+        kdy_do: maCas ? hodinaMinutaDb(doKdy) : '',
         popis: 'nocleh ' + (znak === 'p' ? 'z pátku na sobotu' : 'ze soboty na neděli')
              + (kde ? ' — ' + kde : ' — místo nevyplněno, doplňte'),
         stav: 'plán', zdroj: 'generováno', odvozeno: true,
@@ -4239,14 +4237,18 @@ function spocitejGenerovani(){
   return {pridat, smazat, casy};
 }
 
-// kde grupa spí — podle toho, co mají vyplněno její členové
-function noclehGrupy(kod, znak){
+// co má u té noci vyplněná většina členů grupy — holá hodnota, jak je v číselníku
+function noclehGrupyHodnota(kod, znak){
   const pole = (znak === 'p') ? 'nocleh_patek' : 'nocleh_sobota';
   const poc = {};
   zivi().filter(c => c.kod_tymu === kod).forEach(c => {
     const v = (c[pole]||'').trim(); if(v) poc[v] = (poc[v]||0) + 1;
   });
-  const nej = Object.keys(poc).sort((a,b) => poc[b]-poc[a])[0];
+  return Object.keys(poc).sort((a,b) => poc[b]-poc[a])[0] || '';
+}
+// a totéž vypsané pro člověka: kód i název ubytování
+function noclehGrupy(kod, znak){
+  const nej = noclehGrupyHodnota(kod, znak);
   if(!nej) return '';
   const m = (D.nocMista||[]).find(x => x.kod === nej);
   return m ? (m.kod + ' ' + (m.nazev||'')).trim() : nej;
@@ -5608,15 +5610,21 @@ function kresliJakSePocita(){
       + 'později, než kdy tam někdo poběží.',
       'Hodnota <i>do</i> je vždycky <i>od</i> plus 10 minut — je to okamžik, ne směna.'])
     + h('Kdo to dělá', [
-      'Když v mřížce stojí obsluha (P) a zahájení nebo ukončení chybí, nabídne se tam '
-      + b('stejná grupa, která předávku drží') + '. Kde obsluha není, se grupa nevymýšlí.'])
+      'Nikdo — ' + b('grupy výpočet nepřiděluje') + '. Kdo předávku otevírá a zavírá, '
+      + 'rozhoduješ ty v mřížce; dopočítá se jen čas u políček, která už grupu mají.'])
     + h('Přejezdy (A)', [
       'Vznikají mezi dvěma po sobě jdoucími místy jedné grupy, seřazenými podle času. '
       + 'Kilometry a minuty se berou z tabulky vzdáleností; když vzdálenost neznáme, přejezd nevznikne.'])
     + h('Noclehy (N)', [
-      'Vznikají v mezeře přes noc mezi posledním úkolem jednoho dne a prvním úkolem dalšího. '
-      + 'Ze soboty na neděli jen tehdy, když je pauza aspoň ' + b(NOCNI_MEZERA/60 + ' hodiny')
-      + ' — kratší přestávka není nocleh.',
+      'Jen dvě noci: ' + b('z pátku na sobotu') + ' a ' + b('ze soboty na neděli') + '.',
+      'Začátek je ' + b(hodinaMinuta(NOCLEH_OD)) + ', a když se to z posledního úkolu '
+      + 'nestihne, tak ' + b('hodinu po jeho konci') + '.',
+      'Konec je ' + b(hodinaMinuta(NOCLEH_DO)) + ', a když ráno začíná něco dřív, tak '
+      + b('v tu chvíli') + '.',
+      'Ze soboty na neděli nocleh vznikne jen tehdy, když je pauza aspoň '
+      + b(NOCNI_MEZERA/60 + ' hodiny') + ' — kratší přestávka není nocleh.',
+      'Když má většina grupy u té noci ' + b('„' + NERESI + '"') + ', nocleh se nezakládá vůbec '
+      + '— ani na pátek, ani na sobotu.',
       'Místo se odvodí z toho, co má vyplněná ' + b('většina členů grupy') + ' ve sloupcích '
       + 'Nocleh pátek a Nocleh sobota.'])
     + h('Čeho se výpočet nedotkne', [

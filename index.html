@@ -42,6 +42,13 @@ main{max-width:1560px;margin:0 auto;padding:18px 22px 70px}
 .varovani b{color:#5d3810}
 
 .nastroje{display:flex;gap:8px;align-items:center;margin:0 0 12px;flex-wrap:wrap}
+/* Lišta s tlačítky a filtry se drží pod hlavičkou ve všech sekcích, ne jen
+   v podrobném plánu. Bez toho člověk u dlouhé tabulky odscrolluje filtry pryč
+   a musí se pro ně vracet nahoru. */
+.sekce .nastroje{position:sticky;top:var(--hlavicka,92px);z-index:8;
+  background:var(--papir);padding:9px 0;margin:0 0 12px;
+  box-shadow:0 6px 8px -8px rgba(75,41,20,.35)}
+body.mobil .sekce .nastroje{position:static;box-shadow:none;padding:0}
 /* Tlačítka jsou schválně světlá: tmavý text na světlém podkladu se čte líp než
    bílé písmo na sytém pozadí, a na slunci u trati to platí dvojnásob. Barvy nejsou
    z palety HB, jde o kontrast — všechny dvojice mají poměr přes 7:1 (norma chce 4,5). */
@@ -69,8 +76,34 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
 .tab tbody tr:nth-child(even){background:#FCFAF7}
 .tab tbody tr:hover{background:#F6F1E9}
 
+/* ---- tisk a PDF ----
+   Bez tohohle se do PDF vysypala celá stránka i s navigací, tlačítky a všemi
+   ostatními sekcemi. Tiskne se jen otevřená sekce a v ní jen data. */
+@media print{
+  @page{margin:12mm 10mm}
+  header, nav, .nastroje, .varovani, #plovouciUlozit, #hlaska, #chybovka,
+  .sekce:not(.videt), .rozvrh aside, td.smaz, th.smaz, .smazX,
+  #kontrola, #navrhGenerovani, #pruhGenerovani{display:none !important}
+  body{background:#fff;font-size:11px}
+  .obal-tab{overflow:visible !important;max-height:none !important}
+  .tab{width:100% !important;table-layout:auto !important}
+  .tab thead th{position:static !important;background:#EDEAE1 !important;color:#000 !important;
+    border-bottom:1.5px solid #666;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .tab th, .tab td{border:.5px solid #bbb;padding:3px 5px !important}
+  .tab input, .tab select, .tab textarea{border:0 !important;background:none !important;
+    padding:0 !important;font-size:11px !important;color:#000 !important;appearance:none}
+  .tab tbody tr{break-inside:avoid;page-break-inside:avoid}
+  thead{display:table-header-group}     /* hlavička se opakuje na každé stránce */
+  .tiskHlava{display:block !important}
+  a[href]:after{content:""}
+}
+.tiskHlava{display:none;margin:0 0 10px;padding-bottom:6px;border-bottom:2px solid #000}
+.tiskHlava b{font-size:15px}
+.tiskHlava span{display:block;font-size:11px;color:#333;margin-top:2px}
+
 /* ---- podrobný plán: jedna plochá tabulka přes všechny grupy ---- */
-.podrobnyTab thead th{position:sticky;top:0;z-index:5}
+.podrobnyTab thead th{position:sticky;z-index:5;
+  top:calc(var(--hlavicka,92px) + var(--listaVyska,47px))}
 .podrobnyTab tbody tr.novaGrupa td{border-top:2px solid var(--khaki)}
 .grupaOdznak{display:inline-block;border-radius:7px;padding:0 2px;vertical-align:middle}
 .grupaOdznak select{width:auto;min-width:56px;color:#fff;font-weight:800;font-size:12.5px;
@@ -78,11 +111,8 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
 .grupaOdznak select option{color:var(--tmava);background:#fff;font-weight:600}
 .grupaJmeno{display:inline-block;margin-left:7px;font-size:12.5px;color:var(--tmava);
   vertical-align:middle;max-width:112px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* filtry ať zůstanou nad tabulkou i při scrollování dlouhého plánu */
-#s-podrobny .nastroje{position:sticky;top:var(--hlavicka,92px);z-index:8;
-  background:var(--papir);padding:9px 0;margin:0 0 12px;
-  box-shadow:0 6px 8px -8px rgba(75,41,20,.35)}
-.podrobnyTab thead th{top:calc(var(--hlavicka,92px) + 47px)}
+/* podrobný plán se řídí stejným pravidlem jako ostatní sekce, jen si drží
+   vlastní z-index kvůli odznakům grup */
 .tab input,.tab select,.tab textarea{width:100%;border:0;background:transparent;font:inherit;
   font-size:13px;padding:7px 8px;color:var(--tmava);border-radius:0}
 .tab textarea{line-height:1.4;min-height:32px}
@@ -193,6 +223,12 @@ body.mobil .tymy{max-height:none;overflow-y:visible}
 .mrizka tfoot td.etapa .cislo{font-size:12px;font-weight:700;color:var(--olive)}
 .mrizka tfoot td.etapa .misto{display:block;font-size:10.5px;color:var(--pisek);font-weight:400}
 body.mobil .mrizka tfoot tr.soucty > td{position:static}
+
+/* Kolik toho grupa má proti tomu, kolik chtěla. */
+.kap{display:inline-block;font-size:13px;font-weight:700;color:var(--pisek);line-height:1.15}
+.kap i{display:block;font-style:normal;font-size:10px;font-weight:600;opacity:.85}
+.kap.sedi{color:#31501A}
+.kap.mimo{color:#8A2F38}
 
 /* Hodnota, která si odporuje s jinou v témže řádku. */
 .tab input.chybnaHodnota{background:#FDF3F4;border-color:#C2707A;color:#8A2F38;font-weight:700}
@@ -561,12 +597,17 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
         <select id="filtrStav" title="Ukáže jen úkoly v jednom stavu — plán, nepotvrzeno, potvrzeno, zrušeno." onchange="kresliPodrobny()"
           style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
       </label>
-      <button class="tl" title="Zruší všechny čtyři filtry a ukáže celý plán." onclick="zrusFiltryPodrobny()">Zrušit filtry</button>
-      <button class="tl" title="Otevře tiskový dialog prohlížeče. Volbou Uložit jako PDF z toho uděláte PDF." onclick="window.print()">Tisk / PDF</button>
+      <label class="stav" title="Ukáže jen úkoly, kterým něco chybí — grupa, popis nebo čas.">
+        <input type="checkbox" id="filtrNeuplne" onchange="kresliPodrobny()" style="margin-right:5px">
+        Jen neúplné
+      </label>
+      <button class="tl" title="Zruší všechny filtry a ukáže celý plán." onclick="zrusFiltryPodrobny()">Zrušit filtry</button>
+      <button class="tl" title="Vytiskne jen to, co je právě vidět — když máte nastavený filtr grupy, vyjede plán jen pro ni. Volbou Uložit jako PDF z toho uděláte PDF." onclick="tiskniPodrobny()">Tisk / PDF</button>
       <button class="tl hlavni" title="Spočítá, co v podrobném plánu chybí — přejezdy, noclehy a časy předávek — a nejdřív ukáže, co by se změnilo. Ručně zadané úkoly nechá být." onclick="ukazNavrhGenerovani()">Přegenerovat podrobný plán</button>
       <button class="tl" title="Projde u každé grupy sled úkolů a označí místa, kam by nestihla dojet." onclick="zkontrolujNavaznosti()">Zkontrolovat návaznosti</button>
       <span class="stav" id="stavPodrobny"></span>
     </div>
+    <div class="tiskHlava" id="tiskHlava"></div>
     <div id="kontrola"></div>
     <div id="podrobny"></div>
   </section>
@@ -1222,8 +1263,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.68";
-const BUILD = "2026-08-22T15:43+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.70";
+const BUILD = "2026-08-22T16:04+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1421,6 +1462,10 @@ function prepni(id){
     if(b) b.classList.toggle('aktivni', z.id===id);
   });
   zavriEditor();
+  // Sloupce „teď" u grup se počítají z aktuálních úkolů, takže se musí přepočítat
+  // pokaždé, když se na tu záložku přijde — v mřížce se mezitím mohlo přehazovat.
+  if(id==="s-tymy") kresliTymy();
+  setTimeout(dorovnejListu, 0);
   if(id==="s-todo") kresliTodo();
   if(id==="s-podrobny") kresliPodrobny();
   if(id==="s-pristupy") kresliPristupy();
@@ -3035,13 +3080,46 @@ function naplnFiltryPodrobny(){
   $('#seznamKodu').innerHTML = kody.map(k=>`<option value="${esc(k)}">`).join('');
 }
 
+/* Tisk bere to, co je zrovna vyfiltrované — takže „vytisknout plán jedné grupy"
+   znamená vybrat ji ve filtru a dát Tisk. Do záhlaví se napíše, čí plán to je,
+   ať se papír na předávce nedá splést s jiným. */
+function tiskniPodrobny(){
+  const g = $('#filtrPodrobny').value;
+  const t = $('#filtrTyp').value;
+  const st = $('#filtrStav').value;
+  const neuplne = $('#filtrNeuplne') && $('#filtrNeuplne').checked;
+  const upresneni = [
+    g  ? 'grupa ' + popisGrupy(g) : 'všechny grupy',
+    t  ? NAZVY_TYPU[t] : null,
+    st ? 'stav ' + st : null,
+    neuplne ? 'jen neúplné' : null
+  ].filter(Boolean).join(' · ');
+
+  const h = $('#tiskHlava');
+  h.innerHTML = '<b>Hory Bory ' + esc(D.nastaveni.aktivni_rok) + ' — podrobný plán</b>'
+    + '<span>' + esc(upresneni) + ' · ' + esc($('#stavPodrobny').textContent || '') + '</span>';
+  window.print();
+}
+
 function zrusFiltryPodrobny(){
   $('#filtrPodrobny').value = '';
   $('#filtrTyp').value = '';
   $('#filtrKod').value = '';
   $('#filtrStav').value = '';
+  $('#filtrNeuplne').checked = false;
   kresliPodrobny();
 }
+
+/* Neúplný řádek = chybí mu něco, bez čeho se podle něj nedá jet: grupa, popis
+   nebo čas. Vypíše se čím, aby bylo hned vidět co doplnit. */
+function coChybi(u){
+  const chybi = [];
+  if(!u.parta) chybi.push('grupa');
+  if(!u.popis || !String(u.popis).trim()) chybi.push('popis');
+  if(!u.kdy_od && !String(u.kdy_text||'').trim()) chybi.push('čas');
+  return chybi;
+}
+const jeNeuplny = u => coChybi(u).length > 0;
 
 // pořadí grup pro řazení plochého seznamu
 function poradiGrupy(kod){
@@ -3064,11 +3142,13 @@ function kresliPodrobny(){
     .sort((a,b)=> (a.g-b.g) || (a.k-b.k) || (a.i-b.i))
     .map(o=>o.x);
 
+  const fn = $('#filtrNeuplne') && $('#filtrNeuplne').checked;
   const u = vsechny.filter(x =>
        (!fp || x.parta===fp)
     && (!ft || x.typ===ft)
     && (!fk || String(x.kod||'').toLowerCase().indexOf(fk)>=0)
-    && (!fs || x.stav===fs));
+    && (!fs || x.stav===fs)
+    && (!fn || jeNeuplny(x)));
 
   const cil = $('#podrobny'); cil.innerHTML = '';
 
@@ -3204,15 +3284,45 @@ function kresliTymy(){
     {nadpis:"Max značení", pole:"max_znaceni", typ:"number", sirka:"105px", trida:"stred",
       napovedaSl:"Nejvíc etap trasování, které grupa zvládne. Když je menší než minimum, "
         + "políčko zčervená — databáze to nehlídá, hlídá to tahle tabulka."},
+    {nadpis:"Značení teď", sirka:"98px", trida:"stred", html:(r)=>bunkaKapacity(r,'T'),
+      napovedaSl:"Kolik etap trasování má grupa právě teď v mřížce. Zelená znamená, "
+        + "že sedí do zadaného rozpětí, červená že je mimo. Počítá se za běhu, needituje se."},
     {nadpis:"Min úklid", pole:"min_uklid", typ:"number", sirka:"95px", trida:"stred",
       napovedaSl:"Nejmíň etap úklidu značení. Nechte prázdné, když grupa neuklízí."},
     {nadpis:"Max úklid", pole:"max_uklid", typ:"number", sirka:"95px", trida:"stred",
       napovedaSl:"Nejvíc etap úklidu značení, které grupa zvládne."},
+    {nadpis:"Úklid teď", sirka:"92px", trida:"stred", html:(r)=>bunkaKapacity(r,'U'),
+      napovedaSl:"Kolik etap úklidu má grupa právě teď v mřížce. Zelená sedí do rozpětí, "
+        + "červená je mimo. Počítá se za běhu, needituje se."},
     {nadpis:"Barva", pole:"barva", typ:"color", sirka:"80px"},
     {nadpis:"Poznámka", pole:"poznamka", viceradkove:true, maxRadky:2}
   ], D.tymy, ()=>{kresliTymy();kresliPaletu();naplnFiltrPart();kresliPlan();
                   if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();}, true);
   hlidejKapacitu();
+}
+
+/* Kolik etap má grupa zrovna přidělených a jestli to sedí do jejího rozpětí.
+   Bez tohohle srovnání je min/max jen dvojice čísel, ke kterým se člověk musí
+   dopočítávat sám. Počítá se z živých úkolů, neukládá se nikam. */
+function bunkaKapacity(r, typ){
+  const kolik = (D.ukoly || []).filter(u =>
+    u.typ === typ && u.parta === r.kod && u.cislo != null && !u.auto && !u.odvozeno).length;
+  const cislo = h => (h === '' || h == null) ? null : +h;
+  const mn = cislo(typ === 'T' ? r.min_znaceni : r.min_uklid);
+  const mx = cislo(typ === 'T' ? r.max_znaceni : r.max_uklid);
+
+  // bez zadaného rozpětí není co porovnávat — jen počet, tiše
+  if(mn == null && mx == null)
+    return '<span class="kap" title="Rozpětí není zadané, tak se nic nehodnotí.">' + kolik + '</span>';
+
+  const malo = mn != null && kolik < mn;
+  const moc  = mx != null && kolik > mx;
+  const rozpeti = (mn == null ? '?' : mn) + '–' + (mx == null ? '?' : mx);
+  const proc = malo ? ('Chybí ' + (mn - kolik) + ' do minima ' + mn + '.')
+             : moc  ? ('O ' + (kolik - mx) + ' víc, než je maximum ' + mx + '.')
+             : ('Sedí do rozpětí ' + rozpeti + '.');
+  return '<span class="kap ' + (malo || moc ? 'mimo' : 'sedi') + '" title="' + esc(proc) + '">'
+       + kolik + '<i>z ' + rozpeti + '</i></span>';
 }
 
 /* Maximum menší než minimum je nesmysl, ale v databázi to schválně nehlídá žádné
@@ -5567,7 +5677,17 @@ function dorovnejPaletu(){
   const misto = window.innerHeight - shora - pod - 22;
   pal.style.maxHeight = Math.max(140, Math.round(misto)) + 'px';
 }
-window.addEventListener('resize', ()=>{ zmerHlavicku(); dorovnejPaletu(); });
+/* Výška lišty s filtry se liší sekci od sekce — v podrobném plánu je vyšší než
+   u grup. Hlavička tabulky se musí lepit přesně pod ni, jinak buď plave, nebo
+   překryje první řádek. Měří se při přepnutí sekce a při změně okna. */
+function dorovnejListu(){
+  const sekce = document.querySelector('.sekce.videt');
+  const lista = sekce ? sekce.querySelector('.nastroje') : null;
+  const v = (lista && !document.body.classList.contains('mobil'))
+          ? Math.round(lista.getBoundingClientRect().height) : 0;
+  document.documentElement.style.setProperty('--listaVyska', v + 'px');
+}
+window.addEventListener('resize', ()=>{ zmerHlavicku(); dorovnejPaletu(); dorovnejListu(); });
 window.addEventListener('scroll', dorovnejPaletu, {passive:true});
 
 PRAV = slozPravidla('HB');
@@ -5581,6 +5701,7 @@ napisJakDiktovat();
 otevriVhodnou('s-ukoly');
 zmerHlavicku();
 dorovnejPaletu();
+dorovnejListu();
 </script>
 </body>
 </html>

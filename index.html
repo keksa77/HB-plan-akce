@@ -1289,8 +1289,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.74";
-const BUILD = "2026-08-22T19:02+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.75";
+const BUILD = "2026-08-22T19:18+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -3431,16 +3431,16 @@ function sloupceClenu(){
         + "Šéf může být v grupě jen jeden — když ho označíte, předchozímu se příznak sundá."},
     {nadpis:"Telefon", pole:"telefon", sirka:"150px"},
     {nadpis:"E-mail", pole:"email", sirka:"230px"},
-    {nadpis:"Nocleh pátek", pole:"nocleh_patek", typ:"select", moznosti:volbyNoclehu, sirka:"140px"},
-    {nadpis:"Nocleh sobota", pole:"nocleh_sobota", typ:"select", moznosti:volbyNoclehu, sirka:"140px"},
     {nadpis:"Odjezd", pole:"odjezd", sirka:"150px",
       napovedaSl:"Kdy člověk ze závodu odjíždí — třeba „ne dopoledne\" nebo „so po 20:00\". "
         + "Volný text, nic se nehlídá; slouží k plánování odvozů a noclehů."},
-    {nadpis:"Číslo účtu", pole:"cislo_uctu", sirka:"160px"},
+    {nadpis:"Nocleh pátek", pole:"nocleh_patek", typ:"select", moznosti:volbyNoclehu, sirka:"140px"},
+    {nadpis:"Nocleh sobota", pole:"nocleh_sobota", typ:"select", moznosti:volbyNoclehu, sirka:"140px"},
+    {nadpis:"Poznámka", pole:"poznamka", viceradkove:true, maxRadky:2},
     {nadpis:"Ročníky", pole:"rocniky", sirka:"160px",
       napovedaSl:"Ve kterých ročnících byl člověk na téhle předávce — třeba „HB22, HB24, HB25\". "
         + "Bere se z tabulek HB24 public a z CRM; u nových lidí zůstává prázdné."},
-    {nadpis:"Poznámka", pole:"poznamka", viceradkove:true, maxRadky:2}
+    {nadpis:"Číslo účtu", pole:"cislo_uctu", sirka:"160px"}
   ]);
 }
 

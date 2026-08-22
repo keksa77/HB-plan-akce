@@ -1289,8 +1289,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.75";
-const BUILD = "2026-08-22T19:18+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.76";
+const BUILD = "2026-08-22T19:31+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -3423,8 +3423,12 @@ function naplnFiltrPart(){
 function sloupceClenu(){
   return bezCitlivych([
     {nadpis:"Grupa", pole:"kod_tymu", typ:"select", sirka:"175px",
-      moznosti:(r)=>(r && !r.kod_tymu) ? volbyGrup('— vyberte grupu —', false)
-                                       : volbyGrup(false, false, r && r.kod_tymu)},
+      // „nezařazeno" je plnohodnotná volba: člověk se tím vrátí nahoru do tabulky
+      // Nezařazení, aniž by se musel mazat a zakládat znovu.
+      moznosti:(r)=>(r && !r.kod_tymu) ? volbyGrup('— nezařazeno —', false)
+                                       : volbyGrup('— nezařazeno —', false, r && r.kod_tymu),
+      napovedaSl:"Do které grupy člověk patří. Volbou „— nezařazeno —\" ho vrátíte "
+        + "nahoru mezi nezařazené; údaje si přitom nechá."},
     {nadpis:"Jméno", pole:"jmeno", sirka:"210px"},
     {nadpis:"Šéf grupy", pole:"sef", typ:"select", moznosti:["ne","ano"], sirka:"110px",
       napovedaSl:"Kdo grupu vede. Jeho jméno se ukazuje na všech odznacích grupy. "
@@ -3448,6 +3452,12 @@ function poZmeneClena(r){
   // šéf smí být v grupě jen jeden; mezi nezařazenými se šéf neřeší
   if(r && r.sef === 'ano' && r.kod_tymu){
     D.clenove.forEach(c=>{ if(c !== r && c.kod_tymu === r.kod_tymu) c.sef = 'ne'; });
+  }
+  // Kdo vypadl z grupy, není ani jejím šéfem — jinak by grupě zůstal štítek
+  // podle člověka, který v ní není.
+  if(r && !r.kod_tymu && r.sef === 'ano'){
+    r.sef = 'ne';
+    hlaska((r.jmeno || 'Člověk') + ' je teď nezařazený, šéfovský příznak jsem sundal.');
   }
   kresliClenove(); kresliPaletu(); kresliPlan(); kresliTymy(); naplnFiltrPart(); kresliSouhrnNoclehu();
   if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();

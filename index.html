@@ -42,13 +42,14 @@ main{max-width:1560px;margin:0 auto;padding:18px 22px 70px}
 .varovani b{color:#5d3810}
 
 .nastroje{display:flex;gap:8px;align-items:center;margin:0 0 12px;flex-wrap:wrap}
-/* Lišta s tlačítky a filtry se drží pod hlavičkou ve všech sekcích, ne jen
-   v podrobném plánu. Bez toho člověk u dlouhé tabulky odscrolluje filtry pryč
-   a musí se pro ně vracet nahoru. */
-.sekce .nastroje{position:sticky;top:var(--hlavicka,92px);z-index:8;
+/* Lišta s tlačítky a filtry se drží pod hlavičkou. Lepí se jen řádky označené
+   třídou „lista" — tedy ovládání celé sekce. Řádky tlačítek uvnitř karty
+   (diktát, návrhy) se nelepí schválně: patří k tomu, co je nad nimi, a plavaly
+   by přes obsah karty. */
+.sekce .nastroje.lista{position:sticky;top:var(--hlavicka,92px);z-index:8;
   background:var(--papir);padding:9px 0;margin:0 0 12px;
   box-shadow:0 6px 8px -8px rgba(75,41,20,.35)}
-body.mobil .sekce .nastroje{position:static;box-shadow:none;padding:0}
+body.mobil .sekce .nastroje.lista{position:static;box-shadow:none;padding:0}
 /* Tlačítka jsou schválně světlá: tmavý text na světlém podkladu se čte líp než
    bílé písmo na sytém pozadí, a na slunci u trati to platí dvojnásob. Barvy nejsou
    z palety HB, jde o kontrast — všechny dvojice mají poměr přes 7:1 (norma chce 4,5). */
@@ -437,7 +438,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
 
   <!-- 1. PLÁN ÚKOLŮ -->
   <section class="sekce" id="s-ukoly">
-    <div class="nastroje">
+    <div class="nastroje lista">
       <button class="tl hlavni" id="tlKopirujVse" title="Přepíše celý plán loňským ročníkem. Co máte rozpracované, se ztratí — kromě zamčených úkolů, ty zůstanou." onclick="kopirujVse()">Kopírovat celé loňsko</button>
       <button class="tl" style="opacity:.45" title="Ve veřejné ukázce je tohle tlačítko vypnuté. V plné verzi smaže všechny úkoly ročníku a je chráněné heslem správce." onclick="hlaska('Ve veřejné ukázce je Vyprázdnit plán vypnuté.')">Vyprázdnit plán</button>
       <button class="tl" title="Zvýrazní v mřížce políčka vybrané grupy a ostatní ztlumí. Dalším kliknutím zvýraznění vypnete." onclick="prepniZvyrazneni()">Zvýraznit vybranou grupu</button>
@@ -550,7 +551,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
           <div class="stav" id="stavRucne" style="margin-top:7px"></div>
         </div>
 
-        <div class="nastroje">
+        <div class="nastroje lista">
           <label class="stav">Stav:
             <select id="todoStav" title="Ukáže jen položky v jednom stavu." onchange="kresliTodo()"
               style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
@@ -577,7 +578,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
   </section>
 
   <section class="sekce" id="s-podrobny">
-    <div class="nastroje">
+    <div class="nastroje lista">
       <label class="stav">Grupa:
         <select id="filtrPodrobny" title="Ukáže jen karty jedné grupy." onchange="kresliPodrobny()"
           style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
@@ -633,7 +634,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
       <div class="telo">
         <p class="popisek">Osobní kontakty. V databázi má tahle tabulka zakázané veřejné čtení
           a číslo účtu se používá na proplácení nákladů.</p>
-        <div class="nastroje">
+        <div class="nastroje lista">
           <label class="stav">Filtr grupy:
             <select id="filtrParty" title="Ukáže jen členy jedné grupy." onchange="kresliClenove()" style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
           </label>
@@ -690,7 +691,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
           Načítá se vždy jen jeden ročník — celá tabulka má přes čtyři tisíce řádků.
           Tady se jen prohlíží, měnit se nedá nic.</p>
 
-        <div class="nastroje">
+        <div class="nastroje lista">
           <label class="popisek" style="margin:0">Ročník:
             <select id="fotoRok" onchange="nactiFotky()"></select></label>
           <label class="popisek" style="margin:0">Etapa:
@@ -1263,8 +1264,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.70";
-const BUILD = "2026-08-22T16:04+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.71";
+const BUILD = "2026-08-22T16:19+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -5682,7 +5683,7 @@ function dorovnejPaletu(){
    překryje první řádek. Měří se při přepnutí sekce a při změně okna. */
 function dorovnejListu(){
   const sekce = document.querySelector('.sekce.videt');
-  const lista = sekce ? sekce.querySelector('.nastroje') : null;
+  const lista = sekce ? sekce.querySelector('.nastroje.lista') : null;
   const v = (lista && !document.body.classList.contains('mobil'))
           ? Math.round(lista.getBoundingClientRect().height) : 0;
   document.documentElement.style.setProperty('--listaVyska', v + 'px');

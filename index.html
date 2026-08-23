@@ -609,18 +609,18 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
         <select id="filtrTyp" title="Ukáže jen úkoly jednoho typu, například všechny přejezdy nebo všechny noclehy." onchange="kresliPodrobny()"
           style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
       </label>
-      <label class="stav">Kód:
+      <label class="stav proSpravu">Kód:
         <input id="filtrKod" list="seznamKodu" placeholder="všechny kódy" autocomplete="off"
           title="Napište část kódu, například P1 najde P1 i P10 až P19. Nebo vyberte ze seznamu kódů, které se v plánu opravdu vyskytují."
           oninput="kresliPodrobny()"
           style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px;width:130px">
         <datalist id="seznamKodu"></datalist>
       </label>
-      <label class="stav">Stav:
+      <label class="stav proSpravu">Stav:
         <select id="filtrStav" title="Ukáže jen úkoly v jednom stavu — plán, nepotvrzeno, potvrzeno, zrušeno." onchange="kresliPodrobny()"
           style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
       </label>
-      <label class="stav" title="Ukáže jen úkoly, kterým něco chybí — grupa, popis nebo čas.">
+      <label class="stav proSpravu" title="Ukáže jen úkoly, kterým něco chybí — grupa, popis nebo čas.">
         <input type="checkbox" id="filtrNeuplne" onchange="kresliPodrobny()" style="margin-right:5px">
         Jen neúplné
       </label>
@@ -1022,8 +1022,25 @@ body.mobil table.podrobnyTab td[data-th="Úkol"]::before {
 body.mobil table.podrobnyTab td[data-th="Úkol"] textarea { font-size: 15.5px; line-height: 1.45; }
 body.mobil table.podrobnyTab td[data-th="Grupa"] .grupaOdznak select { font-size: 15px; }
 body.mobil table.podrobnyTab td[data-th="Grupa"] .grupaJmeno { font-weight: 700; }
-body.mobil table.podrobnyTab td[data-th="Od"],
-body.mobil table.podrobnyTab td[data-th="Do"] { padding: 2px 0 !important; }
+/* Karta u trati. Čas je nadpis karty — na něj se člověk dívá první — a popisky
+   sloupců „KDY / KDE" u něj jen zabírají místo, tak se schovají. */
+body.mobil.hostMobil table.podrobnyTab td[data-th="Kdy"],
+body.mobil.hostMobil table.podrobnyTab td[data-th="Kde"] { display: block; padding: 0 !important; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Kdy"]::before,
+body.mobil.hostMobil table.podrobnyTab td[data-th="Kde"]::before { display: none; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Kdy"] b { font-size: 17px; color: var(--hneda); }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Kde"] { font-size: 14.5px; color: var(--pisek) !important;
+  margin-bottom: 4px; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Úkol"] textarea { font-size: 16.5px; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Úkol"]::before { display: none; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Grupa"]::before { display: none; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Grupa"] { padding-top: 6px !important; }
+body.mobil.hostMobil table.podrobnyTab tr { padding: 12px 14px; }
+/* Filtry: nepřihlášenému stačí grupa a typ, a ať jsou přes celou šířku. */
+body.mobil.hostMobil #s-podrobny .nastroje.lista > * { flex: 1 1 100%; }
+body.mobil.hostMobil #s-podrobny .nastroje.lista select { width: 100%; }
+body.mobil.hostMobil #s-podrobny .nastroje.lista .proSpravu,
+body.mobil.hostMobil #s-podrobny .nastroje.lista button { display: none; }
 /* odznak grupy je štítek, ne pruh přes celou šířku */
 body.mobil table.podrobnyTab td[data-th="Grupa"] > .grupaOdznak { flex: 0 0 auto; }
 /* hodnoty jen ke čtení jsou na kartě plnohodnotný obsah, ne šedý doplněk */
@@ -1313,8 +1330,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.91";
-const BUILD = "2026-08-22T23:41+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.92";
+const BUILD = "2026-08-23T00:05+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -3249,16 +3266,30 @@ function poradiGrupy(kod){
 }
 
 function kresliPodrobny(){
+  // podle téhle třídy se kreslí karty u trati místo tabulky pro editaci
+  document.body.classList.toggle('hostMobil', mobil && !prihlasen);
   naplnFiltryPodrobny();
   const fp = $('#filtrPodrobny').value;
   const ft = $('#filtrTyp').value;
   const fk = ($('#filtrKod').value || '').trim().toLowerCase();
   const fs = $('#filtrStav').value;
 
-  // jeden plochý seznam přes všechny grupy: řadí se podle pořadí grupy,
-  // uvnitř grupy podle času (klic) — plán se tak pořád čte grupa po grupě
+  /* Kdo plán edituje, čte ho po grupách — vidí, co která grupa dělá celý den.
+     Kdo si ho jen otevře na mobilu u trati, se ptá „co se děje teď", a tomu
+     odpovídá řazení podle času přes všechny grupy. */
+  const podleCasu = mobil && !prihlasen;
+  /* U trati se řadí podle času, jenže část úkolů má čas jen ve větě („so 6:30")
+     a den prázdný. Tak se čte obojí, a když den chybí a čas ne, bere se sobota —
+     závodní den. Co čas nemá vůbec, jde na konec. */
+  const kdyMinuty = (u, i) => {
+    const r = rozeberCas(u.kdy_text);
+    const od = u.kdy_od || r.od;
+    if(!od) return 1e9 + i;
+    return minuty(u.den || r.den || 'SO', od);
+  };
   const vsechny = D.ukoly
-    .map((x,i)=>({x, g: poradiGrupy(x.parta), k: klic(x, i), i}))
+    .map((x,i)=>({x, g: podleCasu ? 0 : poradiGrupy(x.parta),
+                  k: podleCasu ? kdyMinuty(x, i) : klic(x, i), i}))
     .sort((a,b)=> (a.g-b.g) || (a.k-b.k) || (a.i-b.i))
     .map(o=>o.x);
 
@@ -3295,7 +3326,7 @@ function kresliPodrobny(){
   // vědět kdo, co a kdy. Zbytek (číslo, typ, kód, den, stav, odznak ročníku) by
   // na malém displeji jen překážel, tak se neukazuje.
   const jenCteMobil = mobil && !prihlasen;
-  const PRO_MOBIL = ['Grupa','Úkol','Od','Do'];
+  const PRO_MOBIL = ['Kdy', 'Kde', 'Úkol', 'Grupa'];
 
   let sloupcePodrobny = [
     {nadpis:"Grupa", sirka:"215px", html:grupaSKymBunka,
@@ -3320,12 +3351,29 @@ function kresliPodrobny(){
       html:(r)=> (r.odvozeno ? '<span class="znak-odv">odvozeno</span>' : '')
                + (r.odhad ? ' <span class="znak-odh">odhad</span>' : '')}
   ];
-  if(jenCteMobil) sloupcePodrobny = sloupcePodrobny
-    .filter(x => PRO_MOBIL.indexOf(x.nadpis) >= 0)
-    // Časy jako obyčejný text, ne políčka na psaní. Prohlížeč do prázdného
-    // políčka kreslí „--:-- --" a hodiny, což na kartě jen mate — a nepřihlášený
-    // stejně nic neupravuje. Prázdný čas se tak celý neukáže.
-    .map(x => (x.typ === 'time') ? {nadpis:x.nadpis, pole:x.pole, jenCist:true} : x);
+  /* Karta u trati: nahoře kdy, pak kde, co a kdo. Den i místo se dopisují —
+     „Zahájení předávky, od 6:30" bez dne a bez místa se nedá použít k ničemu.
+     Časy jsou obyčejný text, ne políčka na psaní: prohlížeč do prázdného
+     políčka kreslí „--:-- --" a hodiny, což na kartě jen mate. */
+  if(jenCteMobil) sloupcePodrobny = [
+    {nadpis:"Kdy", jenCist:true, html:(r)=>{
+      // den i čas se berou z políček, a když jsou prázdná, tak z věty „so 6:30"
+      const z = rozeberCas(r.kdy_text);
+      const dK = r.den || z.den;
+      const den = dK ? ({'ČT':'čtvrtek','PÁ':'pátek','SO':'sobota','NE':'neděle'}[dK] || dK) : '';
+      const od = (r.kdy_od || z.od || '').slice(0,5);
+      const doK = (r.kdy_do || z.do || '').slice(0,5);
+      const rozsah = od ? (od + (doK ? ' – ' + doK : ''))
+                        : (String(r.kdy_text||'').trim() || 'čas neurčen');
+      return '<b>' + esc((den ? den + ' ' : '') + rozsah) + '</b>';
+    }},
+    {nadpis:"Kde", jenCist:true, html:(r)=>{
+      const m = r.cislo ? popisPredavky(r.cislo) : '';
+      return m ? esc(r.cislo + ' ' + m) : '';      // prázdná buňka se na kartě neukáže
+    }},
+    {nadpis:"Úkol", pole:"popis", viceradkove:true, maxRadky:3, jenCist:true},
+    {nadpis:"Grupa", jenCist:true, html:grupaSKymBunka}
+  ];
 
   tabulka(tab, sloupcePodrobny, u, (r)=>{
             // Nový řádek dostal kód ještě bez grupy (A-X-01). Jakmile grupu vybereš,

@@ -134,6 +134,34 @@ body.mobil .tab td.dopln{display:none}
 .smazX{background:none;border:0;color:var(--pisek);font:900 15px Nunito,sans-serif;cursor:pointer;
   padding:4px 8px;border-radius:6px}
 .smazX:hover{color:var(--vinova);background:#F7ECED}
+/* ---- výběr, ve kterém jde zaškrtnout víc položek ----
+   Obyčejný rozbalovací seznam umí jednu hodnotu; tohle je tlačítko se shrnutím
+   a pod ním panel se zaškrtávátky. Panel je absolutně umístěný, aby nehýbal
+   výškou lišty, na kterou se lepí hlavička tabulky. */
+.vicevyber{position:relative;display:inline-block}
+.vicevyber > button{font:inherit;padding:3px 24px 3px 8px;border:1px solid var(--linka);
+  border-radius:7px;background:var(--bila);color:var(--tmava);cursor:pointer;text-align:left;
+  min-width:132px;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vicevyber > button::after{content:"▾";position:absolute;right:8px;top:50%;
+  transform:translateY(-50%);pointer-events:none;font-size:11px;color:var(--pisek)}
+.vicevyber > button:hover{border-color:var(--khaki)}
+.vicevyber.otevreny > button{border-color:var(--olive);background:#FBF9F4}
+.vicevyber.maVyber > button{border-color:var(--olive);font-weight:700}
+.vicevyber .panel{position:absolute;z-index:40;top:calc(100% + 4px);left:0;min-width:230px;
+  max-height:340px;overflow-y:auto;background:var(--bila);border:1px solid var(--linka);
+  border-radius:10px;box-shadow:0 10px 24px -12px rgba(75,41,20,.5);padding:6px}
+.vicevyber .panel label{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;
+  cursor:pointer;font-size:13px;white-space:nowrap}
+.vicevyber .panel label:hover{background:#F5F2EA}
+.vicevyber .panel input{width:16px;height:16px;flex:none}
+.vicevyber .hlavaPanelu{display:flex;gap:6px;padding:2px 4px 6px;border-bottom:1px solid var(--linka);
+  margin-bottom:4px}
+.vicevyber .hlavaPanelu button{flex:1;font:700 11.5px Nunito,sans-serif;padding:4px 6px;
+  border:1px solid var(--linka);border-radius:6px;background:var(--bila);cursor:pointer;color:var(--olive)}
+.vicevyber .hlavaPanelu button:hover{background:#F5F2EA}
+body.mobil .vicevyber, body.mobil .vicevyber > button{width:100%;max-width:none}
+body.mobil .vicevyber .panel{left:0;right:0;min-width:0}
+
 .obal-tab{overflow-x:auto;border:1px solid var(--linka);border-radius:12px;background:var(--bila)}
 /* Zelený řádek s názvy sloupců zůstává vidět i při rolování dlouhé tabulky —
    stejně jako v podrobném plánu. Tyhle tabulky jsou širší než okno (grupy mají
@@ -602,12 +630,12 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
   <section class="sekce" id="s-podrobny">
     <div class="nastroje lista">
       <label class="stav">Grupa:
-        <select id="filtrPodrobny" title="Ukáže jen karty jedné grupy." onchange="kresliPodrobny()"
-          style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
+        <span class="vicevyber" id="filtrPodrobny"
+          title="Ukáže jen vybrané grupy. Vybrat jich jde víc naráz."></span>
       </label>
       <label class="stav">Typ:
-        <select id="filtrTyp" title="Ukáže jen úkoly jednoho typu, například všechny přejezdy nebo všechny noclehy." onchange="kresliPodrobny()"
-          style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
+        <span class="vicevyber" id="filtrTyp"
+          title="Ukáže jen vybrané typy úkolů — třeba přejezdy a noclehy naráz."></span>
       </label>
       <label class="stav proSpravu">Kód:
         <input id="filtrKod" list="seznamKodu" placeholder="všechny kódy" autocomplete="off"
@@ -617,8 +645,8 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
         <datalist id="seznamKodu"></datalist>
       </label>
       <label class="stav proSpravu">Stav:
-        <select id="filtrStav" title="Ukáže jen úkoly v jednom stavu — plán, nepotvrzeno, potvrzeno, zrušeno." onchange="kresliPodrobny()"
-          style="font:inherit;padding:3px 6px;border:1px solid var(--linka);border-radius:7px"></select>
+        <span class="vicevyber" id="filtrStav"
+          title="Ukáže jen úkoly ve vybraných stavech. Vybrat jich jde víc."></span>
       </label>
       <label class="stav proSpravu" title="Ukáže jen úkoly, kterým něco chybí — grupa, popis nebo čas.">
         <input type="checkbox" id="filtrNeuplne" onchange="kresliPodrobny()" style="margin-right:5px">
@@ -1330,8 +1358,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.92";
-const BUILD = "2026-08-23T00:05+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.93";
+const BUILD = "2026-08-23T00:14+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -3200,16 +3228,58 @@ function najdiOdkazy(text){
 }
 
 /* ---------- 1b. podrobný plán ---------- */
+/* Vybrané položky filtrů. Prázdná množina znamená „všechno" — tak se filtr
+   chová stejně jako dřív, dokud v něm někdo nezačne zaškrtávat. */
+const FILTRY_PODROBNY = {parta: new Set(), typ: new Set(), stav: new Set()};
+
+/* Výběr, ve kterém jde zaškrtnout víc položek. Kreslí se do <span id=...>;
+   sada je množina vybraných hodnot, popisVse text pro „nic nevybráno". */
+function kresliVicevyber(id, popisVse, polozky, sada){
+  const el = $('#' + id); if(!el) return;
+  const bylOtevreny = el.classList.contains('otevreny');
+  const vybrane = polozky.filter(p => sada.has(p.v));
+  const shrnuti = !vybrane.length ? popisVse
+    : (vybrane.length <= 2 ? vybrane.map(p=>p.t).join(', ')
+                           : vybrane.length + ' vybraných');
+  el.classList.toggle('maVyber', vybrane.length > 0);
+  el.innerHTML = '<button type="button" title="' + esc(shrnuti) + '">' + esc(shrnuti) + '</button>'
+    + '<div class="panel" style="display:' + (bylOtevreny ? 'block' : 'none') + '">'
+    + '<div class="hlavaPanelu"><button type="button" data-vse="1">Vybrat vše</button>'
+    + '<button type="button" data-nic="1">Zrušit výběr</button></div>'
+    + polozky.map(p => '<label><input type="checkbox" value="' + esc(p.v) + '"'
+        + (sada.has(p.v) ? ' checked' : '') + '>' + esc(p.t) + '</label>').join('')
+    + '</div>';
+  const panel = el.querySelector('.panel');
+  el.querySelector('button').onclick = e => {
+    e.preventDefault(); e.stopPropagation();
+    const otevrit = panel.style.display === 'none';
+    zavriVicevybery();
+    panel.style.display = otevrit ? 'block' : 'none';
+    el.classList.toggle('otevreny', otevrit);
+  };
+  panel.onclick = e => e.stopPropagation();
+  panel.querySelector('[data-vse]').onclick = ()=>{ polozky.forEach(p=>sada.add(p.v)); kresliPodrobny(); };
+  panel.querySelector('[data-nic]').onclick = ()=>{ sada.clear(); kresliPodrobny(); };
+  panel.querySelectorAll('input').forEach(i => {
+    i.onchange = ()=>{ i.checked ? sada.add(i.value) : sada.delete(i.value); kresliPodrobny(); };
+  });
+}
+function zavriVicevybery(){
+  document.querySelectorAll('.vicevyber').forEach(v => {
+    v.classList.remove('otevreny');
+    const p = v.querySelector('.panel'); if(p) p.style.display = 'none';
+  });
+}
+document.addEventListener('click', zavriVicevybery);
+
 function naplnFiltryPodrobny(){
-  const fp = $('#filtrPodrobny'), ft = $('#filtrTyp'), fs = $('#filtrStav');
-  const dp = fp.value, dt = ft.value, ds = fs.value;
-  fp.innerHTML = '<option value="">všechny grupy</option>' +
+  kresliVicevyber('filtrPodrobny', 'všechny grupy',
     grupyLetos().slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))
-      .map(t=>`<option value="${esc(t.kod)}"${t.kod===dp?' selected':''}>${esc(popisGrupy(t.kod))}</option>`).join('');
-  ft.innerHTML = '<option value="">všechny typy</option>' +
-    TYPY.map(t=>`<option${t===dt?' selected':''} value="${t}">${NAZVY_TYPU[t]} (${t})</option>`).join('');
-  fs.innerHTML = '<option value="">všechny stavy</option>' +
-    STAVY.map(s=>`<option${s===ds?' selected':''}>${esc(s)}</option>`).join('');
+      .map(t=>({v:t.kod, t:popisGrupy(t.kod)})), FILTRY_PODROBNY.parta);
+  kresliVicevyber('filtrTyp', 'všechny typy',
+    TYPY.map(t=>({v:t, t:(NAZVY_TYPU[t] || t) + ' (' + t + ')'})), FILTRY_PODROBNY.typ);
+  kresliVicevyber('filtrStav', 'všechny stavy',
+    STAVY.map(x=>({v:x, t:x})), FILTRY_PODROBNY.stav);
 
   // našeptávač kódů — jen ty, které se v plánu opravdu vyskytují
   const kody = [...new Set(D.ukoly.map(u=>u.kod).filter(Boolean))].sort((a,b)=>
@@ -3221,14 +3291,13 @@ function naplnFiltryPodrobny(){
    znamená vybrat ji ve filtru a dát Tisk. Do záhlaví se napíše, čí plán to je,
    ať se papír na předávce nedá splést s jiným. */
 function tiskniPodrobny(){
-  const g = $('#filtrPodrobny').value;
-  const t = $('#filtrTyp').value;
-  const st = $('#filtrStav').value;
+  const g = [...FILTRY_PODROBNY.parta], t = [...FILTRY_PODROBNY.typ], st = [...FILTRY_PODROBNY.stav];
   const neuplne = $('#filtrNeuplne') && $('#filtrNeuplne').checked;
   const upresneni = [
-    g  ? 'grupa ' + popisGrupy(g) : 'všechny grupy',
-    t  ? NAZVY_TYPU[t] : null,
-    st ? 'stav ' + st : null,
+    g.length ? ((g.length === 1 ? 'grupa ' : 'grupy ') + g.map(popisGrupy).join(', '))
+             : 'všechny grupy',
+    t.length ? t.map(x => NAZVY_TYPU[x] || x).join(', ') : null,
+    st.length ? ((st.length === 1 ? 'stav ' : 'stavy ') + st.join(', ')) : null,
     neuplne ? 'jen neúplné' : null
   ].filter(Boolean).join(' · ');
 
@@ -3239,10 +3308,8 @@ function tiskniPodrobny(){
 }
 
 function zrusFiltryPodrobny(){
-  $('#filtrPodrobny').value = '';
-  $('#filtrTyp').value = '';
+  FILTRY_PODROBNY.parta.clear(); FILTRY_PODROBNY.typ.clear(); FILTRY_PODROBNY.stav.clear();
   $('#filtrKod').value = '';
-  $('#filtrStav').value = '';
   $('#filtrNeuplne').checked = false;
   kresliPodrobny();
 }
@@ -3269,10 +3336,8 @@ function kresliPodrobny(){
   // podle téhle třídy se kreslí karty u trati místo tabulky pro editaci
   document.body.classList.toggle('hostMobil', mobil && !prihlasen);
   naplnFiltryPodrobny();
-  const fp = $('#filtrPodrobny').value;
-  const ft = $('#filtrTyp').value;
+  const fp = FILTRY_PODROBNY.parta, ft = FILTRY_PODROBNY.typ, fs = FILTRY_PODROBNY.stav;
   const fk = ($('#filtrKod').value || '').trim().toLowerCase();
-  const fs = $('#filtrStav').value;
 
   /* Kdo plán edituje, čte ho po grupách — vidí, co která grupa dělá celý den.
      Kdo si ho jen otevře na mobilu u trati, se ptá „co se děje teď", a tomu
@@ -3297,10 +3362,10 @@ function kresliPodrobny(){
   const u = vsechny.filter(x =>
        // rozdělaný řádek bez grupy je vidět vždycky, jinak by po přidání zmizel
        (x._nove && !x.parta) ||
-       (!fp || x.parta===fp)
-    && (!ft || x.typ===ft)
+       (!fp.size || fp.has(x.parta))
+    && (!ft.size || ft.has(x.typ))
     && (!fk || String(x.kod||'').toLowerCase().indexOf(fk)>=0)
-    && (!fs || x.stav===fs)
+    && (!fs.size || fs.has(x.stav))
     && (!fn || jeNeuplny(x)));
 
   const cil = $('#podrobny'); cil.innerHTML = '';

@@ -131,8 +131,12 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
      roztáhl do šířky a ořezávat by nebylo co */
   white-space:normal;padding:2px 6px;max-height:36px}
 .clenoveVypis b{font-weight:800}
+/* Políčko na čas. Šipka vpravo rozbalí číselník po deseti minutách — dřív se
+   schovávala kvůli šířce, ale bez ní se k nabídce nedá dostat myší. */
 .tab input[type=time]{padding-left:4px;padding-right:0}
-.tab input[type=time]::-webkit-calendar-picker-indicator{display:none}
+.tab input[type=time]::-webkit-calendar-picker-indicator{
+  padding:0;margin:0 1px 0 0;opacity:.45;cursor:pointer}
+.tab input[type=time]:hover::-webkit-calendar-picker-indicator{opacity:.9}
 .tab td.stred input{text-align:center}
 .tab td.smaz{width:34px;text-align:center}
 /* Čerstvě přidaný řádek. Seznamy se řadí, takže nový řádek nepřistane dole,
@@ -305,8 +309,16 @@ body.mobil .mrizka tfoot tr.soucty > td{position:static}
 .mrizka{border:1px solid var(--linka);border-radius:12px;background:var(--bila)}
 .mrizka table{border-collapse:collapse;width:100%}
 .mrizka th,.mrizka td{border-bottom:1px solid var(--linka);padding:0}
+/* Hlavička mřížky se drží pod lištou stejně jako v ostatních tabulkách. Bez ní
+   se po pár etapách přestane poznat, který sloupec je trasování a který úklid.
+   Musí být nad součtovým řádkem (ten má z-index 3), aby se při rolování
+   nepodlézaly. */
 .mrizka thead th{background:var(--zelena);color:#fff;font-size:11px;text-transform:uppercase;
-  letter-spacing:.05em;padding:9px 8px;text-align:left;font-weight:800}
+  letter-spacing:.05em;padding:9px 8px;text-align:left;font-weight:800;
+  position:sticky;top:calc(var(--hlavicka,92px) + var(--listaVyska,47px));z-index:6}
+/* Na mobilu se mřížka roluje do stran ve vlastním rámu — sticky by se lepilo
+   k němu, ne k oknu, a jen by překáželo. */
+body.mobil .mrizka thead th{position:static}
 .mrizka thead th.uzky{width:64px;text-align:center}
 .mrizka tbody tr:nth-child(even){background:#FCFAF7}
 .mrizka tbody tr:hover{background:#F6F1E9}
@@ -329,8 +341,21 @@ td.km b{color:var(--olive);font-size:12.5px}
 #navrhGenerovani .karta{margin-bottom:14px}
 .navrhSkupina{margin:10px 0}
 .navrhSkupina h4{margin:0 0 5px;font-size:12.5px;color:var(--olive);text-transform:uppercase;letter-spacing:.05em}
-.navrhSkupina ul{margin:0;padding-left:20px;font-size:12.5px;line-height:1.65;max-height:260px;overflow:auto}
+.navrhSkupina ul{margin:0;padding-left:0;list-style:none;font-size:12.5px;line-height:1.65;max-height:260px;overflow:auto}
 .navrhSkupina li b{color:var(--tmava)}
+/* Každá položka návrhu se dá vypnout zvlášť. Zaškrtávátko je proto součástí
+   popisku — klik kamkoli na řádek přepne volbu a na mobilu se dá trefit prstem. */
+.navrhSkupina li{margin:1px 0;border-radius:5px}
+.navrhSkupina li:hover{background:var(--svetla)}
+.navrhVolba{display:flex;gap:8px;align-items:flex-start;cursor:pointer;padding:3px 6px}
+.navrhVolba input{margin:3px 0 0;flex:0 0 auto;width:15px;height:15px;cursor:pointer}
+.navrhVolba span{flex:1 1 auto}
+.navrhVolba input:not(:checked) ~ span{opacity:.45;text-decoration:line-through}
+.navrhSkupina h4 label{display:inline-flex;gap:7px;align-items:center;cursor:pointer}
+.navrhSkupina h4 input{width:14px;height:14px;cursor:pointer}
+body.mobil .navrhVolba{padding:6px}
+body.mobil .navrhVolba input{width:19px;height:19px}
+body.mobil .navrhSkupina ul{max-height:none}
 
 /* Cílový řádek není etapa — je vidět na první pohled. */
 .mrizka tbody tr.cilovy > td{border-top:3px solid var(--hneda);background:#F3EFE4}
@@ -1705,8 +1730,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.04";
-const BUILD = "2026-08-23T22:59+02:00";        // vyplní se ve veřejném buildu
+const VERZE = "v5.05";
+const BUILD = "2026-08-23T23:27+02:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2114,13 +2139,29 @@ function zmerSloupec(s, radky){
     });
     if(maOdkaz) sirka += 22;
   }
-  // Políčko na čas si prohlížeč kreslí sám. Ikonku hodin schovává CSS, takže
-  // stačí malá rezerva na vnitřní okraje — jen ne pod „10:00", to by se ořízlo.
-  if(s.typ === 'time') sirka = Math.max(sirka + 8, parseInt(s.sirka, 10) || 72);
+  // Políčko na čas si prohlížeč kreslí sám a vpravo k němu přidá šipku na
+  // rozbalení číselníku. Rezerva musí stačit na „10:00" i na tu šipku.
+  if(s.typ === 'time') sirka = Math.max(sirka + 26, parseInt(s.sirka, 10) || 72);
   if(s.viceradkove) sirka = Math.min(sirka, 260);        // dlouhý text se zalomí
   if(s.html && s.sirka) return parseInt(s.sirka, 10) || SIRKA_MIN;
 
   return Math.round(Math.max(SIRKA_MIN, Math.min(SIRKA_MAX, sirka)));
+}
+
+/* Číselník časů po deseti minutách. Je jeden na celou stránku a vyrobí se až
+   ve chvíli, kdy ho první políčko na čas potřebuje — 144 položek se nemá proč
+   povalovat v dokumentu, dokud není otevřená tabulka, která je používá. */
+const CASY10_ID = 'casy-po-deseti';
+function zajistiCasovyCiselnik(){
+  if(document.getElementById(CASY10_ID)) return;
+  const dvoj = n => String(n).padStart(2, '0');
+  const dl = document.createElement('datalist');
+  dl.id = CASY10_ID;
+  let h = '';
+  for(let m = 0; m < 24*60; m += 10) h += '<option value="'
+    + dvoj(Math.floor(m/60)) + ':' + dvoj(m%60) + '"></option>';
+  dl.innerHTML = h;
+  document.body.appendChild(dl);
 }
 
 function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat){
@@ -2155,6 +2196,14 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
           + `<datalist id="${id}">`
           + moznosti.filter(x=>x!=='').map(m=>`<option value="${esc(m)}"></option>`).join('')
           + '</datalist></td>';
+      } else if(s.typ==='time'){
+        /* Čas se dá napsat i vybrat. Číselník je po deseti minutách — jemněji
+           se plán stejně nedělá a proklikat 60 minut po jedné je otrava.
+           step="600" k tomu srovná i šipky na klávesnici. */
+        zajistiCasovyCiselnik();
+        h += `<td class="${s.trida||''}"${lbl}>`
+          + `<input type="time" step="600" list="${CASY10_ID}"`
+          + ` data-i="${i}" data-p="${s.pole}" value="${esc(v)}"></td>`;
       } else if(s.typ==='select'){
         const moznosti = (typeof s.moznosti==='function'? s.moznosti(r) : s.moznosti);
         // volba může být holá hodnota, nebo dvojice {v: hodnota, t: co je vidět}
@@ -5085,32 +5134,107 @@ function ukazNavrhGenerovani(){
     return;
   }
 
-  const seznam = (nadpis, polozky) => polozky.length
-    ? '<div class="navrhSkupina"><h4>' + nadpis + ' (' + polozky.length + ')</h4><ul>'
-      + polozky.map(x => '<li>' + x + '</li>').join('') + '</ul></div>' : '';
+  /* Každá řádka nese svoji sadu a pořadí v ní. Pořadí je z původního pole, ne
+     z vypsaného seznamu — „přibude" se vypisuje nadvakrát (mřížka zvlášť) a po
+     přečíslování by se provedlo něco jiného, než co si člověk odškrtl. */
+  const polozka = (sada, i, html) => '<li><label class="navrhVolba">'
+    + '<input type="checkbox" checked data-sada="' + sada + '" data-i="' + i + '"'
+    + ' onchange="prepocitejNavrh()"><span>' + html + '</span></label></li>';
+
+  const seznam = (nadpis, sada, polozky) => polozky.length
+    ? '<div class="navrhSkupina"><h4><label title="Zaškrtne nebo odškrtne celou skupinu.">'
+      + '<input type="checkbox" checked onchange="prepniSkupinuNavrhu(this)">'
+      + nadpis + ' (' + polozky.length + ')</label></h4><ul>'
+      + polozky.map(x => polozka(sada, x.i, x.html)).join('') + '</ul></div>' : '';
+
+  // pomocník: vybere z pole jen některé položky, ale nechá si jejich původní index
+  const cast = (pole, kde, jak) => pole
+    .map((x, i) => ({x, i}))
+    .filter(o => kde(o.x))
+    .map(o => ({i: o.i, html: jak(o.x)}));
 
   cil.innerHTML = '<div class="karta"><h2>Návrh změn v podrobném plánu</h2><div class="telo">'
     + '<p class="popisek">Zatím se nic nezměnilo. Projděte si, co by přibylo a co zmizelo, '
-    + 'a teprve pak potvrďte. Ručně zadaných úkolů se to nedotkne.</p>'
-    + seznam('Přibude do mřížky — zahájení a ukončení podle obsluhy',
-        pridat.filter(x => x.typ === 'PZ' || x.typ === 'PK').map(x =>
+    + 'odškrtněte, co nechcete, a teprve pak potvrďte. Provede se jen zaškrtnuté; '
+    + 'ručně zadaných úkolů se to nedotkne.</p>'
+    + seznam('Přibude do mřížky — zahájení a ukončení podle obsluhy', 'pridat',
+        cast(pridat, x => x.typ === 'PZ' || x.typ === 'PK', x =>
         '<b>' + esc(x.kod) + '</b> ' + esc(popisGrupy(x.parta))
         + ' · ' + esc(x.kdy_text || 'bez času')
         + ' <span class="popisek">(' + esc(x._proc) + ')</span>'))
-    + seznam('Přibude', pridat.filter(x => x.typ !== 'PZ' && x.typ !== 'PK').map(x =>
+    + seznam('Přibude', 'pridat',
+        cast(pridat, x => x.typ !== 'PZ' && x.typ !== 'PK', x =>
         '<b>' + esc(popisGrupy(x.parta)) + '</b> · ' + esc(NAZVY_TYPU[x.typ]||x.typ)
         + ' · ' + esc(x.popis) + ' <span class="popisek">(' + esc(x._proc) + ')</span>'))
-    + seznam('Doplní se čas', casy.map(c =>
+    + seznam('Doplní se čas', 'casy',
+        cast(casy, () => true, c =>
         '<b>' + esc(c.u.kod) + '</b> ' + esc(popisPredavky(c.u.cislo))
         + ' → <b>' + esc(c.text) + '</b> <span class="popisek">(' + esc(c.proc) + ')</span>'))
-    + seznam('Zmizí (dřívější výpočet)', smazat.map(x =>
+    + seznam('Zmizí (dřívější výpočet)', 'smazat',
+        cast(smazat, () => true, x =>
         '<b>' + esc(popisGrupy(x.parta)) + '</b> · ' + esc(x.kod) + ' · ' + esc((x.popis||'').slice(0,70))))
+    + '<p class="popisek" style="margin:10px 0 0">Časy přejezdů a noclehů se počítají '
+    + 'z okolních úkolů. Když necháte doplnění času stranou a přejezd potvrdíte, '
+    + 'dostane čas, který je vidět tady v návrhu.</p>'
     + '<div style="margin-top:14px;display:flex;gap:9px;flex-wrap:wrap">'
-    + '<button class="tl hlavni" onclick="provedGenerovani()">Provést</button>'
+    + '<button class="tl hlavni" id="navrhProvest" onclick="provedGenerovani()">Provést</button>'
     + '<button class="tl" onclick="zrusNavrhGenerovani()">Zrušit</button></div>'
     + '</div></div>';
   cil.style.display = '';
+  prepocitejNavrh();
   cil.scrollIntoView({block:'start', behavior:'smooth'});
+}
+
+/* Co je právě zaškrtnuté. Čte se z panelu, ne z nějakého druhého seznamu —
+   jeden zdroj pravdy, takže se nemá co rozejít s tím, co je vidět. */
+function vybraneZNavrhu(){
+  const v = {pridat: [], smazat: [], casy: []};
+  if(!navrhGen) return v;
+  const boxy = document.querySelectorAll('#navrhGenerovani input[type=checkbox][data-sada]');
+  // Panel není vykreslený (volá se to programově, třeba z testu nebo z jiného
+  // místa v kódu) — pak není co odškrtávat a platí celý návrh.
+  if(!boxy.length) return {pridat: navrhGen.pridat.slice(),
+                           smazat: navrhGen.smazat.slice(),
+                           casy:   navrhGen.casy.slice()};
+  boxy.forEach(el => {
+    if(!el.checked) return;
+    const sada = el.getAttribute('data-sada'), i = +el.getAttribute('data-i');
+    const x = (navrhGen[sada] || [])[i];
+    if(x) v[sada].push(x);
+  });
+  return v;
+}
+
+function prepniSkupinuNavrhu(el){
+  const sk = el.closest('.navrhSkupina');
+  if(sk) sk.querySelectorAll('input[data-sada]').forEach(x => { x.checked = el.checked; });
+  prepocitejNavrh();
+}
+
+/* Po každém kliknutí srovná hlavičky skupin (napůl zaškrtnutá skupina to dá
+   najevo) a napíše na tlačítko, kolik změn se provede. Nula = tlačítko zhasne,
+   ať není o čem přemýšlet. */
+function prepocitejNavrh(){
+  if(!navrhGen) return;
+  document.querySelectorAll('#navrhGenerovani .navrhSkupina').forEach(sk => {
+    const vse = sk.querySelector('h4 input');
+    const boxy = [...sk.querySelectorAll('input[data-sada]')];
+    const zaskrtnuto = boxy.filter(b => b.checked).length;
+    if(vse){
+      vse.checked = zaskrtnuto === boxy.length && boxy.length > 0;
+      vse.indeterminate = zaskrtnuto > 0 && zaskrtnuto < boxy.length;
+    }
+  });
+  const v = vybraneZNavrhu();
+  const n = v.pridat.length + v.smazat.length + v.casy.length;
+  const celkem = navrhGen.pridat.length + navrhGen.smazat.length + navrhGen.casy.length;
+  const b = $('#navrhProvest');
+  if(!b) return;
+  b.disabled = !n;
+  b.style.opacity = n ? '' : '.45';
+  b.textContent = !n ? 'Není co provést'
+    : (n === celkem ? 'Provést vše (' + celkem + ')'
+                    : 'Provést vybrané (' + n + ' z ' + celkem + ')');
 }
 
 function zrusNavrhGenerovani(){
@@ -5121,7 +5245,11 @@ function zrusNavrhGenerovani(){
 
 function provedGenerovani(){
   if(!navrhGen){ hlaska('Návrh už neplatí, spusťte ho znovu.'); return; }
-  const {pridat, smazat, casy} = navrhGen;
+  // Provede se jen to, co zůstalo zaškrtnuté.
+  const {pridat, smazat, casy} = vybraneZNavrhu();
+  const celkem = navrhGen.pridat.length + navrhGen.smazat.length + navrhGen.casy.length;
+  const vybrano = pridat.length + smazat.length + casy.length;
+  if(!vybrano){ hlaska('Nic není zaškrtnuté, tak se nic neprovedlo.'); return; }
 
   smazat.forEach(u => { const i = D.ukoly.indexOf(u); if(i >= 0) D.ukoly.splice(i,1); });
   casy.forEach(c => {
@@ -5134,10 +5262,14 @@ function provedGenerovani(){
 
   navrhGen = null;
   $('#navrhGenerovani').style.display = 'none';
-  planZmenen = false; kresliPruhGenerovani();
+  // Když se provedla jen část, plán pořád nesedí s mřížkou — pruh s nabídkou
+  // přegenerování má zůstat, ať se zbytek dá dodělat.
+  planZmenen = vybrano < celkem; kresliPruhGenerovani();
   oznacZmenu(); vseKresli();
   hlaska('Hotovo — přibylo ' + pridat.length + ', doplněno časů ' + casy.length
-       + ', zmizelo ' + smazat.length + '.');
+       + ', zmizelo ' + smazat.length + '.'
+       + (vybrano < celkem ? ' Zbylých ' + (celkem - vybrano)
+            + ' změn jste nechal stranou; tlačítkem Přegenerovat je nabídnu znovu.' : ''));
 }
 
 /* Pruh nad podrobným plánem: mřížka se změnila, odvozené řádky můžou být staré. */

@@ -514,7 +514,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
 
   <div class="varovani" id="verejnaPozn">
     <b>Nepřihlášení — read only.</b> Změny se nikam neukládají.
-    Telefony organizátorů jsou tu jen na závodní víkend, e-maily a další údaje ne.
+    Telefony organizátorů jsou z databáze a jen na závodní víkend.
   </div>
 
   <!-- 1. PLÁN ÚKOLŮ -->
@@ -1141,6 +1141,11 @@ body.mobil.hostMobil table.podrobnyTab tr {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px;
   padding: 8px 11px; margin-bottom: 7px;
 }
+/* Levý proužek nese barvu typu úkolu — na kartě sloupec s typem není, tohle je
+   jediné, podle čeho se dá značení od úklidu a od předávky odlišit očima. */
+body.mobil table.podrobnyTab tr.maTyp {
+  border-left: 5px solid var(--barvaTypu, var(--linka));
+}
 body.mobil.hostMobil table.podrobnyTab td[data-th="Kdy"] { order: 1; flex: 1 1 auto; width: auto; }
 body.mobil.hostMobil table.podrobnyTab td[data-th="Grupa"] {
   order: 2; flex: 0 0 auto; width: auto; padding: 0 !important; margin-left: auto;
@@ -1245,98 +1250,98 @@ const D = {
   // clenove_tymu (HB25)
   clenove: [
     {id:67, kod_tymu:"G6", jmeno:"Zdenda", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
-    {id:94, kod_tymu:"FOTO", jmeno:"Tomáš Mego", telefon:"+421 908 252 626", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:74, kod_tymu:"G10", jmeno:"Martin Hynek", telefon:"775 902 808", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"sobota"},
-    {id:71, kod_tymu:"G3", jmeno:"Zuza", telefon:"777 226 243", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"sobota 9:00"},
-    {id:65, kod_tymu:"G6", jmeno:"Milan", telefon:"605 264 687", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"sobota 8:00"},
-    {id:66, kod_tymu:"G6", jmeno:"Spud Horys", telefon:"737 848 281", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"sobota 8:00"},
-    {id:69, kod_tymu:"G7", jmeno:"Luigi", telefon:"608 296 970", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
-    {id:70, kod_tymu:"G7", jmeno:"Morlor", telefon:"776 577 205", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
-    {id:68, kod_tymu:"G7", jmeno:"Skejťák", telefon:"602 882 939", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:94, kod_tymu:"FOTO", jmeno:"Tomáš Mego", telefon:"", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:74, kod_tymu:"G10", jmeno:"Martin Hynek", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"sobota"},
+    {id:71, kod_tymu:"G3", jmeno:"Zuza", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"sobota 9:00"},
+    {id:65, kod_tymu:"G6", jmeno:"Milan", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"sobota 8:00"},
+    {id:66, kod_tymu:"G6", jmeno:"Spud Horys", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"sobota 8:00"},
+    {id:69, kod_tymu:"G7", jmeno:"Luigi", telefon:"", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
+    {id:70, kod_tymu:"G7", jmeno:"Morlor", telefon:"", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
+    {id:68, kod_tymu:"G7", jmeno:"Skejťák", telefon:"", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
     {id:72, kod_tymu:"G8", jmeno:"Monika", telefon:"", email:"", nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", poznamka:"", sef:"ne", historie:true, rocniky:"", odjezd:""},
     {id:73, kod_tymu:"G8", jmeno:"Žábák", telefon:"", email:"", nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", poznamka:"", sef:"ne", historie:true, rocniky:"", odjezd:""},
-    {id:98, kod_tymu:"GASTRO", jmeno:"Rado Drahoš", telefon:"777 328 196", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:198, kod_tymu:"P26", jmeno:"Petr Sláma", telefon:"723 665 508", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako fotbalisti Týnec", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB24, HB25", odjezd:""},
-    {id:86, kod_tymu:"G16", jmeno:"Radim", telefon:"776 011 765", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:98, kod_tymu:"GASTRO", jmeno:"Rado Drahoš", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:198, kod_tymu:"P26", jmeno:"Petr Sláma", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako fotbalisti Týnec", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB24, HB25", odjezd:""},
+    {id:86, kod_tymu:"G16", jmeno:"Radim", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
     {id:187, kod_tymu:"P19", jmeno:"Simona Jurásková", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Mikulčin vrch", sef:"ne", historie:true, rocniky:"HB24, HB25", odjezd:""},
     {id:217, kod_tymu:"G18", jmeno:"Frantův kámoš", telefon:"", email:"", nocleh_patek:"NLHOTA", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
-    {id:212, kod_tymu:"G8", jmeno:"Borek Pihar", telefon:"770 121 609", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:50, kod_tymu:"G0A", jmeno:"Keksa", telefon:"724 365 909", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 10:00"},
-    {id:51, kod_tymu:"G0A", jmeno:"Pospec", telefon:"737 370 061", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
-    {id:52, kod_tymu:"G0B", jmeno:"Ňufa", telefon:"777 190 712", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"pátek 10:00"},
-    {id:53, kod_tymu:"G13", jmeno:"Véna", telefon:"736 262 322", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 10:00"},
-    {id:56, kod_tymu:"G1", jmeno:"Jan Riedl", telefon:"736 220 307", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
-    {id:55, kod_tymu:"G1", jmeno:"Jarda Riedl", telefon:"776 028 665", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
-    {id:54, kod_tymu:"G1", jmeno:"Martin Běhal", telefon:"605 566 238", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"pátek 17:00"},
-    {id:58, kod_tymu:"G2", jmeno:"Hanka", telefon:"732 344 247", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
-    {id:57, kod_tymu:"G2", jmeno:"Youzza", telefon:"602 715 549", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"pátek 17:00"},
+    {id:212, kod_tymu:"G8", jmeno:"Borek Pihar", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:50, kod_tymu:"G0A", jmeno:"Keksa", telefon:"", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 10:00"},
+    {id:51, kod_tymu:"G0A", jmeno:"Pospec", telefon:"", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
+    {id:52, kod_tymu:"G0B", jmeno:"Ňufa", telefon:"", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"pátek 10:00"},
+    {id:53, kod_tymu:"G13", jmeno:"Véna", telefon:"", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 10:00"},
+    {id:56, kod_tymu:"G1", jmeno:"Jan Riedl", telefon:"", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
+    {id:55, kod_tymu:"G1", jmeno:"Jarda Riedl", telefon:"", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
+    {id:54, kod_tymu:"G1", jmeno:"Martin Běhal", telefon:"", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"pátek 17:00"},
+    {id:58, kod_tymu:"G2", jmeno:"Hanka", telefon:"", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
+    {id:57, kod_tymu:"G2", jmeno:"Youzza", telefon:"", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"pátek 17:00"},
     {id:60, kod_tymu:"G3", jmeno:"Eva Němcová", telefon:"", email:"", nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", poznamka:"", sef:"ne", historie:true, rocniky:"", odjezd:""},
-    {id:59, kod_tymu:"G3", jmeno:"Pepička", telefon:"604 369 247", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"sobota 9:00"},
-    {id:61, kod_tymu:"G4", jmeno:"Beata Kluzová", telefon:"725 391 336", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 14:00"},
-    {id:64, kod_tymu:"G5", jmeno:"Fana", telefon:"777 226 096", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
+    {id:59, kod_tymu:"G3", jmeno:"Pepička", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"sobota 9:00"},
+    {id:183, kod_tymu:"P16", jmeno:"Ladislav Hofshneider", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Rokytnice", sef:"ano", historie:false, rocniky:"HB21, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:184, kod_tymu:"P17", jmeno:"Marek Leoš", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Bojkovice", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:188, kod_tymu:"P20", jmeno:"Marek Lukáš", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Strání", sef:"ano", historie:false, rocniky:"HB24, HB25", odjezd:""},
+    {id:185, kod_tymu:"P17", jmeno:"Libor Křižka", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"trasování T16 a T17 · dřív vedeno jako Libor", sef:"ne", historie:false, rocniky:"HB25", odjezd:""},
+    {id:61, kod_tymu:"G4", jmeno:"Beata Kluzová", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 14:00"},
+    {id:64, kod_tymu:"G5", jmeno:"Fana", telefon:"", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
     {id:213, kod_tymu:"G0B", jmeno:"Bára Novotná", telefon:"", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"odjez s Keksou a Vénou /Ňufou/Přemou?", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 10:00"},
-    {id:214, kod_tymu:"G13", jmeno:"Helena Maršíková", telefon:"604 971 929", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"odjezd s Pospecem dodávkou Báry", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
-    {id:215, kod_tymu:"", jmeno:"Zuzka od Dáši", telefon:"773 755 321", email:"", nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
+    {id:214, kod_tymu:"G13", jmeno:"Helena Maršíková", telefon:"", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"odjezd s Pospecem dodávkou Báry", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
+    {id:215, kod_tymu:"", jmeno:"Zuzka od Dáši", telefon:"", email:"", nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
     {id:216, kod_tymu:"", jmeno:"Zuzka od Dáši pasr", telefon:"", email:"", nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
-    {id:77, kod_tymu:"G11", jmeno:"Libor Křižka (SDH Bojkovice)", telefon:"739 286 632", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:218, kod_tymu:"P19", jmeno:"Radim Podškubka", telefon:"770332336", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"Provozovatel chaty Lopata", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:78, kod_tymu:"G12", jmeno:"Jiří Pinďák (SDH Popov)", telefon:"776 489 150", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:62, kod_tymu:"G5", jmeno:"Olda Kos", telefon:"777 157 864", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"pátek 17:00"},
-    {id:63, kod_tymu:"G5", jmeno:"Škodik", telefon:"725 105 317", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
+    {id:77, kod_tymu:"G11", jmeno:"Libor Křižka (SDH Bojkovice)", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:218, kod_tymu:"P19", jmeno:"Radim Podškubka", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"Provozovatel chaty Lopata", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:78, kod_tymu:"G12", jmeno:"Jiří Pinďák (SDH Popov)", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:62, kod_tymu:"G5", jmeno:"Olda Kos", telefon:"", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:"pátek 17:00"},
+    {id:63, kod_tymu:"G5", jmeno:"Škodik", telefon:"", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
     {id:96, kod_tymu:"VIDEO", jmeno:"Dušan Lužný", telefon:"", email:"", nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", poznamka:"", sef:"ne", historie:true, rocniky:"", odjezd:""},
-    {id:201, kod_tymu:"P29", jmeno:"Klára Pyskatá(Hrozková)", telefon:"776 748 396", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:181, kod_tymu:"P14", jmeno:"Smolík", telefon:"775 973 779", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"starosta", sef:"ne", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:180, kod_tymu:"P14", jmeno:"Katka", telefon:"731 234 884", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Návojná", sef:"ano", historie:false, rocniky:"HB25", odjezd:""},
-    {id:182, kod_tymu:"P15", jmeno:"Jiří Pinďák", telefon:"776 489 150", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"trasování T14 · dřív vedeno jako SDH Popov a Jiří", sef:"ano", historie:false, rocniky:"HB22, HB23, HB24, HB25", odjezd:""},
-    {id:166, kod_tymu:"P2", jmeno:"Kamil Kawulok", telefon:"731 062 497", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"starosta · dřív vedeno jako SDH Horní Lomná", sef:"ano", historie:false, rocniky:"HB20, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:167, kod_tymu:"P2", jmeno:"Rado Mikula", telefon:"773 760 475", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:168, kod_tymu:"P3", jmeno:"Roman Böhm", telefon:"603 452 476", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Morávka", sef:"ano", historie:false, rocniky:"HB21, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:169, kod_tymu:"P6", jmeno:"Tereza Chvilová", telefon:"720 582 552", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako místní děvčata", sef:"ano", historie:false, rocniky:"HB25", odjezd:""},
-    {id:170, kod_tymu:"P6", jmeno:"Martina Koudelková", telefon:"797 853 084", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB25", odjezd:""},
-    {id:171, kod_tymu:"P7", jmeno:"Lukáš Pisárik", telefon:"737 560 415", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako Lukáš", sef:"ano", historie:false, rocniky:"HB22, HB23, HB24, HB25", odjezd:""},
-    {id:172, kod_tymu:"P8", jmeno:"paní Černá", telefon:"+421 918 388 279", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako paní hoteliérka", sef:"ano", historie:false, rocniky:"HB25", odjezd:""},
-    {id:173, kod_tymu:"P8", jmeno:"pan Evžen", telefon:"603 757 367", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB25", odjezd:""},
-    {id:76, kod_tymu:"G10", jmeno:"Albert Hynek", telefon:"792 317 939", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"sobota"},
-    {id:75, kod_tymu:"G10", jmeno:"Oliver Hynek", telefon:"792 310 947", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"sobota"},
-    {id:89, kod_tymu:"G18", jmeno:"Franta Dvořák", telefon:"792 325 966", email:"", nocleh_patek:"NLHOTA", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:174, kod_tymu:"P9", jmeno:"Viktorie Vrabliková", telefon:"724 742 737", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako studentky", sef:"ano", historie:false, rocniky:"HB25", odjezd:""},
-    {id:175, kod_tymu:"P9", jmeno:"Tereza Černá", telefon:"778 598 606", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB25", odjezd:""},
-    {id:176, kod_tymu:"P10", jmeno:"Bedřich Vráblík", telefon:"606 729 572", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:177, kod_tymu:"P12", jmeno:"Karel Juřička", telefon:"773 500 222", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Pulčín", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:199, kod_tymu:"P27", jmeno:"Jakub Trčka", telefon:"720 172 377", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"kontakt dohledaný v HB25", sef:"ano", historie:false, rocniky:"HB25", odjezd:""},
-    {id:178, kod_tymu:"P13", jmeno:"Eliška Čížková", telefon:"605 318 466", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako Eliška", sef:"ano", historie:false, rocniky:"HB21, HB22, HB25", odjezd:""},
-    {id:179, kod_tymu:"P13", jmeno:"Adéla Mačková", telefon:"704 902 080", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB25", odjezd:""},
-    {id:93, kod_tymu:"FOTO", jmeno:"Michal Fajt", telefon:"+421 950 643 063", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
+    {id:201, kod_tymu:"P29", jmeno:"Klára Pyskatá(Hrozková)", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:181, kod_tymu:"P14", jmeno:"Smolík", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"starosta", sef:"ne", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:180, kod_tymu:"P14", jmeno:"Katka", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Návojná", sef:"ano", historie:false, rocniky:"HB25", odjezd:""},
+    {id:182, kod_tymu:"P15", jmeno:"Jiří Pinďák", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"trasování T14 · dřív vedeno jako SDH Popov a Jiří", sef:"ano", historie:false, rocniky:"HB22, HB23, HB24, HB25", odjezd:""},
+    {id:166, kod_tymu:"P2", jmeno:"Kamil Kawulok", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"starosta · dřív vedeno jako SDH Horní Lomná", sef:"ano", historie:false, rocniky:"HB20, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:167, kod_tymu:"P2", jmeno:"Rado Mikula", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:168, kod_tymu:"P3", jmeno:"Roman Böhm", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Morávka", sef:"ano", historie:false, rocniky:"HB21, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:169, kod_tymu:"P6", jmeno:"Tereza Chvilová", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako místní děvčata", sef:"ano", historie:false, rocniky:"HB25", odjezd:""},
+    {id:170, kod_tymu:"P6", jmeno:"Martina Koudelková", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB25", odjezd:""},
+    {id:171, kod_tymu:"P7", jmeno:"Lukáš Pisárik", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako Lukáš", sef:"ano", historie:false, rocniky:"HB22, HB23, HB24, HB25", odjezd:""},
+    {id:172, kod_tymu:"P8", jmeno:"paní Černá", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako paní hoteliérka", sef:"ano", historie:false, rocniky:"HB25", odjezd:""},
+    {id:173, kod_tymu:"P8", jmeno:"pan Evžen", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB25", odjezd:""},
+    {id:76, kod_tymu:"G10", jmeno:"Albert Hynek", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"sobota"},
+    {id:75, kod_tymu:"G10", jmeno:"Oliver Hynek", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"sobota"},
+    {id:89, kod_tymu:"G18", jmeno:"Franta Dvořák", telefon:"", email:"", nocleh_patek:"NLHOTA", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:174, kod_tymu:"P9", jmeno:"Viktorie Vrabliková", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako studentky", sef:"ano", historie:false, rocniky:"HB25", odjezd:""},
+    {id:175, kod_tymu:"P9", jmeno:"Tereza Černá", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB25", odjezd:""},
+    {id:176, kod_tymu:"P10", jmeno:"Bedřich Vráblík", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:177, kod_tymu:"P12", jmeno:"Karel Juřička", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Pulčín", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:199, kod_tymu:"P27", jmeno:"Jakub Trčka", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"kontakt dohledaný v HB25", sef:"ano", historie:false, rocniky:"HB25", odjezd:""},
+    {id:178, kod_tymu:"P13", jmeno:"Eliška Čížková", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako Eliška", sef:"ano", historie:false, rocniky:"HB21, HB22, HB25", odjezd:""},
+    {id:179, kod_tymu:"P13", jmeno:"Adéla Mačková", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB25", odjezd:""},
+    {id:93, kod_tymu:"FOTO", jmeno:"Michal Fajt", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
     {id:81, kod_tymu:"G13", jmeno:"Kuba Vemola", telefon:"", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ne", historie:true, rocniky:"", odjezd:""},
-    {id:84, kod_tymu:"G14", jmeno:"Jarča", telefon:"605 805 658", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
-    {id:82, kod_tymu:"G14", jmeno:"Přema Štěpánek", telefon:"603 523 108", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:85, kod_tymu:"G15", jmeno:"Adam Stýskal (Krásná)", telefon:"728 414 696", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:200, kod_tymu:"P28", jmeno:"Martin Daneš", telefon:"728 568 628", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"kontakt z tabulky HB24 public", sef:"ano", historie:false, rocniky:"HB21, HB22, HB23, HB24", odjezd:""},
-    {id:202, kod_tymu:"P30", jmeno:"Zdeněk Bernát", telefon:"607 807 987", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"v CRM veden bez diakritiky", sef:"ano", historie:false, rocniky:"HB24, HB25", odjezd:""},
-    {id:183, kod_tymu:"P16", jmeno:"Ladislav Hofshneider", telefon:"737 533 766", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Rokytnice", sef:"ano", historie:false, rocniky:"HB21, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:184, kod_tymu:"P17", jmeno:"Marek Leoš", telefon:"737 347 869", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Bojkovice", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:188, kod_tymu:"P20", jmeno:"Marek Lukáš", telefon:"606 790 619", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Strání", sef:"ano", historie:false, rocniky:"HB24, HB25", odjezd:""},
-    {id:185, kod_tymu:"P17", jmeno:"Libor Křižka", telefon:"739 286 632", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"trasování T16 a T17 · dřív vedeno jako Libor", sef:"ne", historie:false, rocniky:"HB25", odjezd:""},
-    {id:186, kod_tymu:"P18", jmeno:"Radim Michalčík", telefon:"776 011 765", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"trasování E18 · dřív vedeno jako SDH Starý Hrozenkov", sef:"ano", historie:false, rocniky:"HB21, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:97, kod_tymu:"IT", jmeno:"Jan Hermann", telefon:"608 329 169", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:88, kod_tymu:"G17", jmeno:"Dáša Fuchsová", telefon:"776 111 066", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
+    {id:84, kod_tymu:"G14", jmeno:"Jarča", telefon:"", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
+    {id:82, kod_tymu:"G14", jmeno:"Přema Štěpánek", telefon:"", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:85, kod_tymu:"G15", jmeno:"Adam Stýskal (Krásná)", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:200, kod_tymu:"P28", jmeno:"Martin Daneš", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"kontakt z tabulky HB24 public", sef:"ano", historie:false, rocniky:"HB21, HB22, HB23, HB24", odjezd:""},
+    {id:202, kod_tymu:"P30", jmeno:"Zdeněk Bernát", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"v CRM veden bez diakritiky", sef:"ano", historie:false, rocniky:"HB24, HB25", odjezd:""},
+    {id:186, kod_tymu:"P18", jmeno:"Radim Michalčík", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"trasování E18 · dřív vedeno jako SDH Starý Hrozenkov", sef:"ano", historie:false, rocniky:"HB21, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:97, kod_tymu:"IT", jmeno:"Jan Hermann", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:88, kod_tymu:"G17", jmeno:"Dáša Fuchsová", telefon:"", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
     {id:79, kod_tymu:"G13", jmeno:"Beri", telefon:"", email:"", nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", poznamka:"", sef:"ne", historie:true, rocniky:"", odjezd:""},
     {id:80, kod_tymu:"G13", jmeno:"Helena", telefon:"", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ne", historie:true, rocniky:"", odjezd:""},
     {id:83, kod_tymu:"G14", jmeno:"Prokop Štěpánek", telefon:"", email:"", nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", poznamka:"", sef:"ne", historie:true, rocniky:"", odjezd:""},
     {id:90, kod_tymu:"G18", jmeno:"Tadeáš Doležel", telefon:"", email:"", nocleh_patek:"", nocleh_sobota:"", cislo_uctu:"", poznamka:"", sef:"ne", historie:true, rocniky:"", odjezd:""},
-    {id:95, kod_tymu:"VIDEO", jmeno:"Štěpán Glombek", telefon:"732 522 167", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:92, kod_tymu:"ZVUK", jmeno:"Hofa", telefon:"604 872 084", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
-    {id:91, kod_tymu:"ZVUK", jmeno:"Jerza", telefon:"602 578 848", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:189, kod_tymu:"P20", jmeno:"Antonín Lukáš", telefon:"732 167 936", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:190, kod_tymu:"P21", jmeno:"František Folvarský", telefon:"725 116 546", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:191, kod_tymu:"P21", jmeno:"Antonín Okénka", telefon:"724 168 208", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"starosta", sef:"ne", historie:false, rocniky:"HB22, HB23, HB24, HB25", odjezd:""},
-    {id:192, kod_tymu:"P22", jmeno:"Pavel Sekerka", telefon:"704 276 755", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Velká nad Veličkou", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:193, kod_tymu:"P22", jmeno:"Zdeněk Janků", telefon:"604 605 367", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB24, HB25", odjezd:""},
-    {id:194, kod_tymu:"P23", jmeno:"Jiří Gajdoš", telefon:"773 129 797", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako místní běžci", sef:"ano", historie:false, rocniky:"HB23, HB24, HB25", odjezd:""},
-    {id:195, kod_tymu:"P23", jmeno:"Jana Kadlecová", telefon:"737 443 674", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB23, HB24, HB25", odjezd:""},
-    {id:196, kod_tymu:"P24", jmeno:"Milan Grossmann", telefon:"606 399 370", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:197, kod_tymu:"P25", jmeno:"Josef Jurečka", telefon:"605 205 299", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Hodonín", sef:"ano", historie:false, rocniky:"HB21, HB22, HB23, HB24, HB25", odjezd:""},
-    {id:87, kod_tymu:"G17", jmeno:"Martin Vybíral", telefon:"732 222 175", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""}
+    {id:95, kod_tymu:"VIDEO", jmeno:"Štěpán Glombek", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:92, kod_tymu:"ZVUK", jmeno:"Hofa", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
+    {id:91, kod_tymu:"ZVUK", jmeno:"Jerza", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:189, kod_tymu:"P20", jmeno:"Antonín Lukáš", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:190, kod_tymu:"P21", jmeno:"František Folvarský", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:191, kod_tymu:"P21", jmeno:"Antonín Okénka", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"starosta", sef:"ne", historie:false, rocniky:"HB22, HB23, HB24, HB25", odjezd:""},
+    {id:192, kod_tymu:"P22", jmeno:"Pavel Sekerka", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Velká nad Veličkou", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:193, kod_tymu:"P22", jmeno:"Zdeněk Janků", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB24, HB25", odjezd:""},
+    {id:194, kod_tymu:"P23", jmeno:"Jiří Gajdoš", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako místní běžci", sef:"ano", historie:false, rocniky:"HB23, HB24, HB25", odjezd:""},
+    {id:195, kod_tymu:"P23", jmeno:"Jana Kadlecová", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB23, HB24, HB25", odjezd:""},
+    {id:196, kod_tymu:"P24", jmeno:"Milan Grossmann", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:197, kod_tymu:"P25", jmeno:"Josef Jurečka", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"dřív vedeno jako SDH Hodonín", sef:"ano", historie:false, rocniky:"HB21, HB22, HB23, HB24, HB25", odjezd:""},
+    {id:87, kod_tymu:"G17", jmeno:"Martin Vybíral", telefon:"", email:"", nocleh_patek:"HBECVA", nocleh_sobota:"PULCIN", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""}
   ],
 
   // predavky HB26 (31 míst) + km/min na následující předávku z tabulky vzdalenosti
@@ -1376,7 +1381,7 @@ const D = {
 
   // noclehy_adresy HB26
   nocMista: [
-    {kod:"HBECVA", nazev:"Horní Bečva", noc:"pátek", adresa:"", mapa_url:"", kapacita:16, pokoje:"celá chata č.1  4 x 4 lůžkový pokoj", kontakt:"", telefon:"", cena:"", platba:"zaplaceno", rezervace:"", poznamka:""},
+    {kod:"HBECVA", nazev:"Horní Bečva, Kemp u přehrady", noc:"pátek", adresa:"", mapa_url:"", kapacita:16, pokoje:"celá chata č.1  4 x 4 lůžkový pokoj", kontakt:"", telefon:"", cena:"", platba:"zaplaceno", rezervace:"", poznamka:""},
     {kod:"JABLUNKOV", nazev:"Sport resort Jablunkov", noc:"pátek", adresa:"", mapa_url:"", kapacita:16, pokoje:"16 lůžek, z toho dvoulúžák pro fotografa", kontakt:"", telefon:"", cena:"", platba:"zaplaceno", rezervace:"", poznamka:""},
     {kod:"LUCINA", nazev:"", noc:"sobota", adresa:"", mapa_url:"", kapacita:10, pokoje:"", kontakt:"", telefon:"", cena:"", platba:"", rezervace:"", poznamka:""},
     {kod:"PULCIN", nazev:"Penzion Pulčínské skály", noc:"sobota", adresa:"", mapa_url:"", kapacita:9, pokoje:"9 lidí ve 3 pokojích", kontakt:"", telefon:"", cena:"", platba:"zaplaceno", rezervace:"", poznamka:""},
@@ -1421,6 +1426,7 @@ const D = {
   // (201 úkolů včetně časů a popisů) a „HB25 plán hrubý" (31 úkolů navíc, hlavně
   // obsluha předávek místními). Celkem 234 úkolů.
   ukoly: [
+    {kod:"N-G0A-so", parta:"G0A", typ:"N", cislo:null, den:"SO", kdy_od:"03:00", kdy_do:"", kdy_text:"", popis:"Ubytovna Nová Lhota č.p. 1 · Nová Lhota 1 · http://bit.ly/N_Lhota_ubytovna · 1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka", stav:"plán", zdroj:"ručně"},
     {kod:"T5", parta:"G7", typ:"T", cislo:5, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 05 Staré Hamry", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"U5", parta:"G7", typ:"U", cislo:5, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Úklid značení etapy 05 Staré Hamry", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"T6", parta:"G5", typ:"T", cislo:6, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 06 Bílá", stav:"potvrzeno", zdroj:"ručně"},
@@ -1430,8 +1436,7 @@ const D = {
     {kod:"T26", parta:"G3", typ:"T", cislo:26, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 26 Týnec", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"T27", parta:"G3", typ:"T", cislo:27, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 27 Lanžhot", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"P5", parta:"G7", typ:"P", cislo:5, den:"SO", kdy_od:"08:50", kdy_do:"15:10", kdy_text:"so 8:50 – 15:10", popis:"Obsluha předávky 05 Staré Hamry", stav:"potvrzeno", zdroj:"ručně"},
-    {kod:"A-G0B-07", parta:"G0B", typ:"A", cislo:null, den:"NE", kdy_od:"", kdy_do:"", kdy_text:"ne cca 19 hod", popis:"Složit sety v amfiteátru", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G0A-so", parta:"G0A", typ:"N", cislo:null, den:"SO", kdy_od:"03:00", kdy_do:"", kdy_text:"", popis:"nocleh so 21 Nová Lhota — Ubytovna Nová Lhota č.p. 1, klíče vyzvedne první posádka v hospodě", stav:"plán", zdroj:"ručně"},
+    {kod:"A-G0B-07", parta:"G0B", typ:"A", cislo:null, den:"NE", kdy_od:"19:00", kdy_do:"20:00", kdy_text:"", popis:"vrácení pivních setů do Pasohlávek", stav:"plán", zdroj:"podrobný"},
     {kod:"P29", parta:"P29", typ:"P", cislo:29, den:"NE", kdy_od:"09:20", kdy_do:"16:00", kdy_text:"ne 9:20 – 16:00", popis:"Obsluha předávky 29 Valtice", stav:"potvrzeno", zdroj:"hrubý"},
     {kod:"A-G0B-05", parta:"G0B", typ:"A", cislo:null, den:"NE", kdy_od:"08:00", kdy_do:"08:30", kdy_text:"ne 8:00 – 8:30", popis:"Přejezd do ATC Pasohlávky, převzetí pivních setů 35 ks stolů 70 lavic, kontakt na provozního [telefon jen v plné verzi]", stav:"plán", zdroj:"podrobný"},
     {kod:"PZ5", parta:"G0B", typ:"PZ", cislo:5, den:"SO", kdy_od:"08:50", kdy_do:"09:00", kdy_text:"so 8:50 – 9:00", popis:"Zahájení předávky 05 Staré Hamry Grúň", stav:"potvrzeno", zdroj:"podrobný"},
@@ -1446,6 +1451,9 @@ const D = {
     {kod:"A-G0B-04", parta:"G0B", typ:"A", cislo:null, den:"SO", kdy_od:"09:00", kdy_do:"22:00", kdy_text:"So 9:00 - 22:00", popis:"Pohybovat se do hodiny od dodávky Keksa", stav:"plán", zdroj:"podrobný"},
     {kod:"P27", parta:"P27", typ:"P", cislo:27, den:"NE", kdy_od:"07:40", kdy_do:"14:10", kdy_text:"ne 7:40 – 14:10", popis:"Obsluha předávky 27 Lanžhot", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"P28", parta:"P28", typ:"P", cislo:28, den:"NE", kdy_od:"08:20", kdy_do:"15:10", kdy_text:"ne 8:20 – 15:10", popis:"Obsluha předávky 28 Břeclav", stav:"potvrzeno", zdroj:"ručně"},
+    {kod:"U29", parta:"G8", typ:"U", cislo:29, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
+    {kod:"N-G1-so", parta:"G1", typ:"N", cislo:null, den:"NE", kdy_od:"08:00", kdy_do:"", kdy_text:"ne 8:00", popis:"Ubytovna Nová Lhota č.p. 1 · Nová Lhota 1 · http://bit.ly/N_Lhota_ubytovna · 1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G2-so", parta:"G2", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Ubytovna Nová Lhota č.p. 1 · Nová Lhota 1 · http://bit.ly/N_Lhota_ubytovna · 1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G8-01", parta:"G8", typ:"A", cislo:null, den:"PÁ", kdy_od:"17:00", kdy_do:"", kdy_text:"pá 17:00", popis:"Odjezd z Brna", stav:"plán", zdroj:"podrobný"},
     {kod:"S-G2-1", parta:"G2", typ:"S", cislo:1, den:"PÁ", kdy_od:"14:00", kdy_do:"22:00", kdy_text:"pá 14-22", popis:"Práce na startu, příprava startovních tašek, prezence týmů", stav:"plán", zdroj:"podrobný"},
     {kod:"P16", parta:"P16", typ:"P", cislo:16, den:"SO", kdy_od:"20:00", kdy_do:"01:30", kdy_text:"so 20:00 – ne 1:30", popis:"Obsluha předávky 16 Rokytnice", stav:"potvrzeno", zdroj:"ručně"},
@@ -1456,9 +1464,6 @@ const D = {
     {kod:"P23", parta:"P23", typ:"P", cislo:23, den:"NE", kdy_od:"03:20", kdy_do:"09:20", kdy_text:"ne 3:20 – 9:20", popis:"Obsluha předávky 23 Lučina, koupaliště", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"P24", parta:"P24", typ:"P", cislo:24, den:"NE", kdy_od:"04:40", kdy_do:"10:50", kdy_text:"ne 4:40 – 10:50", popis:"Obsluha předávky 24 Sudoměřice", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"T25", parta:"G10", typ:"T", cislo:25, den:"SO", kdy_od:"", kdy_do:"", kdy_text:"sobota", popis:"Trasování etapy 25 Hodonín", stav:"potvrzeno", zdroj:"podrobný"},
-    {kod:"N-G1-so", parta:"G1", typ:"N", cislo:null, den:"NE", kdy_od:"08:00", kdy_do:"", kdy_text:"ne 8:00", popis:"nocleh so 21 Nová Lhota — Ubytovna Nová Lhota č.p. 1, klíče vyzvedne první posádka v hospodě", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G2-so", parta:"G2", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"nocleh so 21 Nová Lhota — Ubytovna Nová Lhota č.p. 1, klíče vyzvedne první posádka v hospodě", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G0B-so", parta:"G0B", typ:"N", cislo:null, den:"", kdy_od:"02:30", kdy_do:"", kdy_text:"23 - 02:30", popis:"nocleh so 21 Nová Lhota — Ubytovna Nová Lhota č.p. 1, klíče vyzvedne první posádka v hospodě, nebo dle libosti", stav:"plán", zdroj:"podrobný"},
     {kod:"PZ22", parta:"G0B", typ:"PZ", cislo:22, den:"NE", kdy_od:"02:10", kdy_do:"02:20", kdy_text:"ne 2:10 – 2:20", popis:"Zahájení předávky 22 Velká nad Veličkou", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"PZ23", parta:"G0B", typ:"PZ", cislo:23, den:"NE", kdy_od:"03:20", kdy_do:"03:30", kdy_text:"ne 3:20 – 3:30", popis:"Zahájení předávky 23 Lučina, koupaliště", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"PZ24", parta:"G0B", typ:"PZ", cislo:24, den:"NE", kdy_od:"04:40", kdy_do:"04:50", kdy_text:"ne 4:40 – 4:50", popis:"Zahájení předávky 24 Sudoměřice", stav:"potvrzeno", zdroj:"ručně"},
@@ -1469,22 +1474,23 @@ const D = {
     {kod:"T23", parta:"G2", typ:"T", cislo:23, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 23 Lučina", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"P15", parta:"P15", typ:"P", cislo:15, den:"SO", kdy_od:"19:00", kdy_do:"00:30", kdy_text:"so 19:00 – ne 0:30", popis:"Obsluha předávky 15 Popov", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"P18", parta:"P18", typ:"P", cislo:18, den:"SO", kdy_od:"22:20", kdy_do:"03:30", kdy_text:"so 22:20 – ne 3:30", popis:"Obsluha předávky 18 Starý Hrozenkov", stav:"potvrzeno", zdroj:"ručně"},
-    {kod:"P14", parta:"P14", typ:"P", cislo:14, den:"SO", kdy_od:"18:00", kdy_do:"23:30", kdy_text:"so 18:00 – 23:30", popis:"Obsluha předávky 14 Návojná", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"T20", parta:"G6", typ:"T", cislo:20, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
+    {kod:"U23", parta:"G10", typ:"U", cislo:23, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"plán", zdroj:"ručně"},
+    {kod:"N-G1-p", parta:"G1", typ:"N", cislo:null, den:"PÁ", kdy_od:"07:00", kdy_do:"", kdy_text:"pá - so 7:00", popis:"Horní Bečva, Kemp u přehrady · Horní Bečva · https://mapy.com/s/gobomafeku · celá chata č.1  4 x 4 lůžkový pokoj", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G2-p", parta:"G2", typ:"N", cislo:null, den:"PÁ", kdy_od:"05:00", kdy_do:"", kdy_text:"pá-so 5:00", popis:"Sport resort Jablunkov · Jablunkov 298 · https://mapy.com/s/gavarerato · 16 lůžek, z toho dvoulúžák pro fotografa", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G7-so", parta:"G7", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Ubytovna Nová Lhota č.p. 1 · Nová Lhota 1 · http://bit.ly/N_Lhota_ubytovna · 1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka", stav:"plán", zdroj:"podrobný"},
+    {kod:"P14", parta:"P14", typ:"P", cislo:14, den:"SO", kdy_od:"18:00", kdy_do:"23:30", kdy_text:"so 18:00 – 23:30", popis:"Obsluha předávky 14 Návojná", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"P19", parta:"P19", typ:"P", cislo:19, den:"SO", kdy_od:"23:10", kdy_do:"04:30", kdy_text:"so 23:10 – ne 4:30", popis:"", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"T8", parta:"G6", typ:"T", cislo:8, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"A-G2-01", parta:"G2", typ:"A", cislo:null, den:"SO", kdy_od:"12:40", kdy_do:"15:30", kdy_text:"so 12:40 – 15:30", popis:"Přejezd ze startu na 23_Lučina", stav:"plán", zdroj:"podrobný"},
-    {kod:"A-G0B-06", parta:"G0B", typ:"A", cislo:null, den:"NE", kdy_od:"09:30", kdy_do:"", kdy_text:"ne 9:30", popis:"Vyložení pivních setů Mikulov", stav:"plán", zdroj:"podrobný"},
+    {kod:"A-G0B-06", parta:"G0B", typ:"A", cislo:null, den:"NE", kdy_od:"09:30", kdy_do:"10:00", kdy_text:"ne 9:30", popis:"Vyložení pivních setů Mikulov", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G1-01", parta:"G1", typ:"A", cislo:null, den:"SO", kdy_od:"10:00", kdy_do:"11:00", kdy_text:"so 10:00 - 11:00", popis:"Přejezd na 11_Huslenky", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G2-03", parta:"G2", typ:"A", cislo:null, den:"NE", kdy_od:"", kdy_do:"", kdy_text:"ne 9: 30 -?", popis:"pomoc v cíli, stavba brány, banneru, stánů, pohotovost pro výjezd  pro cokoli", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G1-p", parta:"G1", typ:"N", cislo:null, den:"PÁ", kdy_od:"07:00", kdy_do:"", kdy_text:"pá - so 7:00", popis:"nocleh Horní Bečva, kemp u přehrady — 16 lůžek, pro traséry", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G1-03", parta:"G1", typ:"A", cislo:null, den:"NE", kdy_od:"", kdy_do:"", kdy_text:"neděle", popis:"Přejezd na 09_Kasárna", stav:"plán", zdroj:"podrobný"},
     {kod:"T16", parta:"G11", typ:"T", cislo:16, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 16 Rokytnice", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"T18", parta:"G16", typ:"T", cislo:18, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 18 Starý Hrozenkov", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"S-G2-2", parta:"G2", typ:"S", cislo:1, den:"SO", kdy_od:"05:30", kdy_do:"11:30", kdy_text:"so 5:30 - 11:30", popis:"Práce na startu, prezence týmů", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G2-p", parta:"G2", typ:"N", cislo:null, den:"PÁ", kdy_od:"05:00", kdy_do:"", kdy_text:"pá-so 5:00", popis:"nocleh u startu, Sport resort Jablunkov, Jablunkov 298 — spí tam všichni na startu, 16 lůžek", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G8-02", parta:"G8", typ:"A", cislo:null, den:"NE", kdy_od:"08:30", kdy_do:"09:30", kdy_text:"ne 8:30 - 9:30", popis:"Přejezd 23 Lučina do 29 Valtice", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G7-so", parta:"G7", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"nocleh so 21 Nová Lhota — Ubytovna Nová Lhota č.p. 1, klíče vyzvedne první posádka v hospodě", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G7-03", parta:"G7", typ:"A", cislo:null, den:"NE", kdy_od:"", kdy_do:"", kdy_text:"neděle odpoledne", popis:"Přejezd do cíle", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G14-01", parta:"G14", typ:"A", cislo:null, den:"PÁ", kdy_od:"", kdy_do:"", kdy_text:"pátek po 13 hod", popis:"Přebrat klíče Sport resort Jablunkov, Jablunkov 298 — kontakt a místo předání doplnit", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G6-03", parta:"G6", typ:"A", cislo:null, den:"SO", kdy_od:"15:30", kdy_do:"17:30", kdy_text:"so 15:30 - 17:30", popis:"Přejezd z 13_Študlov do 15_Popov", stav:"plán", zdroj:"podrobný"},
@@ -1495,14 +1501,14 @@ const D = {
     {kod:"P31", parta:"ZVUK", typ:"P", cislo:31, den:"NE", kdy_od:"11:10", kdy_do:"18:00", kdy_text:"ne 11:10 – 18:00", popis:"Obsluha cíle 31 Mikulov", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"PZ10", parta:"G0A", typ:"PZ", cislo:10, den:"SO", kdy_od:"13:30", kdy_do:"13:40", kdy_text:"so 13:30 – 13:40", popis:"Zahájení předávky 10 Kohútka", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"PZ16", parta:"G0A", typ:"PZ", cislo:16, den:"SO", kdy_od:"20:00", kdy_do:"20:10", kdy_text:"so 20:00 – 20:10", popis:"Zahájení předávky 16 Rokytnice", stav:"potvrzeno", zdroj:"ručně"},
-    {kod:"U29", parta:"G8", typ:"U", cislo:29, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
-    {kod:"U23", parta:"G10", typ:"U", cislo:23, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"plán", zdroj:"ručně"},
+    {kod:"N-G0A-p", parta:"G0A", typ:"N", cislo:null, den:"PÁ", kdy_od:"23:00", kdy_do:"05:10", kdy_text:"pá 23:00 – so 5:10", popis:"Sport resort Jablunkov · Jablunkov 298 · https://mapy.com/s/gavarerato · 16 lůžek, z toho dvoulúžák pro fotografa", stav:"potvrzeno", zdroj:"generováno"},
+    {kod:"N-G3-so", parta:"G3", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Lučina · https://mapy.com/s/jovunerope", stav:"plán", zdroj:"podrobný"},
+    {kod:"A-G0B-08", parta:"G0B", typ:"N", cislo:null, den:"SO", kdy_od:"22:00", kdy_do:"02:00", kdy_text:"", popis:"Ubytovna Nová Lhota č.p. 1 · Nová Lhota 1 · http://bit.ly/N_Lhota_ubytovna · 1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka", stav:"plán", zdroj:"ručně"},
     {kod:"U12", parta:"G17", typ:"U", cislo:12, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"plán", zdroj:"ručně"},
     {kod:"T2b", parta:"G15", typ:"T", cislo:2, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"U2b", parta:"G15", typ:"U", cislo:2, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"U11", parta:"G1", typ:"U", cislo:11, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"plán", zdroj:"ručně"},
     {kod:"U14", parta:"G1", typ:"U", cislo:14, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"plán", zdroj:"ručně"},
-    {kod:"N-G0A-p", parta:"G0A", typ:"N", cislo:null, den:"PÁ", kdy_od:"23:00", kdy_do:"05:10", kdy_text:"pá 23:00 – so 5:10", popis:"nocleh z pátku na sobotu — JABLUNKOV Sport resort Jablunkov", stav:"potvrzeno", zdroj:"generováno"},
     {kod:"U24", parta:"G10", typ:"U", cislo:24, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"plán", zdroj:"ručně"},
     {kod:"A-G0A-01", parta:"G0A", typ:"A", cislo:null, den:"PÁ", kdy_od:"10:00", kdy_do:"13:30", kdy_text:"pá 10:00", popis:"Odjezd z Brna", stav:"potvrzeno", zdroj:"podrobný"},
     {kod:"A-G0B-02", parta:"G0B", typ:"A", cislo:null, den:"PÁ", kdy_od:"16:00", kdy_do:"17:00", kdy_text:"pá 16-17", popis:"Véna — přejezd na start", stav:"plán", zdroj:"podrobný"},
@@ -1510,9 +1516,15 @@ const D = {
     {kod:"A-G7-01", parta:"G7", typ:"A", cislo:null, den:"SO", kdy_od:"09:30", kdy_do:"11:00", kdy_text:"so 09:30 - 11:00", popis:"Přejezd ze 6_Bílá do 13_Študlov", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G7-02", parta:"G7", typ:"A", cislo:null, den:"SO", kdy_od:"13:30", kdy_do:"16:30", kdy_text:"so 13:30 - 16:30", popis:"Přejezd ze 14_Návojná do 24_Sudoměřice", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G13-02", parta:"G13", typ:"A", cislo:null, den:"PÁ", kdy_od:"", kdy_do:"", kdy_text:"pá", popis:"Odjezd z Brna", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G3-so", parta:"G3", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Lučina", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G5-so", parta:"G5", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"nocleh so 21 Nová Lhota — Ubytovna Nová Lhota č.p. 1, klíče vyzvedne první posádka v hospodě", stav:"plán", zdroj:"podrobný"},
+    {kod:"P8", parta:"P8", typ:"P", cislo:8, den:"SO", kdy_od:"11:40", kdy_do:"17:50", kdy_text:"so 11:40 – 17:50", popis:"", stav:"potvrzeno", zdroj:"ručně"},
+    {kod:"PZ31", parta:"G0A", typ:"PZ", cislo:31, den:"NE", kdy_od:"11:00", kdy_do:"11:10", kdy_text:"ne 11:00 – 11:10", popis:"Zahájení cíle 31 Mikulov", stav:"plán", zdroj:"ručně"},
+    {kod:"T15", parta:"G6", typ:"T", cislo:15, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
+    {kod:"A-G10-03", parta:"G10", typ:"A", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Přejezd 23 Lučina → 24 Sudoměřice", stav:"plán", zdroj:"podrobný"},
+    {kod:"T2", parta:"G4", typ:"T", cislo:2, den:"PÁ", kdy_od:"16:00", kdy_do:"19:00", kdy_text:"pá 16-19", popis:"", stav:"potvrzeno", zdroj:"podrobný"},
     {kod:"A-G14-03", parta:"G14", typ:"A", cislo:null, den:"", kdy_od:"17:00", kdy_do:"", kdy_text:"cca 17:00", popis:"Přebrání objemných věcí od G13 - Helenka na 07 nebo 08", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G5-so", parta:"G5", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Ubytovna Nová Lhota č.p. 1 · Nová Lhota 1 · http://bit.ly/N_Lhota_ubytovna · 1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G17-so", parta:"G17", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Penzion Pulčínské skály · Pulčín 22 · https://mapy.com/s/nacetumuse · 9 lidí ve 3 pokojích", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G6-so", parta:"G6", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Ubytovna Nová Lhota č.p. 1 · Nová Lhota 1 · http://bit.ly/N_Lhota_ubytovna · 1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka", stav:"plán", zdroj:"podrobný"},
     {kod:"T29", parta:"G8", typ:"T", cislo:29, den:"SO", kdy_od:"", kdy_do:"", kdy_text:"sobota", popis:"Trasování etapa 29_Valtice", stav:"potvrzeno", zdroj:"podrobný"},
     {kod:"T30", parta:"G8", typ:"T", cislo:30, den:"SO", kdy_od:"", kdy_do:"", kdy_text:"sobota", popis:"Trasování etapa 30_Hlohovec", stav:"potvrzeno", zdroj:"podrobný"},
     {kod:"T3", parta:"G15", typ:"T", cislo:3, den:"PÁ", kdy_od:"", kdy_do:"", kdy_text:"pátek večer", popis:"Trasování etapy 03 Morávka", stav:"potvrzeno", zdroj:"podrobný"},
@@ -1526,25 +1538,18 @@ const D = {
     {kod:"PZ3", parta:"G0B", typ:"PZ", cislo:3, den:"SO", kdy_od:"07:20", kdy_do:"07:30", kdy_text:"so 7:20 – 7:30", popis:"Zahájení předávky 03 Morávka", stav:"potvrzeno", zdroj:"podrobný"},
     {kod:"PK1", parta:"G14", typ:"PK", cislo:1, den:"SO", kdy_od:"12:00", kdy_do:"12:10", kdy_text:"so 12:00 – 12:10", popis:"Ukončení předávky 01 Dolní Lomná (start), odvoz materiálu — banner, flag (pokud bude)", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"A-G0B-03", parta:"G0B", typ:"A", cislo:null, den:"SO", kdy_od:"07:00", kdy_do:"22:00", kdy_text:"so 7:00 - ne 22:00", popis:"Pohyb po trati poblíž čela závodu,  pohotovost na záskok za kohokoliv.", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G17-so", parta:"G17", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"nocleh so Penzion Pulčínské skály, Pulčín 22 — 9 lůžek", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G13-01", parta:"G13", typ:"A", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Přejezd 20 Strání → 21 Nová Lhota, Ubytovna Nová Lhota č.p. 1. Materiál opřít venku o dům nebo dát do chodby.", stav:"plán", zdroj:"podrobný"},
     {kod:"U9", parta:"G5", typ:"U", cislo:9, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"plán", zdroj:"ručně"},
     {kod:"U10", parta:"G5", typ:"U", cislo:10, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"plán", zdroj:"ručně"},
     {kod:"PK8", parta:"G13", typ:"PK", cislo:8, den:"SO", kdy_od:"17:43", kdy_do:"", kdy_text:"so 17:43", popis:"Ukončení předávky 08 Světlá, odvoz materiálu — banner, flag (pokud bude)", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"T12", parta:"G5", typ:"T", cislo:12, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"T1", parta:"G4", typ:"T", cislo:1, den:"PÁ", kdy_od:"", kdy_do:"", kdy_text:"pátek odpoledne", popis:"Trasování Etapy 01", stav:"potvrzeno", zdroj:"podrobný"},
-    {kod:"N-G6-so", parta:"G6", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"nocleh so 21 Nová Lhota — Ubytovna Nová Lhota č.p. 1, klíče vyzvedne první posádka v hospodě", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G10-01", parta:"G10", typ:"A", cislo:null, den:"SO", kdy_od:"", kdy_do:"", kdy_text:"so", popis:"Odjezd z Brna", stav:"plán", zdroj:"podrobný"},
-    {kod:"P8", parta:"P8", typ:"P", cislo:8, den:"SO", kdy_od:"11:40", kdy_do:"17:50", kdy_text:"so 11:40 – 17:50", popis:"", stav:"potvrzeno", zdroj:"ručně"},
-    {kod:"PZ31", parta:"G0A", typ:"PZ", cislo:31, den:"NE", kdy_od:"11:00", kdy_do:"11:10", kdy_text:"ne 11:00 – 11:10", popis:"Zahájení cíle 31 Mikulov", stav:"plán", zdroj:"ručně"},
-    {kod:"T15", parta:"G6", typ:"T", cislo:15, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
-    {kod:"A-G10-03", parta:"G10", typ:"A", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Přejezd 23 Lučina → 24 Sudoměřice", stav:"plán", zdroj:"podrobný"},
-    {kod:"T2", parta:"G4", typ:"T", cislo:2, den:"PÁ", kdy_od:"16:00", kdy_do:"19:00", kdy_text:"pá 16-19", popis:"", stav:"potvrzeno", zdroj:"podrobný"},
+    {kod:"N-G3-p", parta:"G3", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"plán", zdroj:"podrobný"},
     {kod:"PZ1", parta:"G14", typ:"PZ", cislo:1, den:"SO", kdy_od:"05:20", kdy_do:"05:30", kdy_text:"so 5:20 – 5:30", popis:"Zahájení předávky 01 Dolní Lomná (start)", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"PK23", parta:"G3", typ:"PK", cislo:23, den:"NE", kdy_od:"10:00", kdy_do:"10:10", kdy_text:"ne 10:00 – 10:10", popis:"Ukončení předávky 23 Lučina, koupaliště, odvoz materiálu — banner, flag (pokud bude)", stav:"plán", zdroj:"ručně"},
     {kod:"U1", parta:"G4", typ:"U", cislo:1, den:"SO", kdy_od:"", kdy_do:"", kdy_text:"sobota/neděle", popis:"Úklid etapy 1", stav:"potvrzeno", zdroj:"podrobný"},
     {kod:"U2", parta:"G4", typ:"U", cislo:2, den:"SO", kdy_od:"", kdy_do:"", kdy_text:"sobota/neděle", popis:"Úklid etapy 2", stav:"potvrzeno", zdroj:"podrobný"},
-    {kod:"N-G3-p", parta:"G3", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"vlastní — G3 spí v pátek doma", stav:"plán", zdroj:"podrobný"},
     {kod:"T9", parta:"G1", typ:"T", cislo:9, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"T11", parta:"G5", typ:"T", cislo:11, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"T19", parta:"G6", typ:"T", cislo:19, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
@@ -1553,10 +1558,7 @@ const D = {
     {kod:"U6", parta:"G14", typ:"U", cislo:6, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"S-FOTO-1", parta:"FOTO", typ:"S", cislo:1, den:"SO", kdy_od:"05:40", kdy_do:"08:00", kdy_text:"so 5:40 – 8:00", popis:"Foto na startu", stav:"plán", zdroj:"podrobný"},
     {kod:"A-FOTO-01", parta:"FOTO", typ:"A", cislo:null, den:"SO", kdy_od:"", kdy_do:"", kdy_text:"so", popis:"lokace dle doporučení", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-FOTO-so", parta:"FOTO", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Vlastní", stav:"plán", zdroj:"podrobný"},
     {kod:"A-FOTO-02", parta:"FOTO", typ:"A", cislo:null, den:"NE", kdy_od:"", kdy_do:"", kdy_text:"ne", popis:"lokace dle doporučení", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-FOTO-p", parta:"FOTO", typ:"N", cislo:null, den:"PÁ", kdy_od:"05:00", kdy_do:"", kdy_text:"pá - so 5:00", popis:"Sport resort Jablunkov, Jablunkov 298 — Tomáš", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G18-so", parta:"G18", typ:"N", cislo:null, den:"", kdy_od:"07:00", kdy_do:"", kdy_text:"vstát v 7:00", popis:"Lučina — vstávat na budík, snídaně na předávce, vyrazit nejpozději v 7:30", stav:"plán", zdroj:"podrobný"},
     {kod:"A-FOTO-03", parta:"FOTO", typ:"A", cislo:null, den:"", kdy_od:"11:30", kdy_do:"", kdy_text:"cca 11:30", popis:"Příjezd do cíle", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G18-01", parta:"G18", typ:"A", cislo:null, den:"", kdy_od:"10:30", kdy_do:"11:30", kdy_text:"10:30 - 11:30", popis:"Přejezd 24 Sudoměřice → 31 Mikulov", stav:"plán", zdroj:"podrobný"},
     {kod:"T13", parta:"G1", typ:"T", cislo:13, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
@@ -1565,9 +1567,12 @@ const D = {
     {kod:"P7", parta:"P7", typ:"P", cislo:7, den:"SO", kdy_od:"10:20", kdy_do:"16:20", kdy_text:"so 10:20 – 16:20", popis:"Obsluha předávky 07 Bumbálka", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"P9", parta:"P9", typ:"P", cislo:9, den:"SO", kdy_od:"12:30", kdy_do:"18:20", kdy_text:"so 12:30 – 18:20", popis:"Obsluha předávky 09 Kasárne", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"P10", parta:"P10", typ:"P", cislo:10, den:"SO", kdy_od:"13:30", kdy_do:"19:20", kdy_text:"so 13:30 – 19:20", popis:"Obsluha předávky 10 Kohútka", stav:"potvrzeno", zdroj:"ručně"},
-    {kod:"N-G8-so", parta:"G8", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Lučina", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G5-01", parta:"G5", typ:"A", cislo:null, den:"SO", kdy_od:"13:00", kdy_do:"14:00", kdy_text:"so 13:00 - 14:00", popis:"Přejezd 10_Kohútka - 19 Mikulčin vrch", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G5-p", parta:"G5", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"nocleh Horní Bečva, kemp u přehrady — 16 lůžek, pro traséry", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-FOTO-so", parta:"FOTO", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-FOTO-p", parta:"FOTO", typ:"N", cislo:null, den:"PÁ", kdy_od:"05:00", kdy_do:"", kdy_text:"pá - so 5:00", popis:"Sport resort Jablunkov · Jablunkov 298 · https://mapy.com/s/gavarerato · 16 lůžek, z toho dvoulúžák pro fotografa", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G18-so", parta:"G18", typ:"N", cislo:null, den:"", kdy_od:"07:00", kdy_do:"", kdy_text:"vstát v 7:00", popis:"Lučina · https://mapy.com/s/jovunerope", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G8-so", parta:"G8", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Lučina · https://mapy.com/s/jovunerope", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G5-p", parta:"G5", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Horní Bečva, Kemp u přehrady · Horní Bečva · https://mapy.com/s/gobomafeku · celá chata č.1  4 x 4 lůžkový pokoj", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G3-02", parta:"G3", typ:"A", cislo:null, den:"SO", kdy_od:"12:30", kdy_do:"14:00", kdy_text:"so 12:30-14:00", popis:"Přejezd ze startu do 11 Huslenky", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G3-04", parta:"G3", typ:"A", cislo:null, den:"", kdy_od:"09:30", kdy_do:"10:30", kdy_text:"9:30 - 10:30", popis:"Přejezd 18 Starý Hrozenkov → 24 Sudoměřice", stav:"plán", zdroj:"podrobný"},
     {kod:"P12", parta:"P12", typ:"P", cislo:12, den:"SO", kdy_od:"15:40", kdy_do:"21:20", kdy_text:"so 15:40 – 21:20", popis:"Obsluha předávky 12 Pulčín", stav:"potvrzeno", zdroj:"ručně"},
@@ -1581,12 +1586,12 @@ const D = {
     {kod:"PZ19", parta:"G0A", typ:"PZ", cislo:19, den:"SO", kdy_od:"23:30", kdy_do:"", kdy_text:"so 23:30", popis:"Zahájení předávky 19 Mikulčin vrch", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"PZ20", parta:"G0A", typ:"PZ", cislo:20, den:"NE", kdy_od:"00:52", kdy_do:"", kdy_text:"ne 0:52", popis:"Zahájení předávky 20 Strání", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"S-G0B-1", parta:"G0B", typ:"S", cislo:1, den:"PÁ", kdy_od:"19:00", kdy_do:"22:00", kdy_text:"pá 19-22", popis:"Práce na startu,prezence týmů", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G10-so", parta:"G10", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Lučina", stav:"plán", zdroj:"podrobný"},
     {kod:"T21", parta:"G18", typ:"T", cislo:21, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 21 Nová Lhota", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"P30", parta:"P30", typ:"P", cislo:30, den:"NE", kdy_od:"10:00", kdy_do:"17:00", kdy_text:"ne 10:00 – 17:00", popis:"Obsluha předávky 30 Hlohovec", stav:"potvrzeno", zdroj:"hrubý"},
     {kod:"U3", parta:"G15", typ:"U", cislo:3, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Úklid značení etapy 03 Morávka", stav:"potvrzeno", zdroj:"hrubý"},
     {kod:"U4", parta:"G15", typ:"U", cislo:4, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Úklid značení etapy 04 Visalaje", stav:"potvrzeno", zdroj:"hrubý"},
     {kod:"P3", parta:"P3", typ:"P", cislo:3, den:"SO", kdy_od:"07:20", kdy_do:"13:50", kdy_text:"so 7:20 – 13:50", popis:"Obsluha předávky 03 Morávka", stav:"potvrzeno", zdroj:"hrubý"},
+    {kod:"N-G10-so", parta:"G10", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Lučina · https://mapy.com/s/jovunerope", stav:"plán", zdroj:"podrobný"},
     {kod:"PZ4", parta:"G0A", typ:"PZ", cislo:4, den:"SO", kdy_od:"08:10", kdy_do:"08:20", kdy_text:"so 8:10 – 8:20", popis:"Zahájení předávky 04 Visalaje", stav:"potvrzeno", zdroj:"podrobný"},
     {kod:"PZ12", parta:"G0A", typ:"PZ", cislo:12, den:"SO", kdy_od:"15:40", kdy_do:"15:50", kdy_text:"so 15:40 – 15:50", popis:"Zahájení předávky 12 Pulčín", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"PZ13", parta:"G0A", typ:"PZ", cislo:13, den:"SO", kdy_od:"16:50", kdy_do:"17:00", kdy_text:"so 16:50 – 17:00", popis:"Zahájení předávky 13 Študlov", stav:"potvrzeno", zdroj:"ručně"},
@@ -1605,18 +1610,18 @@ const D = {
     {kod:"A-G0B-01", parta:"G0B", typ:"A", cislo:null, den:"PÁ", kdy_od:"13:00", kdy_do:"", kdy_text:"pá 10:00", popis:"Odjezd z Brna", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G10-02", parta:"G10", typ:"A", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Přejezd na 23 Lučina", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G14-02", parta:"G14", typ:"A", cislo:null, den:"SO", kdy_od:"12:30", kdy_do:"13:30", kdy_text:"so 12:30 - 13:30", popis:"Přejezd z 02 na 04", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G0B-p", parta:"G0B", typ:"N", cislo:null, den:"PÁ", kdy_od:"23:00", kdy_do:"05:00", kdy_text:"pá-so 7:00", popis:"Sport resort Jablunkov · Jablunkov 298 · https://mapy.com/s/gavarerato · 16 lůžek, z toho dvoulúžák pro fotografa", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G13-p", parta:"G13", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Horní Bečva, Kemp u přehrady · Horní Bečva · https://mapy.com/s/gobomafeku · celá chata č.1  4 x 4 lůžkový pokoj", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G7-p", parta:"G7", typ:"N", cislo:null, den:"PÁ", kdy_od:"08:00", kdy_do:"", kdy_text:"pá - so 8:00", popis:"Horní Bečva, Kemp u přehrady · Horní Bečva · https://mapy.com/s/gobomafeku · celá chata č.1  4 x 4 lůžkový pokoj", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G14-so", parta:"G14", typ:"N", cislo:null, den:"NE", kdy_od:"07:30", kdy_do:"", kdy_text:"ne 7:30", popis:"Ubytovna Nová Lhota č.p. 1 · Nová Lhota 1 · http://bit.ly/N_Lhota_ubytovna · 1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G13-so", parta:"G13", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Penzion Pulčínské skály · Pulčín 22 · https://mapy.com/s/nacetumuse · 9 lidí ve 3 pokojích", stav:"plán", zdroj:"podrobný"},
     {kod:"T28", parta:"G8", typ:"T", cislo:28, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 28 Břeclav", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"U28", parta:"G8", typ:"U", cislo:28, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Úklid značení etapy 28 Břeclav", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"S-G0A-1", parta:"G0A", typ:"S", cislo:1, den:"PÁ", kdy_od:"14:00", kdy_do:"22:00", kdy_text:"pá 14–22", popis:"Práce na startu", stav:"potvrzeno", zdroj:"podrobný"},
     {kod:"S-G14-2", parta:"G14", typ:"S", cislo:1, den:"SO", kdy_od:"05:30", kdy_do:"11:40", kdy_text:"so 5:30 – 11:40", popis:"Moderace startu", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G0B-p", parta:"G0B", typ:"N", cislo:null, den:"PÁ", kdy_od:"07:00", kdy_do:"", kdy_text:"pá-so 7:00", popis:"Sport resort Jablunkov, Jablunkov 298", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G13-p", parta:"G13", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"nocleh Horní Bečva, kemp u přehrady — 16 lůžek, pro traséry", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G7-p", parta:"G7", typ:"N", cislo:null, den:"PÁ", kdy_od:"08:00", kdy_do:"", kdy_text:"pá - so 8:00", popis:"nocleh Horní Bečva, kemp u přehrady — 16 lůžek, pro traséry", stav:"plán", zdroj:"podrobný"},
-    {kod:"PZ2", parta:"G0A", typ:"PZ", cislo:2, den:"SO", kdy_od:"06:10", kdy_do:"00:20", kdy_text:"so 6:10 – 6:20", popis:"Zahájení předávky 02 Horní Lomná", stav:"plán", zdroj:"podrobný"},
+    {kod:"PZ2", parta:"G0A", typ:"PZ", cislo:2, den:"SO", kdy_od:"06:10", kdy_do:"00:20", kdy_text:"so 6:10 – 6:20", popis:"Zahájení předávky 02 Horní Lomná", stav:"potvrzeno", zdroj:"podrobný"},
     {kod:"PZ6", parta:"G0A", typ:"PZ", cislo:6, den:"SO", kdy_od:"09:40", kdy_do:"09:50", kdy_text:"so 9:40 – 9:50", popis:"Zahájení předávky 06 Bílá", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"PZ7", parta:"G0A", typ:"PZ", cislo:7, den:"SO", kdy_od:"10:20", kdy_do:"10:30", kdy_text:"so 10:20 – 10:30", popis:"Zahájení předávky 07 Bumbálka", stav:"potvrzeno", zdroj:"ručně"},
-    {kod:"N-G14-so", parta:"G14", typ:"N", cislo:null, den:"NE", kdy_od:"07:30", kdy_do:"", kdy_text:"ne 7:30", popis:"nocleh so 21 Nová Lhota — Ubytovna Nová Lhota č.p. 1, klíče vyzvedne první posádka v hospodě", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G13-so", parta:"G13", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"nocleh so Penzion Pulčínské skály, Pulčín 22 — 9 lůžek", stav:"plán", zdroj:"podrobný"},
     {kod:"U30", parta:"G8", typ:"U", cislo:30, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"}
   ]
 };
@@ -1625,10 +1630,29 @@ const ROLE  = ["T","U","P","PZ","PK"];
 const NAZVY = ["trasa-značení","úklid značení","PŘED obsluha","PŘED zahájení","PŘED ukončení"];
 // klíče do NAPOVEDA zůstávají původní, ať se nemusí přepisovat texty nápovědy
 const NAPOVEDA_ROLE = ["Trasování","Úklid fáborků","Obsluha předávky","Zahájení předávky","Ukončení předávky"];
-const TYPY  = ["T","U","P","PZ","PK","N","A","S","C"];
+const TYPY  = ["T","U","P","PZ","PK","N","A","AK","S","C"];
+// AK = jednorázová akce, která nepatří pod značení ani pod předávku —
+// focení, moderace, předání cen. Číslo předávky mít může, ale nemusí;
+// do mřížky plánu nevstupuje (ROLE jsou jen role vázané na etapu)
+// a generátor si ji nikdy nevyrábí sám.
 const NAZVY_TYPU = {T:"trasa-značení",U:"úklid značení",P:"PŘED obsluha",
-  PZ:"PŘED zahájení",PK:"PŘED ukončení",N:"nocleh",A:"přejezd",
+  PZ:"PŘED zahájení",PK:"PŘED ukončení",N:"nocleh",A:"přejezd",AK:"akce",
   S:"start",C:"cíl"};
+/* Barva typu úkolu. Tři hlavní práce mají každá svou — značení, úklid a
+   předávka (obsluha, zahájení i ukončení sdílí jednu, patří k sobě). Zbytek je
+   doprovod: přejezd a nocleh v zemitých tónech, start a cíl oranžově.
+   Používá se to na dvou místech, která si musí odpovídat: v podrobném plánu
+   obarví políčko typu, na mobilní kartě levý proužek. */
+const BARVA_TYPU = {
+  T:"#3E7CA6", U:"#8A6BA8",
+  P:"#1E7A4C", PZ:"#1E7A4C", PK:"#1E7A4C",
+  A:"#8D8072", N:"#4A4335", AK:"#B0446A", S:"#D08C3A", C:"#D08C3A"
+};
+// světlé pozadí ke stejné barvě, ať zůstane text čitelný
+const POZADI_TYPU = {
+  T:"#E8F0F6", U:"#F1EBF7", P:"#E6F3EC", PZ:"#E6F3EC", PK:"#E6F3EC",
+  A:"#F2EFEB", N:"#EDEBE5", AK:"#FAEBF0", S:"#FBF0DE", C:"#FBF0DE"
+};
 // „potvrzeno" znamená napevno naplánováno — v mřížce plánu se takový úkol zamkne.
 const STAVY = ["plán","nepotvrzeno","potvrzeno","zrušeno"];
 const BARVA_STAVU = {"plán":"#66713E","nepotvrzeno":"#D08C3A",
@@ -1681,8 +1705,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.00";
-const BUILD = "2026-08-23T18:55+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v5.04";
+const BUILD = "2026-08-23T22:59+02:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1815,6 +1839,22 @@ function odznakHtml(r, vslotu){
   return rocnik + otaznik;
 }
 const zrevidovano = r => { if(r && r.zRocniku) delete r.zRocniku; };
+
+/* Datum a čas podle hodin na zdi, ne podle Greenwiche.
+   toISOString() vrací UTC, takže v létě (SELČ, +2) psalo o dvě hodiny míň —
+   export uložený ve 20:29 se jmenoval …1829. U termínů v to-do to bylo horší
+   než kosmetické: po 22:00 už UTC ukazovalo zítřek, takže se dnešní termíny
+   samy označily za propadlé. */
+function mistniDatum(d){
+  const t = d || new Date();
+  const dvoj = n => String(n).padStart(2, '0');
+  return t.getFullYear() + '-' + dvoj(t.getMonth() + 1) + '-' + dvoj(t.getDate());
+}
+function mistniZnacka(d){
+  const t = d || new Date();
+  const dvoj = n => String(n).padStart(2, '0');
+  return mistniDatum(t).replace(/-/g, '') + '_' + dvoj(t.getHours()) + dvoj(t.getMinutes());
+}
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 // v mřížce: role 0,1 se váže na číslo etapy, role 2,3,4 na číslo předávky (etapa + 1)
@@ -2298,11 +2338,19 @@ function kresliPaletu(){
   const d = $('#detailParty');
   if(vybrany){
     const t = parta(vybrany) || {};
-    const lidi = BEZ_JMEN.indexOf(vybrany)>=0 ? [] : D.clenove.filter(c=>c.kod_tymu===vybrany).map(c=>c.jmeno);
+    /* Osádka celá, ale zkráceně — do úzkého panelu vedle palety se plná jména
+       nevejdou a dřív se z nich stejně zobrazila jen část. Odložení do historie
+       se nepočítají, šéf stojí první. */
+    const lidi = BEZ_JMEN.indexOf(vybrany)>=0 ? '' : osadkaZkracene(vybrany);
+    const pocetLidi = BEZ_JMEN.indexOf(vybrany)>=0 ? 0
+      : zivi().filter(c=>c.kod_tymu===vybrany).length;
     d.innerHTML = '<b>'+esc(vybrany)+'</b>'+(t.nazev?' — '+esc(t.nazev):'')
       + '<br>doprava: '+esc(t.doprava||'neurčeno')
       + (sefGrupy(vybrany) ? '<br>šéf grupy: '+esc(sefGrupy(vybrany)) : '')
-      + '<br>lidé: '+(lidi.length?esc(lidi.join(', ')):(BEZ_JMEN.indexOf(vybrany)>=0?'místní grupa, jména se nevedou':'nikdo v clenove_tymu'))
+      + '<br>lidé' + (pocetLidi ? ' ('+pocetLidi+')' : '') + ': '
+      + (lidi ? '<span title="'+esc(lidi)+'">'+esc(lidi)+'</span>'
+              : (BEZ_JMEN.indexOf(vybrany)>=0?'místní grupa, jména se nevedou':'nikdo v clenove_tymu'))
+      + (t.v_podrobnem === 'ne' ? '<br><span class="popisek">v podrobném plánu se neukazuje</span>' : '')
       + '<br>úkolů celkem: '+(poc[vybrany]||0)
       + (MIMO_DB.indexOf(t.kod)>=0?'<br><b style="color:var(--vinova)">Není v tabulce tymy_org.</b>':'');
   } else d.textContent = 'Klikni na grupu pro detail.';
@@ -3512,7 +3560,7 @@ function kresliTodo(){
   fk.innerHTML = '<option value="">kdokoli</option>'
     + lide.map(k=>`<option${k===dk?' selected':''}>${esc(k)}</option>`).join('');
 
-  const dnesIso = new Date().toISOString().slice(0,10);
+  const dnesIso = mistniDatum();          // dnešek podle místního času, ne UTC
   const jenPo = $('#todoPoTerminu').checked;
   const jenOtevrene = $('#todoJenOtevrene').checked;
   const videt = D.todo.filter(t =>
@@ -3767,10 +3815,17 @@ function kresliPodrobny(){
     .map(o=>o.x);
 
   const fn = $('#filtrNeuplne') && $('#filtrNeuplne').checked;
+  /* Grupy vypnuté v tabulce Grupy se sem nekreslí vůbec. Není to filtr —
+     je to nastavení grupy, takže se to nedá omylem přepnout v liště a platí
+     to i po přegenerování. Když si ale grupu někdo vybere ve filtru, ukáže se
+     i tak: jinak by se tvářila, že žádné úkoly nemá. */
+  const schovane = new Set((D.tymy || [])
+    .filter(t => t.v_podrobnem === 'ne').map(t => t.kod));
   const u = vsechny.filter(x =>
        // rozdělaný řádek bez grupy je vidět vždycky, jinak by po přidání zmizel
        (x._nove && !x.parta) ||
-       (!fp.size || fp.has(x.parta))
+       (!schovane.has(x.parta) || fp.has(x.parta))
+    && (!fp.size || fp.has(x.parta))
     && (!ft.size || ft.has(x.typ))
     && (!fk || String(x.kod||'').toLowerCase().indexOf(fk)>=0)
     && (!fs.size || fs.has(x.stav))
@@ -3861,6 +3916,28 @@ function kresliPodrobny(){
 
   // zvýraznění odvozených řádků
   [...tab.querySelectorAll('tbody tr')].forEach((tr,i)=>{ if(u[i] && u[i].odvozeno) tr.classList.add('odvozene'); });
+
+  /* Obarvení podle typu úkolu. Na počítači se obarví políčko s typem, na
+     mobilní kartě levý proužek — tam sloupec s typem není a proužek je jediné
+     místo, kde se barva pozná na první pohled. Barva se sype z BARVA_TYPU, ať
+     se obě zobrazení nemůžou rozejít. */
+  [...tab.querySelectorAll('tbody tr')].forEach((tr, i) => {
+    const typ = u[i] && u[i].typ;
+    const barva = BARVA_TYPU[typ];
+    if(!barva) return;
+    tr.style.setProperty('--barvaTypu', barva);
+    tr.classList.add('maTyp');
+    const bunka = [...tr.querySelectorAll('td')]
+      .find(t => t.getAttribute('data-th') === 'Typ');
+    const sel = bunka && bunka.querySelector('select');
+    if(sel){
+      sel.style.background = POZADI_TYPU[typ] || 'transparent';
+      sel.style.color = barva;
+      sel.style.fontWeight = '700';
+      sel.style.borderRadius = '6px';
+    }
+  });
+
   kresliPruhGenerovani();
 
   // tenká linka tam, kde začíná jiná grupa — ať se to pořád čte po grupách
@@ -3918,6 +3995,10 @@ function kresliTymy(){
         + "V datech zůstane kvůli úkolům z minulého ročníku a úkoly, které na ní visí, "
         + "se v plánu zvýrazní."},
     {nadpis:"Název", pole:"nazev"},
+    {nadpis:"V podrobném", pole:"v_podrobnem", typ:"select", moznosti:["ano","ne"], sirka:"120px",
+      napovedaSl:"Má se grupa ukazovat v podrobném plánu? Volbou „ne\" se odtud "
+        + "schová i se svými úkoly — hodí se u místních pořadatelů, kteří plán "
+        + "nečtou. V mřížce plánu a v součtech zůstává, nic se nemaže."},
     {nadpis:"Členové", sirka:"280px", jenCist:true, html:bunkaClenu,
       napovedaSl:"Kdo je v grupě. Šéf je tučně a stojí první. Do řádku se vejdou dva "
         + "řádky jmen, zbytek se ukáže po najetí myší — mění se to u členů grup."},
@@ -4074,13 +4155,14 @@ function sloupceClenu(){
     {nadpis:"Šéf grupy", pole:"sef", typ:"select", moznosti:["ne","ano"], sirka:"110px",
       napovedaSl:"Kdo grupu vede. Jeho jméno se ukazuje na všech odznacích grupy. "
         + "Šéf může být v grupě jen jeden — když ho označíte, předchozímu se příznak sundá."},
-    // Jediný osobní údaj, který je ve veřejné verzi vidět. Do souboru ho pouští
-    // sanitize_public.py (KONTAKTY_VEREJNE) — když se tam vypne, sloupec tu sice
-    // zůstane, ale bude prázdný. E-mail ani číslo účtu se nezveřejňují nikdy.
+    // Jediný osobní údaj, který je ve veřejné verzi vidět. V nasazeném souboru
+    // ale žádné číslo není — dotáhne je až za běhu nactiVerejneTelefony() přes
+    // pohled verejne_telefony. Zveřejnění se tak zapíná a vypíná v databázi,
+    // ne nahráváním nové verze. E-mail ani číslo účtu se nezveřejňují nikdy.
     {nadpis:"Telefon", pole:"telefon", sirka:"150px", verejne:true,
       napovedaSl:"Telefon na člověka v grupě. O závodním víkendu je vidět i "
-        + "nepřihlášeným, aby se dalo z předávky zavolat; mimo něj se z veřejné "
-        + "verze odstraňuje."},
+        + "nepřihlášeným, aby se dalo z předávky zavolat; mimo něj se veřejný "
+        + "pohled v databázi vypne a čísla zmizí."},
     {nadpis:"E-mail", pole:"email", sirka:"230px"},
     {nadpis:"Odjezd", pole:"odjezd", sirka:"150px",
       napovedaSl:"Kdy člověk ze závodu odjíždí — třeba „ne dopoledne\" nebo „so po 20:00\". "
@@ -5652,8 +5734,7 @@ function ulozSoubor(){
   const a = document.createElement('a');
   a.href = url;
   a.download = 'hb_planovani_' + D.nastaveni.aktivni_rok + '_'
-             + new Date().toISOString().slice(0,16).replace(/[-:T]/g,'').replace(/(\d{8})/,'$1_')
-             + '.json';
+             + mistniZnacka() + '.json';
   a.style.display = 'none';
   // odkaz musí být v dokumentu, jinak ho část prohlížečů ignoruje, a adresa blobu
   // se smí zrušit až potom, co si ji prohlížeč stihne přečíst — dřív se stahování
@@ -5716,9 +5797,15 @@ const MAPA = {
     pole:{kod:'kod', nazev:'nazev', poradi:'poradi', doprava:'doprava',
           poznamka:'poznamka', stitek:'stitek', aktivni:'aktivni',
           min_znaceni:'min_znaceni', max_znaceni:'max_znaceni',
-          min_uklid:'min_uklid',     max_uklid:'max_uklid'},
-    naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano'}),
-    naDb: r => ({...r, aktivni: r.aktivni !== 'ne'})
+          min_uklid:'min_uklid',     max_uklid:'max_uklid',
+          v_podrobnem:'v_podrobnem'},
+    // Obě „ano/ne" jsou v databázi boolean, v tabulce se ale píšou slovem.
+    // Prázdná hodnota znamená ano — grupa se schová jen tehdy, když to někdo
+    // vysloveně nastaví.
+    naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano',
+                       v_podrobnem: r.v_podrobnem === false ? 'ne' : 'ano'}),
+    naDb: r => ({...r, aktivni: r.aktivni !== 'ne',
+                       v_podrobnem: r.v_podrobnem !== 'ne'})
   },
   clenove: {
     tabulka:'clenove_tymu', klic:['id'], konflikt:['id'], rok:true, jen:['zRocniku'],
@@ -5848,6 +5935,18 @@ async function sbToken(telo){
   relaceUloz();
   return relace;
 }
+
+/* Poznají se podle toho hlášky, které znamenají „relace je pryč", ne „databáze
+   něco odmítla". Supabase má obnovovací token na jedno použití: jakmile si ho
+   protočí druhá záložka nebo jiné zařízení, té první zbyde už použitý a každý
+   další dotaz spadne na tomhle. Není to chyba dat a nemá se to tvářit jako
+   jedenáct různých závad — je to jedna věc: přihlaste se znovu. */
+const CHYBY_PRIHLASENI = ['refresh token', 'already used', 'jwt expired',
+  'invalid token', 'nepřihlášeno', 'token is expired'];
+const jeChybaPrihlaseni = e => {
+  const t = String((e && e.message) || e || '').toLowerCase();
+  return CHYBY_PRIHLASENI.some(x => t.indexOf(x) >= 0);
+};
 
 // zavolá se před každým dotazem — vypršelý token si sám obnoví
 async function sbPlatnyToken(){
@@ -6110,6 +6209,41 @@ async function obnovRelaci(){
   }catch(e){ relaceZahod(); kresliStavPrihlaseni(); }
 }
 
+/* ---------- telefony pro nepřihlášené ----------
+   Čísla organizátorů se do nasazovaného souboru NEZAPÉKAJÍ. Soubor na GitHub
+   Pages tak neobsahuje žádný osobní údaj a dá se nahrávat bez omezení; čísla
+   si stránka došáhne až za běhu z databáze.
+
+   Nečte se přitom clenove_tymu — ta má veřejné čtení zakázané a má ho mít.
+   Čte se pohled `verejne_telefony`, který pouští ven jen tři věci: jméno,
+   telefon a grupu, jen u lidí letošního ročníku, kteří nejsou odložení do
+   historie a číslo vůbec mají. E-mail, číslo účtu ani poznámky se přes něj
+   nedostanou. Vypnout zveřejnění jde jedním příkazem v databázi (odebrat
+   anonovi právo na pohled) — bez nahrávání nové verze souboru.
+
+   Když se to nepovede (databáze spí, síť neběží), stránka funguje dál, jen
+   bez čísel. Proto se chyba nikam nehlásí. */
+async function nactiVerejneTelefony(){
+  // Jen ve veřejném buildu. Plná verze má čísla zapečená a nepotřebuje kvůli
+  // nim chodit na síť; přihlášený je dostane s ostatními daty.
+  if(!VEREJNA || prihlasen) return 0;
+  try{
+    const o = await fetch(SB.url + '/rest/v1/verejne_telefony?select=id,telefon',
+                          {headers:{'apikey': SB.klic}});
+    if(!o.ok) return 0;
+    const radky = await o.json();
+    if(!Array.isArray(radky) || !radky.length) return 0;
+    const podleId = new Map(radky.map(r => [String(r.id), r.telefon]));
+    let dosazeno = 0;
+    (D.clenove || []).forEach(c => {
+      const t = podleId.get(String(c.id));
+      if(t && !c.telefon){ c.telefon = t; dosazeno++; }
+    });
+    if(dosazeno){ kresliClenove(); kresliPodrobny(); }
+    return dosazeno;
+  }catch(e){ return 0; }
+}
+
 
 /* ---------- uložení do databáze ----------
    Sad je málo a řádků v nich pár set, takže se neřeší, co přesně se změnilo:
@@ -6335,7 +6469,26 @@ async function ulozDoDatabaze(volby){
       ? ' · nepřeneseno (data nejsou z databáze): ' + preskoceno.join(', ') : '')
     + (nedodelky.length
       ? ' · nedokončené řádky zůstaly v prohlížeči: ' + nedodelky.join(', ') : '');
-  if(potize.length){
+  if(potize.length && potize.every(jeChybaPrihlaseni)){
+    /* Všechny sady spadly na tomtéž: relace je pryč. Vypisovat to jedenáctkrát
+       vedle sebe vypadá jako jedenáct závad a člověk z toho nepozná, co má
+       udělat. Tady je návod, ne hlášení. Pořadí kroků je důležité: přihlášení
+       natáhne data z databáze a přepíše jimi obrazovku, takže rozdělaná práce
+       musí nejdřív ven do souboru. */
+    hlaska('Vypršelo přihlášení — změny máte pořád tady.');
+    chyba('Vypršelo přihlášení do databáze, proto se nic neuložilo.\n\n'
+      + 'Vaše změny nejsou ztracené, pořád jsou na obrazovce. '
+      + 'Stránku ale teď neobnovujte, tím by zmizely.\n\n'
+      + 'Postup:\n'
+      + '1. Plán úkolů → Uložit do souboru (záloha toho, co máte rozdělané).\n'
+      + '2. Přihlásit se znovu.\n'
+      + '3. Plán úkolů → Načíst ze souboru a vybrat ten soubor z kroku 1.\n'
+      + '4. Uložit do databáze.\n\n'
+      + 'Stává se to, když je plánovač otevřený ve víc záložkách nebo na víc '
+      + 'zařízeních naráz — přihlášení se dá protočit jen jednou a té starší '
+      + 'záložce zbyde neplatné.',
+      'Přihlášení vypršelo, změny zůstávají');
+  }else if(potize.length){
     // něco se opravdu nepovedlo — příznak neuložených změn zůstává
     hlaska('Uložení se nepovedlo, podrobnosti v hlášení.');
     chyba('Uloženo částečně, tohle se nepovedlo:\n\n' + potize.join('\n\n')
@@ -6952,7 +7105,9 @@ kresliNav();
 vseKresli();
 kresliStavPrihlaseni();
 spustPripominku();
-obnovRelaci();
+// obnova relace musí doběhnout první: když se přihlášení povede, čísla přijdou
+// s ostatními daty a veřejný pohled se nemá o co pokoušet.
+obnovRelaci().then(nactiVerejneTelefony);
 napisJakDiktovat();
 otevriVhodnou('s-ukoly');
 zmerHlavicku();

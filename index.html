@@ -161,10 +161,14 @@ body.mobil .tab td.dopln{display:none}
 .vicevyber.otevreny > button{border-color:var(--olive);background:#FBF9F4}
 .vicevyber.maVyber > button{border-color:var(--olive);font-weight:700}
 .vicevyber .panel{position:absolute;z-index:40;top:calc(100% + 4px);left:0;min-width:230px;
+  max-width:min(92vw, 340px);
   max-height:340px;overflow-y:auto;background:var(--bila);border:1px solid var(--linka);
   border-radius:10px;box-shadow:0 10px 24px -12px rgba(75,41,20,.5);padding:6px}
-.vicevyber .panel label{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;
-  cursor:pointer;font-size:13px;white-space:nowrap}
+/* Jména osádky se do jednoho řádku nevejdou, tak se zalomí; zaškrtávátko
+   zůstává u prvního řádku, ne uprostřed odstavce. */
+.vicevyber .panel label{display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-radius:7px;
+  cursor:pointer;font-size:13px;white-space:normal;line-height:1.35}
+.vicevyber .panel input{margin-top:1px}
 .vicevyber .panel label:hover{background:#F5F2EA}
 .vicevyber .panel input{width:16px;height:16px;flex:none}
 .vicevyber .hlavaPanelu{display:flex;gap:6px;padding:2px 4px 6px;border-bottom:1px solid var(--linka);
@@ -172,7 +176,19 @@ body.mobil .tab td.dopln{display:none}
 .vicevyber .hlavaPanelu button{flex:1;font:700 11.5px Nunito,sans-serif;padding:4px 6px;
   border:1px solid var(--linka);border-radius:6px;background:var(--bila);cursor:pointer;color:var(--olive)}
 .vicevyber .hlavaPanelu button:hover{background:#F5F2EA}
+/* „Hotovo" drží spodek panelu i při rolování — u třiadvaceti grup je konec
+   seznamu daleko a cesta ven musí být pořád na očích. */
+.vicevyber .patkaPanelu{position:sticky;bottom:-6px;margin:4px -6px -6px;padding:6px;
+  background:var(--bila);border-top:1px solid var(--linka)}
+.vicevyber .patkaPanelu button{width:100%;font:800 13px Nunito,sans-serif;padding:8px;
+  border:0;border-radius:8px;background:var(--zelena);color:#fff;cursor:pointer}
+.vicevyber .patkaPanelu button:hover{background:var(--olive)}
 body.mobil .vicevyber, body.mobil .vicevyber > button{width:100%;max-width:none}
+body.mobil .vicevyber .panel{width:100%;max-width:none}
+body.mobil .vicevyber .patkaPanelu button{font-size:15px;padding:11px}
+/* Popisek filtru nad rozbalovátkem je verzálkami, jména uvnitř ale ne — ta se
+   dědičnou velkou abecedou jen hůř čtou a „Ňufa" se změní v křik. */
+.vicevyber .panel label{text-transform:none;letter-spacing:normal;color:var(--tmava)}
 body.mobil .vicevyber .panel{left:0;right:0;min-width:0}
 
 .obal-tab{overflow-x:auto;border:1px solid var(--linka);border-radius:12px;background:var(--bila)}
@@ -395,6 +411,8 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
   opacity:0;transition:opacity .1s;z-index:60;white-space:nowrap}
 .gbub b{font-size:12.5px}
 .odznak.otazka{background:#FBF0DE;color:#8A5A12;border-color:#EDD6AB;font-size:11px;padding:0 6px}
+/* Ročník a otazník stojí vedle sebe, ať se nedotýkají. */
+.odznak + .odznak{margin-left:3px}
 .odznak.vslotu{background:rgba(255,255,255,.88)}
 .tab td.odzn{width:52px;text-align:center;padding:0 4px}
 .matice td.pravo{padding:0}
@@ -489,7 +507,9 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     překopírovanou z minulého ročníku, kterou pro letošek nikdo neprošel. Zelená
     <span class="odznak novy">HB26</span> je hodnota platná pro aktuální ročník. Jakmile řádek
     upravíte, značka se překlopí z červené na zelenou. Žlutý <span class="odznak otazka">?</span>
-    obě přebíjí a znamená, že řádek je ve stavu „nepotvrzeno".
+    stojí vedle ročníku, když je řádek ve stavu „nepotvrzeno" — je to druhá, nezávislá
+    věc: <span class="odznak novy">HB26</span><span class="odznak otazka">?</span> znamená
+    letos zrevidováno, ale zatím nedomluveno.
   </div>
 
   <div class="varovani" id="verejnaPozn">
@@ -1420,8 +1440,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.97";
-const BUILD = "2026-08-23T15:35+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.99";
+const BUILD = "2026-08-23T16:34+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1529,16 +1549,24 @@ function oznacChybu(){
   const r = document.createRange(); r.selectNodeContents(e);
   const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
 }
+/* Značky u řádku jsou dvě a každá odpovídá na jinou otázku:
+   ročník — prošel řádek letos rukama, nebo je jen překopírovaný z loňska?
+   otazník — je ten úkol domluvený, nebo se na potvrzení čeká?
+   Dřív to byla jedna značka a otazník ročník přebíjel. Kdo pak řádek upravil
+   a nechal ho ve stavu „nepotvrzeno", nedočkal se HB26 a vypadalo to, že se
+   úprava nezapsala. */
 function odznakHtml(r, vslotu){
   const v = vslotu ? ' vslotu' : '';
-  if(r && r.stav === "nepotvrzeno")
-    return '<span class="odznak otazka'+v+'" title="Nepotvrzeno — čeká se na potvrzení od grupy nebo z obce.">?</span>';
-  if(r && r.zRocniku)
-    return '<span class="odznak stary'+v+'" title="Zkopírováno z ročníku '+r.zRocniku
-         + ', zatím neprošlo revizí. Jakákoli úprava značku přepne na aktuální ročník.">'
-         + r.zRocniku + '</span>';
   const rok = D.nastaveni.aktivni_rok;
-  return '<span class="odznak novy'+v+'" title="Hodnota platná pro ročník '+rok+'.">'+rok+'</span>';
+  const rocnik = (r && r.zRocniku)
+    ? '<span class="odznak stary'+v+'" title="Zkopírováno z ročníku '+r.zRocniku
+      + ', zatím neprošlo revizí. Jakákoli úprava značku přepne na aktuální ročník.">'
+      + r.zRocniku + '</span>'
+    : '<span class="odznak novy'+v+'" title="Hodnota platná pro ročník '+rok+'.">'+rok+'</span>';
+  const otaznik = (r && r.stav === "nepotvrzeno")
+    ? '<span class="odznak otazka'+v+'" title="Nepotvrzeno — čeká se na potvrzení od grupy nebo z obce. S ročníkem to nesouvisí.">?</span>'
+    : '';
+  return rocnik + otaznik;
 }
 const zrevidovano = r => { if(r && r.zRocniku) delete r.zRocniku; };
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -3315,8 +3343,10 @@ function kresliVicevyber(id, popisVse, polozky, sada){
   const el = $('#' + id); if(!el) return;
   const bylOtevreny = el.classList.contains('otevreny');
   const vybrane = polozky.filter(p => sada.has(p.v));
+  // Do shrnutí na tlačítku patří krátký popis (p.s), když ho položka má —
+  // v nabídce může stát celá osádka grupy, ale na tlačítko se nevejde.
   const shrnuti = !vybrane.length ? popisVse
-    : (vybrane.length <= 2 ? vybrane.map(p=>p.t).join(', ')
+    : (vybrane.length <= 2 ? vybrane.map(p=>p.s || p.t).join(', ')
                            : vybrane.length + ' vybraných');
   el.classList.toggle('maVyber', vybrane.length > 0);
   el.innerHTML = '<button type="button" title="' + esc(shrnuti) + '">' + esc(shrnuti) + '</button>'
@@ -3325,6 +3355,11 @@ function kresliVicevyber(id, popisVse, polozky, sada){
     + '<button type="button" data-nic="1">Zrušit výběr</button></div>'
     + polozky.map(p => '<label><input type="checkbox" value="' + esc(p.v) + '"'
         + (sada.has(p.v) ? ' checked' : '') + '>' + esc(p.t) + '</label>').join('')
+    // Bez tlačítka na zavření není z panelu poznat, jak ven — klepnutí mimo
+    // panel je zvyk, ne návod, a na telefonu ho nikdo neuhodne.
+    + '<div class="patkaPanelu"><button type="button" data-hotovo="1"'
+    + ' title="Zavře výběr. Zaškrtnutí se propisuje do plánu rovnou, nic se tím'
+    + ' nepotvrzuje dodatečně.">Hotovo</button></div>'
     + '</div>';
   const panel = el.querySelector('.panel');
   el.querySelector('button').onclick = e => {
@@ -3337,6 +3372,7 @@ function kresliVicevyber(id, popisVse, polozky, sada){
   panel.onclick = e => e.stopPropagation();
   panel.querySelector('[data-vse]').onclick = ()=>{ polozky.forEach(p=>sada.add(p.v)); kresliPodrobny(); };
   panel.querySelector('[data-nic]').onclick = ()=>{ sada.clear(); kresliPodrobny(); };
+  panel.querySelector('[data-hotovo]').onclick = ()=>{ zavriVicevybery(); };
   panel.querySelectorAll('input').forEach(i => {
     i.onchange = ()=>{ i.checked ? sada.add(i.value) : sada.delete(i.value); kresliPodrobny(); };
   });
@@ -3349,10 +3385,37 @@ function zavriVicevybery(){
 }
 document.addEventListener('click', zavriVicevybery);
 
+/* „Jarda Riedl" → „Jarda R.". Do nabídky grup se musí vejít celá osádka, a
+   příjmení je to první, co se dá zkrátit, aniž by přestalo být poznat, o koho
+   jde. Jednoslovná přezdívka („Keksa") zůstává, jak je. */
+function zkratkaJmena(jmeno){
+  const kus = String(jmeno || '').trim().split(/\s+/).filter(Boolean);
+  if(!kus.length) return '';
+  if(kus.length === 1) return kus[0];
+  return kus[0] + ' ' + kus[1].charAt(0).toUpperCase() + '.';
+}
+
+/* Osádka grupy do jednoho řádku, šéf první. Kdo hledá svoji grupu, hledá
+   obvykle sám sebe — v nabídce „G7 Skejťák" se nepozná, v „G7 · Luigi, Morlor,
+   Skejťák" ano. */
+function osadkaZkracene(kod){
+  const lide = zivi().filter(c => c.kod_tymu === kod);
+  const sef = lide.filter(c => c.sef === 'ano' || c.sef === true);
+  const zbytek = lide.filter(c => sef.indexOf(c) < 0)
+    .sort((a,b)=>String(a.jmeno||'').localeCompare(String(b.jmeno||''),'cs'));
+  return sef.concat(zbytek).map(c => zkratkaJmena(c.jmeno)).filter(Boolean).join(', ');
+}
+
 function naplnFiltryPodrobny(){
   kresliVicevyber('filtrPodrobny', 'všechny grupy',
     grupyLetos().slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))
-      .map(t=>({v:t.kod, t:popisGrupy(t.kod)})), FILTRY_PODROBNY.parta);
+      .map(t=>{
+        const lide = osadkaZkracene(t.kod);
+        // v nabídce celá osádka, ve shrnutí na tlačítku jen štítek — ten se
+        // musí vejít do jednoho řádku
+        return {v:t.kod, s:popisGrupy(t.kod),
+                t:(lide ? t.kod + ' · ' + lide : popisGrupy(t.kod))};
+      }), FILTRY_PODROBNY.parta);
   kresliVicevyber('filtrTyp', 'všechny typy',
     TYPY.map(t=>({v:t, t:(NAZVY_TYPU[t] || t) + ' (' + t + ')'})), FILTRY_PODROBNY.typ);
   kresliVicevyber('filtrStav', 'všechny stavy',

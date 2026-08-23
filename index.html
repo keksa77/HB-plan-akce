@@ -345,6 +345,16 @@ td.km b{color:var(--olive);font-size:12.5px}
 .navrhSkupina li b{color:var(--tmava)}
 /* Každá položka návrhu se dá vypnout zvlášť. Zaškrtávátko je proto součástí
    popisku — klik kamkoli na řádek přepne volbu a na mobilu se dá trefit prstem. */
+/* Zámek u řádku podrobného plánu. Zavřený je vidět na dálku, otevřený je
+   jen našeptávač — jinak by třicet visacích zámků přebilo samotný plán. */
+.zamekUkolu{border:1px solid transparent;background:none;cursor:pointer;
+  font-size:15px;line-height:1;padding:3px 5px;border-radius:7px;opacity:.3;
+  filter:grayscale(1)}
+.zamekUkolu:hover{opacity:.85;background:var(--svetla)}
+.zamekUkolu.drzi{opacity:1;filter:none;background:#FBF0DE;border-color:#E0C48A}
+tr.zamcenyRadek td{background:#FDFAF2}
+body.mobil .zamekUkolu{font-size:18px;padding:6px 8px;opacity:.55}
+
 .navrhSkupina li{margin:1px 0;border-radius:5px}
 .navrhSkupina li:hover{background:var(--svetla)}
 .navrhVolba{display:flex;gap:8px;align-items:flex-start;cursor:pointer;padding:3px 6px}
@@ -1730,8 +1740,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.05";
-const BUILD = "2026-08-23T23:27+02:00";        // vyplní se ve veřejném buildu
+const VERZE = "v5.06";
+const BUILD = "2026-08-24T00:06+02:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -3923,6 +3933,11 @@ function kresliPodrobny(){
     {nadpis:"Od",   pole:"kdy_od", typ:"time", sirka:"72px"},
     {nadpis:"Do",   pole:"kdy_do", typ:"time", sirka:"72px"},
     {nadpis:"Stav", pole:"stav", typ:"select", moznosti:STAVY, sirka:"118px"},
+    {nadpis:"Zámek", sirka:"70px", pevnaSirka:true, trida:"stred", html:bunkaZamku,
+      napovedaSl:"Zamčený řádek přegenerování nesmaže ani mu nepřepíše čas. "
+        + "Použijte na to, co jste si dopsal sám a nechcete o to přijít. "
+        + "Zamknutím dopočítaného řádku se z něj zároveň stane běžný — začne se "
+        + "ukládat do databáze."},
     // Původ je poznámka o tom, odkud se řádek vzal — čte se nejmíň často, tak stojí na konci.
     {nadpis:"Původ", sirka:"84px", jenCist:true,
       napovedaSl:"Odvozeno = spočítal to generátor a přegenerování to přepíše. "
@@ -3954,6 +3969,10 @@ function kresliPodrobny(){
     {nadpis:"Grupa", jenCist:true, html:grupaSKymBunka}
   ];
 
+  // Zámek je tlačítko, ne políčko — zamčená sekce ho sama nezešedne. Kdo nemá
+  // právo psát, ať ho radši nevidí vůbec, než aby na něj klikal nadarmo.
+  if(!smiPsat()) sloupcePodrobny = sloupcePodrobny.filter(s => s.nadpis !== 'Zámek');
+
   tabulka(tab, sloupcePodrobny, u, (r)=>{
             // Nový řádek dostal kód ještě bez grupy (A-X-01). Jakmile grupu vybereš,
             // přepíše se na její — pak je z kódu poznat, komu úkol patří.
@@ -3963,8 +3982,12 @@ function kresliPodrobny(){
           },
           !jenCteMobil, jenCteMobil ? false : 'konec', D.ukoly);
 
-  // zvýraznění odvozených řádků
-  [...tab.querySelectorAll('tbody tr')].forEach((tr,i)=>{ if(u[i] && u[i].odvozeno) tr.classList.add('odvozene'); });
+  // zvýraznění odvozených a zamčených řádků
+  [...tab.querySelectorAll('tbody tr')].forEach((tr,i)=>{
+    if(!u[i]) return;
+    if(u[i].odvozeno) tr.classList.add('odvozene');
+    if(jeZamceny(u[i])) tr.classList.add('zamcenyRadek');
+  });
 
   /* Obarvení podle typu úkolu. Na počítači se obarví políčko s typem, na
      mobilní kartě levý proužek — tam sloupec s typem není a proužek je jediné
@@ -4205,8 +4228,8 @@ function sloupceClenu(){
       napovedaSl:"Kdo grupu vede. Jeho jméno se ukazuje na všech odznacích grupy. "
         + "Šéf může být v grupě jen jeden — když ho označíte, předchozímu se příznak sundá."},
     // Jediný osobní údaj, který je ve veřejné verzi vidět. V nasazeném souboru
-    // ale žádné číslo není — dotáhne je až za běhu nactiVerejneTelefony() přes
-    // pohled verejne_telefony. Zveřejnění se tak zapíná a vypíná v databázi,
+    // ale žádné číslo není — dotáhne je až za běhu nactiVerejnaData() přes
+    // pohled verejne_clenove. Zveřejnění se tak zapíná a vypíná v databázi,
     // ne nahráváním nové verze. E-mail ani číslo účtu se nezveřejňují nikdy.
     {nadpis:"Telefon", pole:"telefon", sirka:"150px", verejne:true,
       napovedaSl:"Telefon na člověka v grupě. O závodním víkendu je vidět i "
@@ -4924,6 +4947,47 @@ function minutyNaCas(m){
 const jeOdvozeny = u => !!u.odvozeno;
 const rucni = () => D.ukoly.filter(u => !jeOdvozeny(u));
 
+/* ---------- zámek řádku ----------
+   Do teď šlo řádek před generátorem uchránit jedinou cestou: sáhnout do něj.
+   To je ale vedlejší účinek úpravy, ne rozhodnutí — a kdo do řádku nesáhl,
+   neměl jak říct „tenhle nech být". Zámek je to rozhodnutí vyslovené nahlas.
+
+   Zamčený řádek generátor nesmaže ani mu nedoplní čas. A protože dopočítané
+   řádky v databázi nežijí (počítají se při každém načtení znovu), zamknutí
+   odvozeného řádku ho zároveň povýší na ruční — jinak by zámek zmizel spolu
+   s ním při prvním obnovení stránky. */
+const jeZamceny = u => !!u.zamek;
+
+function prepniZamekUkolu(kod){
+  if(!smiPsat()){ hlaska('Na tohle nemáte právo — plán jde jen číst.'); return; }
+  const u = D.ukoly.find(x => String(x.kod) === String(kod));
+  if(!u) return;
+  u.zamek = !u.zamek;
+  let dovetek = '';
+  if(u.zamek && u.odvozeno){
+    delete u.odvozeno;
+    delete u.odhad;
+    dovetek = ' Zároveň se z něj stal běžný řádek, takže se od teď ukládá do databáze.';
+  }
+  oznacZmenu();
+  kresliPodrobny(); kresliPlan();
+  hlaska(u.zamek
+    ? ('Řádek ' + u.kod + ' je zamčený — přegenerování se ho nedotkne.' + dovetek)
+    : ('Řádek ' + u.kod + ' je odemčený. Zůstává ruční; jestli ho má generátor '
+       + 'zase počítat sám, smažte ho a přegenerujte.'));
+}
+
+// buňka se zámkem: jedno tlačítko, které je vidět i zavřené i otevřené
+function bunkaZamku(r){
+  const zamceno = jeZamceny(r);
+  return '<button class="zamekUkolu' + (zamceno ? ' drzi' : '') + '"'
+    + ' onclick="prepniZamekUkolu(' + JSON.stringify(String(r.kod||'')).replace(/"/g,'&quot;') + ')"'
+    + ' title="' + (zamceno
+        ? 'Zamčeno: přegenerování tenhle řádek nesmaže ani mu nepřepíše čas. Kliknutím odemknete.'
+        : 'Kliknutím zamknete — přegenerování pak řádek nechá být.') + '">'
+    + (zamceno ? '&#128274;' : '&#128275;') + '</button>';
+}
+
 // volný kód, který se nepere s žádným existujícím
 function volnyKod(zaklad){
   const obsazene = new Set(D.ukoly.map(u=>u.kod));
@@ -4969,6 +5033,7 @@ function spocitejGenerovani(){
   rucni().forEach(u => {
     if(['P','PZ','PK'].indexOf(u.typ) < 0) return;
     if((u.kdy_text||'').trim()) return;                 // vyplněné se nepřepisuje
+    if(jeZamceny(u)) return;                            // zamčené se nedoplňuje
     const p = D_predavka(u.cislo); if(!p) return;
 
     /* Obsluha drží předávku celou. Je to jiná role než zahájení: kdo předávku
@@ -5080,8 +5145,11 @@ function spocitejGenerovani(){
   });
 
   // Co už v plánu je a pořád to sedí, zůstane i s kódem. Zmizí jen to, co dnešní
-  // výpočet nezná; přibude jen to, co v plánu ještě není.
-  const stavajici = D.ukoly.filter(jeOdvozeny);
+  // výpočet nezná; přibude jen to, co v plánu ještě není. Zamčené řádky stojí
+  // stranou úplně — nemažou se ani nepřepisují (a odvozené ani být nemůžou,
+  // zamknutí je z odvozených dělá ruční).
+  const zamcenych = D.ukoly.filter(jeZamceny).length;
+  const stavajici = D.ukoly.filter(u => jeOdvozeny(u) && !jeZamceny(u));
   const mam = new Map();
   stavajici.forEach(u => { if(!mam.has(podpisOdvozeneho(u))) mam.set(podpisOdvozeneho(u), u); });
   const chci = new Set(navrhy.map(podpisOdvozeneho));
@@ -5100,7 +5168,7 @@ function spocitejGenerovani(){
     }
   });
 
-  return {pridat, smazat, casy};
+  return {pridat, smazat, casy, zamcenych};
 }
 
 // co má u té noci vyplněná většina členů grupy — holá hodnota, jak je v číselníku
@@ -5175,7 +5243,12 @@ function ukazNavrhGenerovani(){
         '<b>' + esc(popisGrupy(x.parta)) + '</b> · ' + esc(x.kod) + ' · ' + esc((x.popis||'').slice(0,70))))
     + '<p class="popisek" style="margin:10px 0 0">Časy přejezdů a noclehů se počítají '
     + 'z okolních úkolů. Když necháte doplnění času stranou a přejezd potvrdíte, '
-    + 'dostane čas, který je vidět tady v návrhu.</p>'
+    + 'dostane čas, který je vidět tady v návrhu.'
+    + (navrhGen.zamcenych
+        ? ' Zamčených řádků (&#128274;) je v plánu ' + navrhGen.zamcenych
+          + ' a v tomhle seznamu nejsou — těch se přegenerování nedotýká vůbec.'
+        : '')
+    + '</p>'
     + '<div style="margin-top:14px;display:flex;gap:9px;flex-wrap:wrap">'
     + '<button class="tl hlavni" id="navrhProvest" onclick="provedGenerovani()">Provést</button>'
     + '<button class="tl" onclick="zrusNavrhGenerovani()">Zrušit</button></div>'
@@ -5967,10 +6040,14 @@ const MAPA = {
     filtr: r => !r.auto && !r.odvozeno,
     pole:{kod:'kod', parta:'kod_tymu', typ:'typ', cislo:'cislo', den:'den',
           kdy_od:'kdy_od', kdy_do:'kdy_do', kdy_text:'kdy_text', popis:'popis',
-          stav:'stav', zdroj:'zdroj'},
+          stav:'stav', zdroj:'zdroj', zamek:'zamek'},
     // Databáze vrací čas jako „06:30:00", políčko v tabulce chce „06:30".
     // Bez oříznutí by se řádek tvářil jako změněný hned po načtení.
-    naJs: r => ({...r, kdy_od: (r.kdy_od||'').slice(0,5), kdy_do: (r.kdy_do||'').slice(0,5)})
+    // Zámek je v databázi boolean a musí jím i zůstat — undefined by celou
+    // dávku shodilo na „All object keys must match".
+    naJs: r => ({...r, kdy_od: (r.kdy_od||'').slice(0,5), kdy_do: (r.kdy_do||'').slice(0,5),
+                       zamek: !!r.zamek}),
+    naDb: r => ({...r, zamek: !!r.zamek})
   },
   predavky: {
     tabulka:'predavky', klic:['cislo'], konflikt:['rok','cislo'], rok:true, jen:['prvni','posledni','_km'],
@@ -6341,39 +6418,87 @@ async function obnovRelaci(){
   }catch(e){ relaceZahod(); kresliStavPrihlaseni(); }
 }
 
-/* ---------- telefony pro nepřihlášené ----------
-   Čísla organizátorů se do nasazovaného souboru NEZAPÉKAJÍ. Soubor na GitHub
-   Pages tak neobsahuje žádný osobní údaj a dá se nahrávat bez omezení; čísla
-   si stránka došáhne až za běhu z databáze.
+/* ---------- živá data pro nepřihlášené ----------
+   Nasazovaný soubor si nese zapečený plán, jenže ten stárne od chvíle, kdy se
+   postavil. Kdo se nepřihlásí, viděl do teď stav k poslednímu nasazení — a to
+   je u věci, kterou lidi otevírají na předávce, špatně.
 
-   Nečte se přitom clenove_tymu — ta má veřejné čtení zakázané a má ho mít.
-   Čte se pohled `verejne_telefony`, který pouští ven jen tři věci: jméno,
-   telefon a grupu, jen u lidí letošního ročníku, kteří nejsou odložení do
-   historie a číslo vůbec mají. E-mail, číslo účtu ani poznámky se přes něj
-   nedostanou. Vypnout zveřejnění jde jedním příkazem v databázi (odebrat
-   anonovi právo na pohled) — bez nahrávání nové verze souboru.
+   Proto si veřejná verze data dotáhne za běhu. Nečte přitom tabulky — ty mají
+   RLS zamčené a to tak zůstane. Čte úzké pohledy `verejne_*`, které pouští ven
+   jen letošní ročník a jen sloupce, které jsou na veřejné stránce opravdu
+   vidět. E-maily, čísla účtů, poznámky u lidí i u předávek, to-do, uživatelé
+   ani jmenné seznamy nocležníků se přes ně nedostanou. Vypnout to jde jedním
+   příkazem v databázi (odebrat anonovi právo na pohled), bez nasazování.
 
-   Když se to nepovede (databáze spí, síť neběží), stránka funguje dál, jen
-   bez čísel. Proto se chyba nikam nehlásí. */
-async function nactiVerejneTelefony(){
-  // Jen ve veřejném buildu. Plná verze má čísla zapečená a nepotřebuje kvůli
-  // nim chodit na síť; přihlášený je dostane s ostatními daty.
-  if(!VEREJNA || prihlasen) return 0;
+   Zapečená data zůstávají jako záloha: když databáze mlčí — spí, síť neběží,
+   pohled je vypnutý — stránka ukáže je a jede dál. Proto se chyba nikam
+   nehlásí a proto se sada přepíše jen tehdy, když z pohledu opravdu něco
+   přišlo. Prázdná odpověď je horší než stará data. */
+const VEREJNE_POHLEDY = [
+  {sada:'tymy',     pohled:'verejne_tymy'},
+  {sada:'clenove',  pohled:'verejne_clenove'},
+  {sada:'predavky', pohled:'verejne_predavky'},
+  {sada:'ukoly',    pohled:'verejne_ukoly'},
+  {sada:'nocMista', pohled:'verejne_noclehy'}
+];
+
+async function nactiVerejnaData(){
+  // Jen ve veřejném buildu. Plná verze má data zapečená jako semínko a
+  // přihlášený je dostane rovnou z tabulek se vším všudy.
+  if(!VEREJNA || prihlasen) return {nacteno:0, sady:[]};
+
+  const vezmi = async cesta => {
+    const o = await fetch(SB.url + '/rest/v1/' + cesta, {headers:{'apikey': SB.klic}});
+    if(!o.ok) throw new Error('pohled ' + cesta + ' vratil ' + o.status);
+    const v = await o.json();
+    if(!Array.isArray(v)) throw new Error('pohled ' + cesta + ' nevratil seznam');
+    return v;
+  };
+
+  // Ročník napřed: podle něj se řídí, co je v plánu „letos".
   try{
-    const o = await fetch(SB.url + '/rest/v1/verejne_telefony?select=id,telefon',
-                          {headers:{'apikey': SB.klic}});
-    if(!o.ok) return 0;
-    const radky = await o.json();
-    if(!Array.isArray(radky) || !radky.length) return 0;
-    const podleId = new Map(radky.map(r => [String(r.id), r.telefon]));
-    let dosazeno = 0;
-    (D.clenove || []).forEach(c => {
-      const t = podleId.get(String(c.id));
-      if(t && !c.telefon){ c.telefon = t; dosazeno++; }
+    const n = await vezmi('verejne_nastaveni?select=aktivni_rok,datum_zavodu,pravidla');
+    if(n.length){
+      D.nastaveni.aktivni_rok = n[0].aktivni_rok || D.nastaveni.aktivni_rok;
+      D.nastaveni.datum_zavodu = n[0].datum_zavodu || D.nastaveni.datum_zavodu;
+      if(n[0].pravidla) D.nastaveni.pravidla = n[0].pravidla;
+      PRAV = slozPravidla('HB');
+    }
+  }catch(e){ /* zůstane zapečený ročník */ }
+
+  const sady = [];
+  for(const {sada, pohled} of VEREJNE_POHLEDY){
+    try{
+      const radky = await vezmi(pohled + '?select=*');
+      if(!radky.length) continue;                 // prázdno raději neber
+      D[sada] = radky.map(r => zDb(sada, r));
+      sady.push(sada + ' ' + radky.length);
+    }catch(e){ /* tahle sada zůstane zapečená */ }
+  }
+
+  if(sady.length){
+    // Časy běžců i rozbor vět o čase se počítají ze staré sady — po výměně
+    // dat se musí spočítat znovu, jinak by v plánu chyběly dny a rozsahy.
+    doplnCasyBezcu();
+    D.ukoly.forEach(u => {
+      const c = rozeberCas(u.kdy_text);
+      if(!u.den)    u.den = c.den;
+      if(!u.kdy_od) u.kdy_od = c.od;
+      if(!u.kdy_do) u.kdy_do = c.do;
     });
-    if(dosazeno){ kresliClenove(); kresliPodrobny(); }
-    return dosazeno;
-  }catch(e){ return 0; }
+    vseKresli();
+    oznacZdrojDat(sady);
+  }
+  return {nacteno: sady.length, sady};
+}
+
+/* Aby bylo poznat, jestli se člověk dívá na živá data, nebo na to, co bylo
+   v souboru v den nasazení. Bez toho by stará data vypadala stejně jako nová. */
+function oznacZdrojDat(sady){
+  const el = $('#poznHlavicka');
+  if(el && !prihlasen) el.textContent = 'nepřihlášení — read only · data z databáze';
+  const p = $('#verejnaPozn');
+  if(p && sady && sady.length) p.setAttribute('data-sady', sady.join(', '));
 }
 
 
@@ -7239,7 +7364,7 @@ kresliStavPrihlaseni();
 spustPripominku();
 // obnova relace musí doběhnout první: když se přihlášení povede, čísla přijdou
 // s ostatními daty a veřejný pohled se nemá o co pokoušet.
-obnovRelaci().then(nactiVerejneTelefony);
+obnovRelaci().then(nactiVerejnaData);
 napisJakDiktovat();
 otevriVhodnou('s-ukoly');
 zmerHlavicku();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Hory Bory — plánování HB26 (veřejná ukázka)</title>
+<title>Hory Bory — plánování HB26</title>
 <style>
 :root{
   --hneda:#4B2914; --tmava:#3F372A; --khaki:#9D9951; --zelena:#4D582C;
@@ -123,6 +123,14 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
 /* Čas zabírá v tabulce zbytečně místo kvůli ikoně hodin, kterou prohlížeč kreslí
    navíc. Na úzkém sloupci je z ní jen useknutý flek, tak se schová — kliknutím
    do políčka se pořád píše a šipky fungují. */
+/* Výpis členů grupy: dva řádky jmen a dost — víc by tabulku roztáhlo do výšky.
+   Zbytek si člověk přečte v bublině, celý seznam je v title. */
+.clenoveVypis{font-size:12.5px;line-height:1.35;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  /* buňky tabulky mají nowrap, tady se ale zalomit musí — jinak by se seznam
+     roztáhl do šířky a ořezávat by nebylo co */
+  white-space:normal;padding:2px 6px;max-height:36px}
+.clenoveVypis b{font-weight:800}
 .tab input[type=time]{padding-left:4px;padding-right:0}
 .tab input[type=time]::-webkit-calendar-picker-indicator{display:none}
 .tab td.stred input{text-align:center}
@@ -422,7 +430,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     <h1>Hory Bory — plánování</h1>
     <span class="rok" id="odznakRok">HB26</span>
 <span class="pozn" id="razitkoVerze" title="Verze planovace a posledni commit na GitHubu."></span>
-    <span class="pozn" id="poznHlavicka">Veřejná ukázka bez osobních údajů · data jen v paměti prohlížeče</span>
+    <span class="pozn" id="poznHlavicka">nepřihlášení — read only</span>
     <span id="stavPrihlaseni" style="margin-left:auto;display:flex;align-items:center;gap:8px"></span>
   </div>
   <nav id="nav"></nav>
@@ -484,11 +492,8 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     obě přebíjí a znamená, že řádek je ve stavu „nepotvrzeno".
   </div>
 
-  <div class="varovani">
-    <b>Veřejná ukázka.</b> Tohle je očištěná verze pro náhled. Telefony, e-maily,
-    čísla účtů, kontakty na noclehy a poznámky u předávek jsou z ní odstraněné a
-    tlačítko <b>Vyprázdnit plán</b> je vypnuté. Plná verze s kontakty běží jen lokálně.
-    Změny se nikam neukládají, žijí jen v paměti prohlížeče do obnovení stránky.
+  <div class="varovani" id="verejnaPozn">
+    <b>Nepřihlášení — read only.</b> Změny se nikam neukládají a kontakty tu nejsou.
   </div>
 
   <!-- 1. PLÁN ÚKOLŮ -->
@@ -1077,8 +1082,55 @@ body.mobil.hostMobil table.podrobnyTab tr { padding: 12px 14px; }
 /* Filtry: nepřihlášenému stačí grupa a typ, a ať jsou přes celou šířku. */
 body.mobil.hostMobil #s-podrobny .nastroje.lista > * { flex: 1 1 100%; }
 body.mobil.hostMobil #s-podrobny .nastroje.lista select { width: 100%; }
+/* Jen tlačítka pro správu, ne ta uvnitř filtrů. Dokud tu stálo „lista button",
+   schovávalo to i rozbalovátko grupy — vedle popisku „Grupa:" pak nebylo nic. */
 body.mobil.hostMobil #s-podrobny .nastroje.lista .proSpravu,
-body.mobil.hostMobil #s-podrobny .nastroje.lista button { display: none; }
+body.mobil.hostMobil #s-podrobny .nastroje.lista > button { display: none; }
+
+/* Výběr grupy je na mobilu ta nejdůležitější věc na stránce — člověk u trati
+   hledá svoji grupu a nic jiného. Malé rozbalovátko vedle popisku se v tom
+   ztrácelo, tak je z něj tlačítko přes celou šířku, a když je grupa vybraná,
+   svítí zeleně, aby bylo poznat, že seznam není celý. */
+body.mobil.hostMobil #s-podrobny .nastroje.lista { padding: 7px 0 8px; gap: 5px; }
+body.mobil.hostMobil #s-podrobny .nastroje.lista label.stav {
+  font: 800 10.5px Nunito, sans-serif; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--pisek); margin: 0;
+}
+body.mobil.hostMobil #s-podrobny .vicevyber { display: block; width: 100%; margin-top: 3px; }
+body.mobil.hostMobil #s-podrobny .vicevyber > button {
+  width: 100%; text-align: left; font: 800 16px Nunito, sans-serif;
+  padding: 9px 30px 9px 12px; border: 2px solid var(--khaki); border-radius: 10px;
+  background: var(--bila); color: var(--hneda);
+}
+body.mobil.hostMobil #s-podrobny .vicevyber.maVyber > button {
+  background: var(--zelena); border-color: var(--zelena); color: #fff;
+}
+body.mobil.hostMobil #s-podrobny .vicevyber::after { right: 12px; font-size: 13px; }
+body.mobil.hostMobil #s-podrobny .vicevyber.maVyber::after { color: #fff; }
+body.mobil.hostMobil #s-podrobny .vicevyber .panel { font-size: 15px; }
+body.mobil.hostMobil #s-podrobny .vicevyber .panel label { padding: 7px 4px; }
+/* Typ je vedlejší filtr — ať grupa zůstane ta, která bije do očí. */
+body.mobil.hostMobil #s-podrobny #filtrTyp > button {
+  font-size: 13.5px; padding: 6px 28px 6px 12px; border-width: 1px;
+}
+
+/* Karta úkolu natěsno. Čas a grupa sdílí první řádek — každý sám o sobě zabíral
+   celý — a zbytek karty se stáhne, ať se na displej vejde pět úkolů místo tří. */
+body.mobil.hostMobil table.podrobnyTab tr {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px;
+  padding: 8px 11px; margin-bottom: 7px;
+}
+body.mobil.hostMobil table.podrobnyTab td[data-th="Kdy"] { order: 1; flex: 1 1 auto; width: auto; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Grupa"] {
+  order: 2; flex: 0 0 auto; width: auto; padding: 0 !important; margin-left: auto;
+}
+body.mobil.hostMobil table.podrobnyTab td[data-th="Kde"] { order: 3; flex: 1 1 100%; margin: 0; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Úkol"] { order: 4; flex: 1 1 100%; padding: 1px 0 0 !important; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Kdy"] b { font-size: 15.5px; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Kde"] { font-size: 13.5px; line-height: 1.3; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Úkol"] textarea { font-size: 14.5px; line-height: 1.35; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Grupa"] .grupaOdznak select { font-size: 13px; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Grupa"] .grupaJmeno { font-size: 13px; }
 /* odznak grupy je štítek, ne pruh přes celou šířku */
 body.mobil table.podrobnyTab td[data-th="Grupa"] > .grupaOdznak { flex: 0 0 auto; }
 /* hodnoty jen ke čtení jsou na kartě plnohodnotný obsah, ne šedý doplněk */
@@ -1368,8 +1420,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v4.95";
-const BUILD = "2026-08-23T01:07+00:00";        // vyplní se ve veřejném buildu
+const VERZE = "v4.97";
+const BUILD = "2026-08-23T15:35+00:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -3535,6 +3587,9 @@ function kresliTymy(){
         + "V datech zůstane kvůli úkolům z minulého ročníku a úkoly, které na ní visí, "
         + "se v plánu zvýrazní."},
     {nadpis:"Název", pole:"nazev"},
+    {nadpis:"Členové", sirka:"280px", jenCist:true, html:bunkaClenu,
+      napovedaSl:"Kdo je v grupě. Šéf je tučně a stojí první. Do řádku se vejdou dva "
+        + "řádky jmen, zbytek se ukáže po najetí myší — mění se to u členů grup."},
     {nadpis:"Pořadí", pole:"poradi", typ:"number", sirka:"90px", trida:"stred"},
     {nadpis:"Doprava", pole:"doprava", typ:"napoveda", moznosti:DOPRAVY, sirka:"150px",
       napovedaSl:"Čím se grupa přesouvá. Nabídka je jen návod — dá se napsat cokoli, "
@@ -3560,6 +3615,27 @@ function kresliTymy(){
   ], D.tymy, ()=>{kresliTymy();kresliPaletu();naplnFiltrPart();kresliPlan();
                   if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();}, true);
   hlidejKapacitu();
+}
+
+/* Jména lidí v grupě, natěsno do jedné buňky. Šéf první a tučně, ostatní podle
+   abecedy. Aby řádek tabulky nenarostl, text se zalomí nejvýš do dvou řádků a
+   celý seznam se ukáže v bublině. Odložení do historie se nepočítají. */
+function bunkaClenu(r){
+  const lide = zivi().filter(c => c.kod_tymu === r.kod);
+  if(!lide.length) return '<span class="popisek">—</span>';
+  const sefove = lide.filter(c => c.sef === 'ano' || c.sef === true);
+  const zbytek = lide.filter(c => sefove.indexOf(c) < 0)
+    .sort((a,b)=>String(a.jmeno||'').localeCompare(String(b.jmeno||''),'cs'));
+  const vsichni = sefove.concat(zbytek);
+  const cely = vsichni.map(c => c.jmeno || '(bez jména)').join(', ');
+  const html = vsichni.map(c => {
+    const jm = esc(c.jmeno || '(bez jména)');
+    return (sefove.indexOf(c) >= 0) ? '<b>' + jm + '</b>' : jm;
+  }).join('<span class="popisek"> · </span>');
+  const n = vsichni.length;
+  const kolik = n === 1 ? '1 člověk' : (n < 5 ? n + ' lidé' : n + ' lidí');
+  return '<div class="clenoveVypis" title="' + esc(kolik + ': ' + cely) + '">'
+    + html + '</div>';
 }
 
 /* Kolik etap má grupa zrovna přidělených a jestli to sedí do jejího rozpětí.
@@ -5662,10 +5738,11 @@ function oznacHosta(){ document.body.classList.toggle('host', !prihlasen); }
 
 function kresliStavPrihlaseni(){
   oznacHosta();
-  // hláška o tom, že se nic neukládá, platí jen pro nepřihlášenou ukázku
-  document.querySelectorAll('.varovani').forEach(v=>{
-    if(v.textContent.indexOf('Veřejná ukázka') >= 0) v.style.display = prihlasen ? 'none' : '';
-  });
+  // hláška o tom, že se nic neukládá, platí jen pro nepřihlášenou ukázku.
+  // Poznává se podle id, ne podle textu — ten se dá přepsat a hlídač by přestal
+  // fungovat, aniž by na to cokoli upozornilo.
+  const verPozn = $('#verejnaPozn');
+  if(verPozn) verPozn.style.display = prihlasen ? 'none' : '';
   const c = $('#stavPrihlaseni'); if(!c) return;
   // Jedno tlačítko se dvěma popiskami mátlo — nebylo poznat, jestli píše, co je
   // zapnuté, nebo co zapne. Teď jsou vidět obě možnosti a zvýrazněná je ta platná.
@@ -5683,7 +5760,7 @@ function kresliStavPrihlaseni(){
   const pozn = $('#poznHlavicka');
   if(pozn) pozn.textContent = prihlasen
     ? 'data z databáze · změny se ukládají tlačítkem'
-    : 'ukázka bez kontaktů · nic se neukládá';
+    : 'nepřihlášení — read only';
 }
 
 // po načtení stránky: platnou relaci obnovíme, ať se nemusí hlásit pořád dokola
@@ -5831,6 +5908,10 @@ async function ulozDoDatabaze(volby){
   }
   const hotovo = [], potize = [], preskoceno = [], nedodelky = [];
   let smazano = 0;
+  // Stav před uložením si schováme, ať se pak dá říct, co se vlastně změnilo.
+  // Bez toho by se po každém uložení nabízel dopočet plánu, i kdyby se sáhlo
+  // jen na telefon u člena grupy.
+  const predUlozenim = {}, poUlozeni = {};
 
   for(const sada of Object.keys(MAPA)){
     const m = MAPA[sada];
@@ -5890,8 +5971,10 @@ async function ulozDoDatabaze(volby){
         nacteneKlice[sada] = ted;
       }
       // Uložené hodnoty jsou od téhle chvíle to, proti čemu se příště porovnává.
+      predUlozenim[sada] = nacteno[sada];
       nacteno[sada] = {};
       radky.forEach(r => { nacteno[sada][klicRadku(sada, r)] = snimekRadku(sada, r); });
+      poUlozeni[sada] = nacteno[sada];
 
       hotovo.push(sada + ' (' + radky.length + ')');
     }catch(e){
@@ -5936,7 +6019,8 @@ async function ulozDoDatabaze(volby){
       + (smazano ? (' · smazáno ' + smazano + ' řádků') : '') + dovetek);
     // Po uložení se dopočítá zahájení a ukončení předávek, přejezdy a noclehy.
     // Neprovede se nic — jen se ukáže návrh, co by přibylo, a rozhodne uživatel.
-    nabidniDopocet();
+    // A jen tehdy, když se uložilo něco, co plán opravdu ovlivňuje.
+    nabidniDopocet(predUlozenim, poUlozeni);
   }
 }
 
@@ -6052,10 +6136,40 @@ function zmenPravidlo(klic, hodnota){
   hlaska('Pravidlo změněno — projeví se při nejbližším dopočtu.');
 }
 
+/* Sady, jejichž změna může s výsledkem generátoru pohnout. U členů grup na plánu
+   nezáleží na jménu ani telefonu — plán z nich čte jen grupu, oba noclehy a to,
+   jestli je člověk odložený do historie (z toho se počítá nocleh celé grupy).
+   Prázdné pole znamená „na plán má vliv jakákoli změna v téhle sadě". */
+const SADY_PRO_PLAN = {
+  ukoly: [], predavky: [], tymy: [], nocMista: [],
+  clenove: ['kod_tymu', 'nocleh_patek', 'nocleh_sobota', 'historie']
+};
+
+/* Porovná, co se právě uložilo, s tím, co tahle stránka viděla naposledy, a
+   řekne, jestli se sáhlo na něco, co plán opravdu ovlivňuje. */
+function zmenaTykajiciSePlanu(drive, ted){
+  return Object.keys(SADY_PRO_PLAN).some(sada => {
+    const stare = drive[sada], nove = ted[sada];
+    if(!stare || !nove) return false;               // sada se neukládala, neřeší se
+    const klice = new Set([...Object.keys(stare), ...Object.keys(nove)]);
+    const pole = SADY_PRO_PLAN[sada];
+    for(const k of klice){
+      const a = stare[k], b = nove[k];
+      if(!a || !b) return true;                     // řádek přibyl nebo zmizel
+      const sledovana = pole.length ? pole : Object.keys(b);
+      if(sledovana.some(p => normHodnota(a[p]) !== normHodnota(b[p]))) return true;
+    }
+    return false;
+  });
+}
+
 /* Po uložení: spočítat, co by šlo doplnit, a jen když je co, ukázat návrh.
-   Když není co, mlčí — po každém uložení vyskakující panel by otravoval. */
-function nabidniDopocet(){
+   Když není co, mlčí — po každém uložení vyskakující panel by otravoval.
+   Stejně tak mlčí po uložení, které se plánu vůbec netýká (jméno člena,
+   telefon, číslo účtu): panel by nabízel pořád totéž, co nabízel předtím. */
+function nabidniDopocet(drive, ted){
   if(!smiPsat()) return;
+  if(drive && ted && !zmenaTykajiciSePlanu(drive, ted)) return;
   let n;
   try{ n = spocitejGenerovani(); }catch(e){ return; }
   if(!n.pridat.length && !n.casy.length) return;      // mazání samo o sobě panel nevyvolá

@@ -1688,10 +1688,15 @@ const POZADI_TYPU = {
   T:"#E8F0F6", U:"#F1EBF7", P:"#E6F3EC", PZ:"#E6F3EC", PK:"#E6F3EC",
   A:"#F2EFEB", N:"#EDEBE5", AK:"#FAEBF0", S:"#FBF0DE", C:"#FBF0DE"
 };
-// „potvrzeno" znamená napevno naplánováno — v mřížce plánu se takový úkol zamkne.
+/* Stav je popis toho, jak daleko je domluva — „potvrzeno" znamená, že to platí.
+   Ochrana proti přepsání na něm od v5.07 nevisí: na to je zámek (`zamek`), který
+   se přepíná dvojklikem v mřížce nebo tlačítkem v podrobném plánu. Dřív to bylo
+   jedno a totéž a pletlo se to: zamčené políčko v mřížce si generátor
+   v podrobném plánu stejně přepsal, protože o stavu nic nevěděl. */
 const STAVY = ["plán","nepotvrzeno","potvrzeno","zrušeno"];
 const BARVA_STAVU = {"plán":"#66713E","nepotvrzeno":"#D08C3A",
                      "potvrzeno":"#1E7A4C","zrušeno":"#A63D4E"};
+// zůstává kvůli starším datům a hláškám; zamykání s ním už nesouvisí
 const STAV_ZAMCENO = "potvrzeno";
 const ROKY = ["HB19","HB20","HB21","HB22","HB23","HB24","HB25","HB26","HB27"];
 /* „Loňsko" je ročník o jeden zpátky od toho, který se právě plánuje. Dřív bylo
@@ -1740,8 +1745,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.06";
-const BUILD = "2026-08-24T00:06+02:00";        // vyplní se ve veřejném buildu
+const VERZE = "v5.07";
+const BUILD = "2026-08-24T01:11+02:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2441,7 +2446,7 @@ function slotChip(u){
   };
   c.appendChild(x);
 
-  const zamceno = u.stav === STAV_ZAMCENO;
+  const zamceno = jeZamceny(u);
   if(zamceno){
     c.classList.add('zamknuto');
     c.draggable = false;
@@ -2463,7 +2468,7 @@ function slotChip(u){
     prepniZamek(u);
   };
   c.ondragstart = e=>{
-    if(u.stav === STAV_ZAMCENO){ e.preventDefault(); return; }
+    if(jeZamceny(u)){ e.preventDefault(); return; }
     e.dataTransfer.setData('text/plain', u.parta);
     e.dataTransfer.setData('zdroj', u.typ+','+u.cislo);
   };
@@ -2471,19 +2476,12 @@ function slotChip(u){
   return c;
 }
 
-// Zamknout či odemknout úkol v mřížce. Zámek je jen jiný zápis stavu „potvrzeno",
-// takže se propíše i do Podrobného plánu a uloží se do databáze jako všechno ostatní.
-function prepniZamek(u){
-  if(!smiPsat()){ hlaska('Na tohle nemáte právo — plán jde jen číst.'); return; }
-  const bylo = u.stav === STAV_ZAMCENO;
-  u.stav = bylo ? 'plán' : STAV_ZAMCENO;
-  zrevidovano(u); oznacZmenu();
-  kresliPlan();
-  if($('#s-podrobny').classList.contains('videt')) kresliPodrobny();
-  hlaska(bylo
-    ? ('Odemčeno: ' + u.kod + ' ' + popisGrupy(u.parta) + ' — zase se dá přetáhnout.')
-    : ('Zamčeno napevno: ' + u.kod + ' ' + popisGrupy(u.parta) + ' — dvojklikem odemknete.'));
-}
+/* Dvojklik na políčko v mřížce. Je to tentýž zámek jako tlačítko v podrobném
+   plánu — jeden příznak `zamek` na jednom úkolu, dvě místa, odkud se přepíná.
+   Dřív to byl zápis stavu „potvrzeno", což mátlo dvakrát: stav je popis toho,
+   jak daleko je domluva, ne ochrana, a hlavně zamčené políčko v mřížce si
+   generátor v podrobném plánu klidně přepsal, protože o stavu nic nevěděl. */
+function prepniZamek(u){ prepniZamekUkolu(u && u.kod); }
 
 function kresliPlan(){
   document.querySelectorAll('[data-nap]').forEach(el=>{ el.title = NAPOVEDA[el.dataset.nap]||''; });
@@ -2542,7 +2540,7 @@ function kresliPlan(){
         const z = ev.dataTransfer.getData('zdroj');
         if(!k) return;
         const vCili = najdiVse(typ, cislo);
-        const zamcenyCil = vCili.find(u => u.stav === STAV_ZAMCENO);
+        const zamcenyCil = vCili.find(jeZamceny);
         if(zamcenyCil){
           hlaska('Políčko ' + zamcenyCil.kod + ' je zamčené — nejdřív ho odemkněte dvojklikem.');
           return;
@@ -2653,7 +2651,7 @@ function kresliSouctyPlanu(){
     for(let e = 1; e <= RADKU_MRIZKY; e++){
       if((typ==='T' || typ==='U') && e === RADEK_CILE) continue;
       const u = najdi(typ, cisloRole(e, sl));
-      if(u && u.parta){ je++; if(u.stav === STAV_ZAMCENO) zamceno++; }
+      if(u && u.parta){ je++; if(jeZamceny(u)) zamceno++; }
     }
     celkemJe += je; celkemZ += zCelkem;
     const hotovo = je === zCelkem;
@@ -2683,7 +2681,7 @@ function kopirujEtapu(e){
     const cislo = cisloRole(e,s);
     const vzor = D.vzorLonsky.find(u=>u.typ===typ && u.cislo===cislo);
     const cilove = najdiVse(typ, cislo);
-    const zamcenyCil = cilove.find(u => u.stav === STAV_ZAMCENO);
+    const zamcenyCil = cilove.find(jeZamceny);
     if(zamcenyCil){ zamcene.push(zamcenyCil.kod); return; }
     // Rozdělené políčko se přepisuje celé: loňský vzor zná jednu grupu, tak
     // druhá zmizí — jinak by po zkopírování zůstala viset bez souvislosti.
@@ -3934,10 +3932,10 @@ function kresliPodrobny(){
     {nadpis:"Do",   pole:"kdy_do", typ:"time", sirka:"72px"},
     {nadpis:"Stav", pole:"stav", typ:"select", moznosti:STAVY, sirka:"118px"},
     {nadpis:"Zámek", sirka:"70px", pevnaSirka:true, trida:"stred", html:bunkaZamku,
-      napovedaSl:"Zamčený řádek přegenerování nesmaže ani mu nepřepíše čas. "
-        + "Použijte na to, co jste si dopsal sám a nechcete o to přijít. "
-        + "Zamknutím dopočítaného řádku se z něj zároveň stane běžný — začne se "
-        + "ukládat do databáze."},
+      napovedaSl:"Zamčený úkol přegenerování nesmaže ani mu nepřepíše čas a "
+        + "v mřížce plánu se nedá přetáhnout ani přepsat. Je to tentýž zámek, "
+        + "který se v mřížce přepíná dvojklikem. Zamknutím dopočítaného řádku se "
+        + "z něj zároveň stane běžný — začne se ukládat do databáze."},
     // Původ je poznámka o tom, odkud se řádek vzal — čte se nejmíň často, tak stojí na konci.
     {nadpis:"Původ", sirka:"84px", jenCist:true,
       napovedaSl:"Odvozeno = spočítal to generátor a přegenerování to přepíše. "
@@ -4972,9 +4970,11 @@ function prepniZamekUkolu(kod){
   oznacZmenu();
   kresliPodrobny(); kresliPlan();
   hlaska(u.zamek
-    ? ('Řádek ' + u.kod + ' je zamčený — přegenerování se ho nedotkne.' + dovetek)
-    : ('Řádek ' + u.kod + ' je odemčený. Zůstává ruční; jestli ho má generátor '
-       + 'zase počítat sám, smažte ho a přegenerujte.'));
+    ? ('Zamčeno: ' + u.kod + ' ' + popisGrupy(u.parta) + ' — přegenerování se ho '
+       + 'nedotkne a v mřížce se nedá přetáhnout ani přepsat.' + dovetek)
+    : ('Odemčeno: ' + u.kod + ' ' + popisGrupy(u.parta) + ' — v mřížce se zase dá '
+       + 'přetáhnout. Zůstává ruční; jestli ho má generátor zase počítat sám, '
+       + 'smažte ho a přegenerujte.'));
 }
 
 // buňka se zámkem: jedno tlačítko, které je vidět i zavřené i otevřené
@@ -4983,8 +4983,10 @@ function bunkaZamku(r){
   return '<button class="zamekUkolu' + (zamceno ? ' drzi' : '') + '"'
     + ' onclick="prepniZamekUkolu(' + JSON.stringify(String(r.kod||'')).replace(/"/g,'&quot;') + ')"'
     + ' title="' + (zamceno
-        ? 'Zamčeno: přegenerování tenhle řádek nesmaže ani mu nepřepíše čas. Kliknutím odemknete.'
-        : 'Kliknutím zamknete — přegenerování pak řádek nechá být.') + '">'
+        ? 'Zamčeno: přegenerování řádek nesmaže ani mu nepřepíše čas a v mřížce '
+          + 'plánu se nedá přetáhnout. Kliknutím odemknete.'
+        : 'Kliknutím zamknete — přegenerování pak řádek nechá být a v mřížce '
+          + 'plánu se nepůjde přetáhnout.') + '">'
     + (zamceno ? '&#128274;' : '&#128275;') + '</button>';
 }
 
@@ -5903,7 +5905,7 @@ function pridej(co){
 function kopirujVse(){
   // Zamčené úkoly přežijí i hromadné přepsání. Vzor, který by na jejich místo
   // dosedl, se zahodí — jinak by v mřížce byly na jednom políčku dva řádky.
-  const zamcene = D.ukoly.filter(u => u.stav === STAV_ZAMCENO);
+  const zamcene = D.ukoly.filter(jeZamceny);
   const obsazeno = new Set(zamcene.map(u => u.typ + '|' + u.cislo));
   const novy = JSON.parse(JSON.stringify(D.vzorLonsky))
     .filter(u => !obsazeno.has(u.typ + '|' + u.cislo));

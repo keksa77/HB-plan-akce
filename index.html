@@ -1735,8 +1735,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.10";
-const BUILD = "2026-08-24T14:16+02:00";        // vyplní se ve veřejném buildu
+const VERZE = "v5.11";
+const BUILD = "2026-08-24T15:24+02:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -6858,6 +6858,7 @@ async function ulozDoDatabaze(volby){
    výpočet, aby nešel popis a skutečnost rozejít. */
 function kresliJakSePocita(){
   const el = $('#jakSePocita'); if(!el) return;
+  zajistiCasovyCiselnik();          // číselník časů pro políčka nocleh od/do
   const h = (nadpis, radky) => '<h4 style="margin:16px 0 4px;font-size:13px;color:var(--olive)">'
     + nadpis + '</h4>' + radky.map(r=>'<div>' + r + '</div>').join('');
   const b = t => '<b>' + t + '</b>';
@@ -6872,8 +6873,11 @@ function kresliJakSePocita(){
     const jeCas = (typeof vych === 'string');
     return '<label style="display:flex;align-items:center;gap:8px;margin:0">'
       + '<span style="flex:1 1 auto;font-size:12.5px">' + popis + '</span>'
+      // Časová políčka tady měla minuty po jedné, kdežto Od/Do v podrobném plánu
+      // po deseti. Je to tentýž druh údaje, tak ať se chová stejně — a číselník
+      // po deseti minutách je jeden a týž pro celou stránku.
       + '<input type="' + (jeCas ? 'time' : 'number') + '" value="' + esc(hodnota) + '"'
-      + (jeCas ? '' : ' min="0" step="1"')
+      + (jeCas ? (' step="600" list="' + CASY10_ID + '"') : ' min="0" step="1"')
       + (smi ? '' : ' disabled')
       + ' title="Výchozí hodnota je ' + esc(vych) + '. Prázdné políčko se vrátí na ni."'
       + ' onchange="zmenPravidlo(\'' + klic + '\', this.value)"'

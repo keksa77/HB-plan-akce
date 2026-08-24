@@ -1735,8 +1735,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.09";
-const BUILD = "2026-08-24T13:35+02:00";        // vyplní se ve veřejném buildu
+const VERZE = "v5.10";
+const BUILD = "2026-08-24T14:16+02:00";        // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -5247,7 +5247,22 @@ function ukazNavrhGenerovani(){
     + '</div></div>';
   cil.style.display = '';
   prepocitejNavrh();
-  cil.scrollIntoView({block:'start', behavior:'smooth'});
+  /* Panel se kreslí NAD tabulku, takže když je člověk rozkoukaný někde
+     uprostřed plánu, otevře se mu mimo obraz. scrollIntoView k tomu navíc
+     nepočítá s lepivou hlavičkou a lištou a schoval by ho pod ně — proto
+     posunNa(), stejně jako u kontroly návazností.
+
+     A hlavně: bez hlášky vypadá kliknutí na Přegenerovat, jako by se nestalo
+     nic. Prázdný návrh hlášku měl odjakživa, ten neprázdný ne. */
+  posunNa(cil);
+  const kolik = [];
+  if(pridat.length) kolik.push('přibude ' + pridat.length);
+  if(casy.length)   kolik.push('doplní se ' + casy.length + ' časů');
+  if(smazat.length) kolik.push('zmizí ' + smazat.length);
+  hlaska('Návrh je nad tabulkou: ' + kolik.join(', ')
+    + '. Odškrtněte, co nechcete, a potvrďte tlačítkem Provést.'
+    + (navrhGen.zamcenych ? ' (' + navrhGen.zamcenych
+        + ' zamčených řádků se to netýká.)' : ''));
 }
 
 /* Co je právě zaškrtnuté. Čte se z panelu, ne z nějakého druhého seznamu —

@@ -131,12 +131,6 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
      roztáhl do šířky a ořezávat by nebylo co */
   white-space:normal;padding:2px 6px;max-height:36px}
 .clenoveVypis b{font-weight:800}
-/* Políčko na čas. Šipka vpravo rozbalí číselník po deseti minutách — dřív se
-   schovávala kvůli šířce, ale bez ní se k nabídce nedá dostat myší. */
-.tab input[type=time]{padding-left:4px;padding-right:0}
-.tab input[type=time]::-webkit-calendar-picker-indicator{
-  padding:0;margin:0 1px 0 0;opacity:.45;cursor:pointer}
-.tab input[type=time]:hover::-webkit-calendar-picker-indicator{opacity:.9}
 .tab td.stred input{text-align:center}
 .tab td.smaz{width:34px;text-align:center}
 /* Čerstvě přidaný řádek. Seznamy se řadí, takže nový řádek nepřistane dole,
@@ -158,6 +152,13 @@ body.mobil .tab td.dopln{display:none}
 th.razitelny{cursor:pointer;user-select:none}
 th.razitelny:hover{color:var(--tmava)}
 .sipkaRazeni{margin-left:4px;font-size:10px;opacity:.85}
+/* Čas jako dvojice rozbalovátek — hodina : minuta. Drží se u sebe i v úzkém
+   sloupci a dvojtečka mezi nimi je jen tisknutá, ne políčko. */
+.casDvoj{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
+.casDvoj select.castCasu{width:auto;min-width:52px;padding:5px 4px;
+  border:1px solid var(--linka);border-radius:7px;font:inherit;background:var(--bila)}
+.casDvoj .dvojtecka{opacity:.55;font-weight:700}
+td .casDvoj select.castCasu{min-width:48px}
 .vicevyber{position:relative;display:inline-block}
 .vicevyber > button{font:inherit;padding:3px 24px 3px 8px;border:1px solid var(--linka);
   border-radius:7px;background:var(--bila);color:var(--tmava);cursor:pointer;text-align:left;
@@ -1791,8 +1792,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.23";
-const BUILD = "2026-08-25T14:35+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.25";
+const BUILD = "2026-08-26T01:42+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2231,20 +2232,53 @@ function zmerSloupec(s, radky){
   return Math.round(Math.max(SIRKA_MIN, Math.min(SIRKA_MAX, sirka)));
 }
 
-/* Číselník časů po deseti minutách. Je jeden na celou stránku a vyrobí se až
-   ve chvíli, kdy ho první políčko na čas potřebuje — 144 položek se nemá proč
-   povalovat v dokumentu, dokud není otevřená tabulka, která je používá. */
-const CASY10_ID = 'casy-po-deseti';
-function zajistiCasovyCiselnik(){
-  if(document.getElementById(CASY10_ID)) return;
-  const dvoj = n => String(n).padStart(2, '0');
-  const dl = document.createElement('datalist');
-  dl.id = CASY10_ID;
-  let h = '';
-  for(let m = 0; m < 24*60; m += 10) h += '<option value="'
-    + dvoj(Math.floor(m/60)) + ':' + dvoj(m%60) + '"></option>';
-  dl.innerHTML = h;
-  document.body.appendChild(dl);
+/* ---------- políčko na čas: hodiny a minuty zvlášť ----------
+   Dřív to bylo jedno <input type="time">. Prohlížeč čas umí, ale minuty se
+   v něm proklikávají po jedné, na dotyku se do úzkého políčka špatně trefuje
+   a půlka lidí v něm skončí u klávesnice. Plán se přitom nikdy nedělá jemněji
+   než po pěti minutách, takže dvě rozbalovátka — hodina a minuta — jsou na
+   jedno klepnutí a nedá se v nich napsat nesmysl.
+
+   Prázdno v obou znamená „čas neurčen"; políčko se tak dá zase vyprázdnit. */
+const MINUTY_KROK = 5;
+const dvojCislo = n => String(n).padStart(2, '0');
+
+// z „16:40" (i z „16:40:00") udělá dvojici hodin a minut
+function rozlozCas(v){
+  const m = String(v == null ? '' : v).match(/^(\d{1,2}):(\d{2})/);
+  return m ? {h: dvojCislo(+m[1]), m: m[2]} : {h: '', m: ''};
+}
+
+/* Rozbalovátko hodin nebo minut. Když v datech leží minuta, která do kroku
+   nepadne (starší zápis, import), přidá se do seznamu navíc — jinak by se
+   při prvním otevření tabulky tiše ztratila. */
+function vyberCasti(cast, hodnota, atributy){
+  const je = rozlozCas(hodnota)[cast === 'h' ? 'h' : 'm'];
+  const hodnoty = [];
+  if(cast === 'h'){ for(let i = 0; i < 24; i++) hodnoty.push(dvojCislo(i)); }
+  else { for(let i = 0; i < 60; i += MINUTY_KROK) hodnoty.push(dvojCislo(i)); }
+  if(je !== '' && hodnoty.indexOf(je) < 0) hodnoty.push(je);
+  hodnoty.sort();
+  return '<select class="castCasu" data-cast="' + cast + '" ' + atributy + '>'
+    + '<option value=""' + (je === '' ? ' selected' : '') + '>–</option>'
+    + hodnoty.map(x => '<option value="' + x + '"' + (x === je ? ' selected' : '')
+        + '>' + x + '</option>').join('')
+    + '</select>';
+}
+
+// obě rozbalovátka pohromadě; společný obal drží dvojici u sebe
+function poleCasu(hodnota, atributy){
+  return '<span class="casDvoj">' + vyberCasti('h', hodnota, atributy)
+    + '<span class="dvojtecka">:</span>' + vyberCasti('m', hodnota, atributy) + '</span>';
+}
+
+// z dvojice zpátky „16:40"; prázdné obojí = prázdný čas
+function slozCasZObalu(el){
+  const obal = el.closest('.casDvoj'); if(!obal) return '';
+  const h = obal.querySelector('[data-cast="h"]').value;
+  const m = obal.querySelector('[data-cast="m"]').value;
+  if(h === '' && m === '') return '';
+  return (h === '' ? '00' : h) + ':' + (m === '' ? '00' : m);
 }
 
 function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat){
@@ -2285,13 +2319,9 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
           + moznosti.filter(x=>x!=='').map(m=>`<option value="${esc(m)}"></option>`).join('')
           + '</datalist></td>';
       } else if(s.typ==='time'){
-        /* Čas se dá napsat i vybrat. Číselník je po deseti minutách — jemněji
-           se plán stejně nedělá a proklikat 60 minut po jedné je otrava.
-           step="600" k tomu srovná i šipky na klávesnici. */
-        zajistiCasovyCiselnik();
+        // hodina a minuta zvlášť, minuty po pěti — viz poleCasu()
         h += `<td class="${s.trida||''}"${lbl}>`
-          + `<input type="time" step="600" list="${CASY10_ID}"`
-          + ` data-i="${i}" data-p="${s.pole}" value="${esc(v)}"></td>`;
+          + poleCasu(v, `data-i="${i}" data-p="${s.pole}"`) + '</td>';
       } else if(s.typ==='select'){
         const moznosti = (typeof s.moznosti==='function'? s.moznosti(r) : s.moznosti);
         // volba může být holá hodnota, nebo dvojice {v: hodnota, t: co je vidět}
@@ -2387,7 +2417,8 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
          které chce databáze. Bez toho by se do boolean sloupce dostal řetězec
          a celá dávka spadla na „All object keys must match". */
       const sl = sloupce.find(x => x.pole === el.dataset.p);
-      r[el.dataset.p] = (sl && sl.prevod) ? sl.prevod(el.value)
+      r[el.dataset.p] = el.dataset.cast ? slozCasZObalu(el)      // hodina + minuta zvlášť
+        : (sl && sl.prevod) ? sl.prevod(el.value)
         : ((el.type==='number') ? (el.value===''?null:+el.value) : el.value);
       // Sáhl do toho člověk — od téhle chvíle je řádek ruční a přegenerování ho nepřepíše.
       if(r.odvozeno){ delete r.odvozeno; hlaska('Řádek jste upravil, od teď se nepřegeneruje.'); }
@@ -2611,7 +2642,8 @@ function kresliPlan(){
           const radka = document.createElement('div'); radka.className='radka';
           radka.appendChild(slotChip(u));
           const cas = document.createElement('span'); cas.className='cas';
-          cas.innerHTML = odznakHtml(u,true) + ' ' + esc(u.kdy_text||'');
+          // čas ze sloupců, ne z textového pole — viz casProLidi()
+          cas.innerHTML = odznakHtml(u,true) + ' ' + esc(casProLidi(u));
           radka.appendChild(cas);
           slot.appendChild(radka);
         });
@@ -4150,8 +4182,8 @@ function kresliPodrobny(){
         + "typu \u201esobota/neděle\u201c nebo \u201epátek odpoledne\u201c, která se do hodin nevejde."},
     {nadpis:"Den",  pole:"den", typ:"select", moznosti:["", ...DNY], sirka:"88px",
       napovedaSl:"Den závodního víkendu. Čtvrtek je tam kvůli grupám, které vyjíždějí den předem."},
-    {nadpis:"Od",   pole:"kdy_od", typ:"time", sirka:"72px"},
-    {nadpis:"Do",   pole:"kdy_do", typ:"time", sirka:"72px"},
+    {nadpis:"Od",   pole:"kdy_od", typ:"time", sirka:"120px"},
+    {nadpis:"Do",   pole:"kdy_do", typ:"time", sirka:"120px"},
     {nadpis:"Stav", pole:"stav", typ:"select", moznosti:STAVY, sirka:"118px"},
     {nadpis:"Zámek", sirka:"70px", pevnaSirka:true, trida:"stred", html:bunkaZamku,
       napovedaSl:"Zamčený úkol přegenerování nesmaže ani mu nepřepíše čas a "
@@ -5237,7 +5269,7 @@ const PRAVIDLA_VYCHOZI = {
   ukonceni_po:     20,      // minut PO posledním běžci
   usek_zahajeni:   20,      // jak dlouho trvá otevřít předávku: „do" = „od" + tolik minut
   usek_ukonceni:   10,      // a jak dlouho trvá ji sbalit
-  zaokrouhleni:    10,      // na kolik minut se časy zaokrouhlují
+  zaokrouhleni:     5,      // krok, po kterém jdou minuty v políčkách i ve výpočtu
   nocleh_od:      '22:00',  // ve kolik se jde spát, když se stihne
   nocleh_do:      '07:00',  // a kdy se vstává, když nic nezačíná dřív
   nocleh_po_ukolu: 60,      // minut od konce posledního úkolu na cestu a spaní
@@ -5382,9 +5414,10 @@ function volnyKod(zaklad){
 }
 
 /* Spočítá návrh, ale ničeho se nedotkne. Vrací seznam změn k odsouhlasení. */
-/* Čas na desetiminutovky, na stranu bezpečí: začátek dolů, konec nahoru.
+/* Čas na krok ze Zaokrouhlení, na stranu bezpečí: začátek dolů, konec nahoru.
    Obsluha má být na místě spíš dřív a odjíždět spíš později, než kdy tam
-   někdo poběží. */
+   někdo poběží. Krok je tentýž, po jakém jdou minuty v políčkách na čas —
+   ať výpočet nenabízí časy, které by do plánu nikdo ručně nezadal. */
 const naDesitky = (m, nahoru) => {
   const k = Math.max(1, PR('zaokrouhleni'));
   return (nahoru ? Math.ceil(m/k) : Math.floor(m/k)) * k;
@@ -5526,14 +5559,39 @@ function srovnejCasRadku(r, pole){
     return;
   }
   if(pole !== 'kdy_od' && pole !== 'kdy_do' && pole !== 'den') return;
+  /* Sloupce jsou pravda, text je jen poznámka. Dřív se text ze sloupců
+     dopisoval, takže v poli ležela opsaná kopie téhož — a stačilo, aby se
+     jednou rozešla, a každá obrazovka ukazovala něco jiného (P11b tvrdil
+     konec 19:50, sloupce 16:40). Text, který sloupcům odporuje, se proto
+     maže; poznámky, které se do hodin nevejdou („sobota dopoledne"), zůstávají,
+     protože ty se sloupci nic společného nemají. */
+  const ted = String(r.kdy_text || '').trim();
+  if(ted && rozeberCas(ted).od && ted !== zeSloupcuText(r)) r.kdy_text = '';
+}
+
+/* Věta o čase poskládaná ze sloupců Den, Od a Do. Prázdný řetězec znamená,
+   že sloupce nic neříkají. */
+function zeSloupcuText(r){
   const od = minuty(r.den, r.kdy_od);
-  if(od == null){ r.kdy_text = ''; return; }
-  if(!r.kdy_do){ r.kdy_text = minutyNaCas(od); return; }
+  if(od == null) return '';
+  if(!r.kdy_do) return minutyNaCas(od);
   // konec dřív než začátek = přes půlnoc, den se posune o jeden dál
   const denDo = (r.kdy_do < r.kdy_od)
     ? (DNY[Math.min(DNY.length-1, Math.max(0, denIndex(r.den)) + 1)] || r.den) : r.den;
   const doM = minuty(denDo, r.kdy_do);
-  r.kdy_text = (doM == null) ? minutyNaCas(od) : rozsahCasu(od, doM);
+  return (doM == null) ? minutyNaCas(od) : rozsahCasu(od, doM);
+}
+
+/* Čas úkolu tak, jak se ukazuje člověku — v mřížce i všude jinde, kde se čas
+   jen vypisuje. Platí SLOUPCE; textové pole „Kdy" se vezme jen tehdy, když
+   sloupce nic neříkají (poznámky typu „sobota dopoledne", „pátek odpoledne").
+
+   Dokud mřížka vypisovala rovnou kdy_text, mohla ukazovat něco jiného než
+   podrobný plán, který čte sloupce. Stalo se to u P11b: v textu zůstalo
+   „so 14:20 – 19:50" z doby, kdy předávku 11 držela jedna grupa celou, ale
+   ve sloupcích už bylo správné 14:20 – 16:40 po rozdělení mezi G0B a G14. */
+function casProLidi(u){
+  return zeSloupcuText(u) || String(u.kdy_text || '').trim();
 }
 
 function spocitejGenerovani(){
@@ -5671,15 +5729,16 @@ function spocitejGenerovani(){
 
     const zdroj = (u.typ === 'PZ') ? p.prvni : p.posledni;
     const zaklad = casNaMinuty(zdroj); if(zaklad == null) return;
-    // Zaokrouhlení na desetiminutovky na stranu bezpečí a „do" o deset minut dál:
-    // zahájení i ukončení je okamžik, ne směna.
+    // Zaokrouhlení na stranu bezpečí; „do" je o délku úkolu dál — zahájení
+    // i ukončení je okamžik, ne směna.
     const jeZahajeni = (u.typ === 'PZ');
     const novy = naDesitky(zaklad + (jeZahajeni ? -PR('zahajeni_pred') : PR('ukonceni_po')), !jeZahajeni);
     casy.push({u, text: rozsahCasu(novy, novy + PR(jeZahajeni ? 'usek_zahajeni' : 'usek_ukonceni')),
                proc: (jeZahajeni
                  ? ('první běžec ' + zdroj + ' − ' + PR('zahajeni_pred') + ' min')
                  : ('poslední běžec ' + zdroj + ' + ' + PR('ukonceni_po') + ' min'))
-                 + ', zaokrouhleno na 10 min ' + (jeZahajeni ? 'dolů' : 'nahoru')});
+                 + ', zaokrouhleno na ' + PR('zaokrouhleni') + ' min '
+                 + (jeZahajeni ? 'dolů' : 'nahoru')});
   });
 
   /* Časy se do řetězce musí promítnout hned, jinak by přejezdy počítaly ze
@@ -7555,7 +7614,6 @@ async function ulozDoDatabaze(volby){
    výpočet, aby nešel popis a skutečnost rozejít. */
 function kresliJakSePocita(){
   const el = $('#jakSePocita'); if(!el) return;
-  zajistiCasovyCiselnik();          // číselník časů pro políčka nocleh od/do
   const h = (nadpis, radky) => '<h4 style="margin:16px 0 4px;font-size:13px;color:var(--olive)">'
     + nadpis + '</h4>' + radky.map(r=>'<div>' + r + '</div>').join('');
   const b = t => '<b>' + t + '</b>';
@@ -7568,18 +7626,22 @@ function kresliJakSePocita(){
     const je = (D.nastaveni.pravidla || {})[klic];
     const hodnota = (je == null || je === '') ? vych : je;
     const jeCas = (typeof vych === 'string');
+    const napoveda = ' title="Výchozí hodnota je ' + esc(vych)
+      + (jeCas ? '.' : '. Prázdné políčko se vrátí na ni.') + '"';
+    /* Čas se vybírá stejně jako v tabulkách — hodina a minuta zvlášť, minuty
+       po pěti. Dřív tu byl <input type="time">, ve kterém se minuty klikaly
+       po jedné, takže se v Nastavení dal snadno nastavit čas, jaký by v plánu
+       nikdo nezadal. */
+    const vstup = jeCas
+      ? poleCasu(hodnota, napoveda + (smi ? '' : ' disabled')
+          + ' onchange="zmenPravidloCas(\'' + klic + '\', this)"')
+      : '<input type="number" value="' + esc(hodnota) + '"'
+        + ' min="0" step="' + (krok || 1) + '"' + (smi ? '' : ' disabled') + napoveda
+        + ' onchange="zmenPravidlo(\'' + klic + '\', this.value)"'
+        + ' style="width:96px;padding:5px 7px;border:1px solid var(--linka);border-radius:7px;font:inherit">';
     return '<label style="display:flex;align-items:center;gap:8px;margin:0">'
       + '<span style="flex:1 1 auto;font-size:12.5px">' + popis + '</span>'
-      // Časová políčka tady měla minuty po jedné, kdežto Od/Do v podrobném plánu
-      // po deseti. Je to tentýž druh údaje, tak ať se chová stejně — a číselník
-      // po deseti minutách je jeden a týž pro celou stránku.
-      + '<input type="' + (jeCas ? 'time' : 'number') + '" value="' + esc(hodnota) + '"'
-      + (jeCas ? (' step="600" list="' + CASY10_ID + '"')
-               : (' min="0" step="' + (krok || 1) + '"'))
-      + (smi ? '' : ' disabled')
-      + ' title="Výchozí hodnota je ' + esc(vych) + '. Prázdné políčko se vrátí na ni."'
-      + ' onchange="zmenPravidlo(\'' + klic + '\', this.value)"'
-      + ' style="width:96px;padding:5px 7px;border:1px solid var(--linka);border-radius:7px;font:inherit">'
+      + vstup
       + (jednotka ? '<span class="popisek" style="width:34px">' + jednotka + '</span>'
                   : '<span style="width:34px"></span>')
       + '</label>';
@@ -7604,7 +7666,7 @@ function kresliJakSePocita(){
         pole('nocleh_do',      'Vstává se v'),
         pole('nocleh_po_ukolu','Nejdřív po posledním úkolu za', 'min')])
     + skupina('Zaokrouhlení', [
-        pole('zaokrouhleni', 'Časy zaokrouhlit na', 'min')])
+        pole('zaokrouhleni', 'Časy zaokrouhlit na', 'min', 5)])
     + skupina('Světlo a okna', [
         pole('svetlo_od',      'Světlo od'),
         pole('svetlo_do',      'Světlo do'),
@@ -7723,6 +7785,16 @@ function zmenPravidlo(klic, hodnota){
   kresliJakSePocita();
   planZmenen = true; kresliPruhGenerovani();
   hlaska('Pravidlo změněno — projeví se při nejbližším dopočtu.');
+}
+
+/* Časová pravidla mají místo jednoho políčka dvojici rozbalovátek, tak se
+   hodnota nejdřív poskládá dohromady. Prázdné obojí se sem schválně nepošle
+   jako prázdný řetězec: u času by to znamenalo návrat na výchozí hodnotu,
+   což u „Spát se jde v" nikdo nechce omylem. */
+function zmenPravidloCas(klic, el){
+  const v = slozCasZObalu(el);
+  if(!v){ kresliJakSePocita(); hlaska('Čas musí mít hodinu i minutu, nechal jsem původní.'); return; }
+  zmenPravidlo(klic, v);
 }
 
 /* Sady, jejichž změna může s výsledkem generátoru pohnout. U členů grup na plánu

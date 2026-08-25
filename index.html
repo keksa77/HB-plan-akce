@@ -155,6 +155,9 @@ body.mobil .tab td.dopln{display:none}
    Obyčejný rozbalovací seznam umí jednu hodnotu; tohle je tlačítko se shrnutím
    a pod ním panel se zaškrtávátky. Panel je absolutně umístěný, aby nehýbal
    výškou lišty, na kterou se lepí hlavička tabulky. */
+th.razitelny{cursor:pointer;user-select:none}
+th.razitelny:hover{color:var(--tmava)}
+.sipkaRazeni{margin-left:4px;font-size:10px;opacity:.85}
 .vicevyber{position:relative;display:inline-block}
 .vicevyber > button{font:inherit;padding:3px 24px 3px 8px;border:1px solid var(--linka);
   border-radius:7px;background:var(--bila);color:var(--tmava);cursor:pointer;text-align:left;
@@ -1409,6 +1412,7 @@ const D = {
   ],
 
   // noclehy_adresy HB26
+  useky: [],
   nocMista: [
     {kod:"HBECVA", nazev:"Horní Bečva, Kemp u přehrady", noc:"pátek", adresa:"", mapa_url:"", kapacita:16, pokoje:"celá chata č.1  4 x 4 lůžkový pokoj", kontakt:"", telefon:"", cena:"", platba:"zaplaceno", rezervace:"", poznamka:""},
     {kod:"JABLUNKOV", nazev:"Sport resort Jablunkov", noc:"pátek", adresa:"", mapa_url:"", kapacita:16, pokoje:"16 lůžek, z toho dvoulúžák pro fotografa", kontakt:"", telefon:"", cena:"", platba:"zaplaceno", rezervace:"", poznamka:""},
@@ -1739,8 +1743,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.14";
-const BUILD = "2026-08-25T01:53+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.18";
+const BUILD = "2026-08-25T03:33+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1864,7 +1868,8 @@ function odznakHtml(r, vslotu){
   const rok = D.nastaveni.aktivni_rok;
   const rocnik = (r && r.zRocniku)
     ? '<span class="odznak stary'+v+'" title="Zkopírováno z ročníku '+r.zRocniku
-      + ', zatím neprošlo revizí. Jakákoli úprava značku přepne na aktuální ročník.">'
+      + ', zatím neprošlo revizí. Značku přepne na aktuální ročník jakákoli úprava '
+      + 'řádku — a taky přepnutí zámku, když do dat sahat nechcete.">'
       + r.zRocniku + '</span>'
     : '<span class="odznak novy'+v+'" title="Hodnota platná pro ročník '+rok+'.">'+rok+'</span>';
   const otaznik = (r && r.stav === "nepotvrzeno")
@@ -2181,7 +2186,12 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
   const odznakTh = '<th style="width:52px"></th>';
   const sirky = sloupce.map(s => zmerSloupec(s, radky));
   let h = '<thead><tr>' + ((maOdznak && !odznakVzadu) ? odznakTh : '')
-        + sloupce.map((s,k)=>`<th style="width:${sirky[k]}px"${s.napovedaSl?' title="'+esc(s.napovedaSl)+'"':nap(s.nadpis)}>${s.nadpis}</th>`).join('')
+        + sloupce.map((s,k)=>'<th style="width:' + sirky[k] + 'px"'
+            + (s.naKlikNadpis ? ' class="razitelny" data-sl="' + k + '"' : '')
+            + (s.napovedaSl ? ' title="' + esc(s.napovedaSl) + '"' : nap(s.nadpis))
+            + '>' + s.nadpis
+            + (s.znacka ? '<span class="sipkaRazeni">' + s.znacka + '</span>' : '')
+            + '</th>').join('')
         + ((maOdznak && odznakVzadu) ? odznakTh : '')
         + (mazatelne?'<th style="width:34px"></th>':'')
         + '<th class="dopln"></th></tr></thead><tbody>';
@@ -2251,6 +2261,12 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
     h += '<td class="dopln"></td></tr>';
   });
   t.innerHTML = h + '</tbody>';
+
+  // Sloupec, který si o to řekne, se dá seřadit klepnutím do hlavičky.
+  t.querySelectorAll('th.razitelny').forEach(th => {
+    const s = sloupce[+th.dataset.sl];
+    if(s && s.naKlikNadpis) th.onclick = () => s.naKlikNadpis();
+  });
 
   // Tabulka se překresluje i po uplatnění práv, tak si zámek zjistí sama —
   // jinak by se po každém překreslení zas dala editovat.
@@ -3708,6 +3724,31 @@ function najdiOdkazy(text){
 const FILTRY_PODROBNY = {parta: new Set(), typ: new Set(), stav: new Set(),
                          predavka: new Set()};
 
+/* Řazení podle předávky. Tři stavy dokola: 0 = výchozí pořadí (po grupách,
+   uvnitř podle času), 1 = od nejnižší předávky, −1 = od nejvyšší. Úkoly bez
+   čísla — noclehy, servis, ručně psané přejezdy bez vyplněného odkud/kam —
+   jdou na konec v obou směrech. Kdyby se jen otočilo pořadí, vyskočily by při
+   sestupném řazení nahoru a vypadalo by to jako chyba. */
+let RAZENI_PREDAVKA = 0;
+
+/* Podle kterého čísla se úsek řadí. Přejezd má dvě, řadí se podle toho, odkud
+   vyjíždí — v seznamu pak stojí u předávky, ze které se odjíždí, a ne až na
+   druhém konci trasy. */
+function klicPredavky(u){
+  const c = predavkyUkolu(u);
+  if(!c.size) return Infinity;
+  if(u.typ === 'A' && u.predavka_od != null && u.predavka_od !== '') return +u.predavka_od;
+  return Math.min(...c);
+}
+
+function prepniRazeniPredavky(){
+  RAZENI_PREDAVKA = (RAZENI_PREDAVKA === 0) ? 1 : (RAZENI_PREDAVKA === 1 ? -1 : 0);
+  kresliPodrobny();
+  hlaska(RAZENI_PREDAVKA === 1 ? 'Seřazeno podle předávky vzestupně.'
+       : RAZENI_PREDAVKA === -1 ? 'Seřazeno podle předávky sestupně.'
+       : 'Řazení podle předávky zrušeno, plán je zpátky po grupách.');
+}
+
 /* Kterých předávek se úkol týká. Odpověď není u všech typů stejná:
 
      P, PZ, PK  – obsluha, zahájení a ukončení stojí přímo na předávce,
@@ -3878,6 +3919,7 @@ function tiskniPodrobny(){
 function zrusFiltryPodrobny(){
   FILTRY_PODROBNY.parta.clear(); FILTRY_PODROBNY.typ.clear(); FILTRY_PODROBNY.stav.clear();
   FILTRY_PODROBNY.predavka.clear();
+  RAZENI_PREDAVKA = 0;
   $('#filtrKod').value = '';
   $('#filtrNeuplne').checked = false;
   kresliPodrobny();
@@ -3953,6 +3995,22 @@ function kresliPodrobny(){
     && (!fpr.size || [...predavkyUkolu(x)].some(c => fpr.has(String(c))))
     && (!fn || jeNeuplny(x)));
 
+  /* Řazení podle předávky přebíjí výchozí pořadí po grupách. Uvnitř stejného
+     čísla zůstává čas, ať se dvě obsluhy téže předávky nepřehazují náhodně. */
+  if(RAZENI_PREDAVKA){
+    const smer = RAZENI_PREDAVKA;
+    u.sort((a,b)=>{
+      const ka = klicPredavky(a), kb = klicPredavky(b);
+      if(ka !== kb){
+        if(!isFinite(ka)) return 1;         // bez čísla vždycky na konec
+        if(!isFinite(kb)) return -1;
+        return (ka - kb) * smer;
+      }
+      const ca = klic(a, 0), cb = klic(b, 0);
+      return ca - cb;
+    });
+  }
+
   const cil = $('#podrobny'); cil.innerHTML = '';
 
   if(!u.length){
@@ -3992,8 +4050,12 @@ function kresliPodrobny(){
        v mřížce plánu. U přejezdu jsou to dvě čísla, odkud a kam, a ta jdou
        vyplnit ručně: generované přejezdy je mají, ty psané rukou zatím ne
        a bez nich se pod žádnou předávkou neukážou. */
-    {nadpis:"PŘED", sirka:"104px", pevnaSirka:true, trida:"stred",
-      napovedaSl:"U obsluhy a značení číslo předávky nebo etapy. U přejezdu dvě čísla — "
+    {nadpis:"PŘED", sirka:"118px", pevnaSirka:true, trida:"stred",
+      naKlikNadpis: prepniRazeniPredavky,
+      znacka: RAZENI_PREDAVKA === 1 ? '▲' : (RAZENI_PREDAVKA === -1 ? '▼' : '⇅'),
+      napovedaSl:"Klepnutím se plán seřadí podle předávky — jednou vzestupně, podruhé "
+        + "sestupně, potřetí zpátky na výchozí pořadí. "
+        + "U obsluhy a značení číslo předávky nebo etapy. U přejezdu dvě čísla — "
         + "odkud a kam se jede. Podle nich funguje filtr Předávka; ručně psaný přejezd "
         + "se v něm objeví, teprve až mu ta čísla doplníte.",
       html:(r, i) => {
@@ -4535,6 +4597,21 @@ function kresliPredavky(){
     {nadpis:"Cesta autem", pole:"_km", typ:"text", jenCist:true, sirka:"120px",
       napovedaSl:"Kolik je to autem na následující předávku — kilometry a minuty. "
         + "Počítá se z tabulky vzdalenosti, proto se needituje."},
+    /* Spočítaná doba značení a úklidu etapy, která odsud vychází. Needituje se —
+       plyne z úseků a z parametrů v Nastavení. Bez přihlášení nejsou úseky
+       načtené, tak je tu pomlčka; hádat to z holé délky by bylo horší. */
+    {nadpis:"Trasování", sirka:"96px", trida:"stred", jenCist:true,
+      napovedaSl:"Odhad, jak dlouho trvá etapu odsud označit. Počítá se z úseků — "
+        + "každý svým tempem podle toho, jestli se tam smí autem — plus přirážka za "
+        + "stoupání a režie na etapu. Mění se v Nastavení.",
+      html:(r)=>{ const m = dobaZnaceni(r.cislo);
+        return m == null ? '<span class="popisek">—</span>'
+             : (Math.floor(m/60) + ':' + String(m%60).padStart(2,'0')); }},
+    {nadpis:"Úklid", sirka:"84px", trida:"stred", jenCist:true,
+      napovedaSl:"Podíl z doby značení, výchozí je 80 %. Mění se v Nastavení.",
+      html:(r)=>{ const m = dobaUklidu(r.cislo);
+        return m == null ? '<span class="popisek">—</span>'
+             : (Math.floor(m/60) + ':' + String(m%60).padStart(2,'0')); }},
     {nadpis:"První běžec", pole:"prvni", jenCist:true, sirka:"104px", trida:"stred"},
     {nadpis:"Poslední běžec", pole:"posledni", jenCist:true, sirka:"118px", trida:"stred"},
     {nadpis:"Poznámka", pole:"pozn", viceradkove:true, maxRadky:2},
@@ -5010,7 +5087,42 @@ const PRAVIDLA_VYCHOZI = {
   zaokrouhleni:    10,      // na kolik minut se časy zaokrouhlují
   nocleh_od:      '22:00',  // ve kolik se jde spát, když se stihne
   nocleh_do:      '07:00',  // a kdy se vstává, když nic nezačíná dřív
-  nocleh_po_ukolu: 60       // minut od konce posledního úkolu na cestu a spaní
+  nocleh_po_ukolu: 60,      // minut od konce posledního úkolu na cestu a spaní
+
+  /* Trasování a úklid. Tempo je v metrech za minutu, protože délky úseků jsou
+     v metrech — 180 m/min je zhruba 11 km/h, 60 m/min necelé 4 km/h.
+     Přirážka za stoupání je staré turistické pravidlo: hodina navíc na 600 m,
+     tedy deset minut na sto metrů převýšení. */
+  svetlo_od:      '06:10',  // východ slunce o závodním víkendu
+  svetlo_do:      '19:55',  // a soumrak, dokud je na fáborek vidět
+  svetlo_rezerva:  10,      // minut ubraných z obou konců — v lese je šero dřív
+  patek_etapy_do:   4,      // etapy do tohohle čísla se značí v pátek, zbytek v sobotu
+  patek_okno_od: '14:00',   // v pátek se lidi teprve sjíždějí
+  tempo_autem:    180,      // m/min tam, kde se smí autem
+  tempo_bez_auta:  60,      // m/min tam, kde se nesmí
+  prirazka_stoupani: 10,    // minut navíc na 100 m převýšení
+  znaceni_rezie:   15,      // minut na etapu: zaparkovat, zorientovat se, sbalit
+  znaceni_min:     60,      // nejkratší úkol značení
+  trasovani_pred: 120,      // značení hotové tolik minut před prvním běžcem
+  uklid_podil:     80,      // úklid trvá tolik procent času značení
+  uklid_po_beznci: 15,      // uklízet se smí až tolik minut po startu posledního běžce
+  uklid_i_po_tme:   0,      // 1 = uklízet se smí i po tmě, 0 = jen za světla
+  soubeh_grupy:     2,      // kolik úkolů smí grupa dělat naráz — dělí se na čety
+
+  /* Čeho se výpočet drží, seřazeno od nejtvrdšího po to, které smí ustoupit
+     první. Světlo neustoupí nikdy — po tmě se fáborek neuváže ani nenajde.
+     Nocleh ano: konec noclehu se posune, práce má přednost.
+
+     Rozdělení etap na pátek a sobotu v seznamu schválně není. Výpočet etapy
+     mezi dny nepřehazuje — když se něco nevejde, napíše o kolik a který
+     parametr posunout, a rozhodne člověk. */
+  priorita: 'svetlo,pred_beznci,nocleh'
+};
+// Textová pravidla (například pořadí priority) se přes PR() číst nedají —
+// ta vrací minuty nebo čísla. Tohle vrátí řetězec tak, jak je.
+const PR_TEXT = klic => {
+  const v = (D.nastaveni.pravidla || {})[klic];
+  return (v == null || v === '') ? PRAVIDLA_VYCHOZI[klic] : v;
 };
 const PR = klic => {
   const v = (D.nastaveni.pravidla || {})[klic];
@@ -5058,11 +5170,19 @@ function prepniZamekUkolu(kod){
   const u = D.ukoly.find(x => String(x.kod) === String(kod));
   if(!u) return;
   u.zamek = !u.zamek;
-  let dovetek = '';
+  /* Přepnutí zámku je samo o sobě rozhodnutí o řádku — člověk se na něj podíval
+     a řekl „tenhle nech být" nebo „tenhle už ne". Proto se jím zároveň odbaví
+     značka ročníku: řádek převzatý z loňska se překlopí na letošní. Bez toho
+     zbývala jediná cesta, jak značku přepnout, a to sáhnout do dat — typicky
+     přepsat stav, který s ročníkem nemá co dělat. */
+  const bylLonsky = !!u.zRocniku;
+  zrevidovano(u);
+  let dovetek = bylLonsky ? ' Zároveň se překlopil na ročník '
+    + D.nastaveni.aktivni_rok + ' — přepnutím zámku jste ho odbavil.' : '';
   if(u.zamek && u.odvozeno){
     delete u.odvozeno;
     delete u.odhad;
-    dovetek = ' Zároveň se z něj stal běžný řádek, takže se od teď ukládá do databáze.';
+    dovetek += ' Zároveň se z něj stal běžný řádek, takže se od teď ukládá do databáze.';
   }
   oznacZmenu();
   kresliPodrobny(); kresliPlan();
@@ -5119,6 +5239,48 @@ const hodinaMinutaDb = m => {
   return String(Math.floor((x%1440)/60)).padStart(2,'0') + ':' + String(x%60).padStart(2,'0');
 };
 
+/* ---------- doba značení a úklidu etapy ----------
+   Značení se počítá z úseků, ne z celkové délky: každý úsek jde svým tempem
+   podle toho, jestli se tam smí autem. K tomu přirážka za stoupání a režie
+   na etapu — zaparkovat, zorientovat se, sbalit. Úklid je podíl z toho.
+
+   Když úseky nejsou (nepřihlášený, nebo etapa ještě není rozdělená), vrací se
+   null. Radši nic než číslo vycucané z délky, u které nevíme, kudy vede. */
+function dobaZnaceni(etapa){
+  const u = (D.useky || []).filter(x => +x.etapa === +etapa);
+  if(!u.length) return null;
+  let minut = 0;
+  u.forEach(x => {
+    const tempo = x.auto ? PR('tempo_autem') : PR('tempo_bez_auta');
+    minut += (+x.delka_m || 0) / (tempo || 1);
+    minut += (+x.prevyseni_m || 0) / 100 * PR('prirazka_stoupani');
+  });
+  minut += PR('znaceni_rezie');
+  return Math.max(Math.round(minut), PR('znaceni_min'));
+}
+function dobaUklidu(etapa){
+  const z = dobaZnaceni(etapa);
+  return z == null ? null : Math.max(Math.round(z * PR('uklid_podil') / 100), 1);
+}
+
+/* Okno světla daného dne v minutách od čtvrteční půlnoci. V pátek se navíc
+   nezačíná svítáním — lidi se teprve sjíždějí. */
+function oknoSvetla(den, jePatecniZnaceni){
+  const d = Math.max(0, denIndex(den)) * 1440;
+  const od = d + PR('svetlo_od') + PR('svetlo_rezerva');
+  const doKdy = d + PR('svetlo_do') - PR('svetlo_rezerva');
+  return {od: jePatecniZnaceni ? Math.max(od, d + PR('patek_okno_od')) : od, do: doKdy};
+}
+
+// Časy běžců v téže ose jako zbytek plánu: minuty od čtvrteční půlnoci.
+// GRAF_HB25 je vede od sobotní půlnoci, sobota je třetí den v týdnu závodu.
+function casBezcu(etapa){
+  const g = GRAF_HB25.find(x => x[0] === +etapa);
+  if(!g) return null;
+  const posun = denIndex('SO') * 1440;
+  return {prvni: posun + g[1], posledni: posun + g[5]};
+}
+
 /* Dva dopočítané řádky jsou tentýž řádek, když sedí grupa, druh a popis. Kód
    se do porovnání nepočítá — ten se při zakládání odvozuje z pořadí a měnil by
    se při každém přepočtu. Bez tohohle generátor pořád dokola mazal a znovu
@@ -5158,7 +5320,88 @@ function srovnejCasRadku(r, pole){
 }
 
 function spocitejGenerovani(){
-  const pridat = [], casy = [], navrhy = [];
+  const pridat = [], casy = [], navrhy = [], potize = [];
+
+  /* ---- 0) trasování a úklid ----
+     Pořadí odvození je dané: časy běžců jsou kotva, z nich se plní předávky,
+     pak trasování a teprve pak úklid. Přejezdy a noclehy až za tím, protože
+     potřebují, aby tyhle úkoly už čas měly.
+
+     Značení musí skončit dřív, než uplyne lhůta před prvním běžcem, a celé se
+     vejít do světla. Je to lhůta, ne pevný čas — dřív se smí, tak se bere ten
+     nejzazší možný konec. Když se to nevejde, etapa se nepřesouvá do jiného dne;
+     jen se napíše, o kolik to nevyšlo a který parametr by to spravil. */
+  const naDolu = m => Math.floor(m / PR('zaokrouhleni')) * PR('zaokrouhleni');
+  const naHoru = m => Math.ceil(m / PR('zaokrouhleni')) * PR('zaokrouhleni');
+
+  rucni().forEach(u => {
+    if(u.typ !== 'T' && u.typ !== 'U') return;
+    if((u.kdy_text||'').trim()) return;                 // vyplněné se nepřepisuje
+    if(jeZamceny(u)) return;
+    const e = +u.cislo; if(!e) return;
+    const bezci = casBezcu(e); if(!bezci) return;
+
+    if(u.typ === 'T'){
+      const doba = dobaZnaceni(e);
+      if(doba == null){
+        potize.push({etapa:e, kod:u.kod, text:'etapa ještě není rozdělená na úseky, '
+          + 'dobu značení nemám z čeho spočítat'});
+        return;
+      }
+      const vPatek = e <= PR('patek_etapy_do');
+      const okno = oknoSvetla(vPatek ? 'PÁ' : 'SO', vPatek);
+      const lhuta = bezci.prvni - PR('trasovani_pred');
+      /* Konec se zaokrouhluje DOLŮ, ne nahoru jako u předávek. Tam je pozdější
+         konec na stranu bezpečí, tady je to lhůta — o deset minut později už
+         znamená, že běžec vyběhne na neoznačenou etapu. Stálo to jednu minutu
+         a test to chytil. */
+      const konec = naDolu(Math.min(okno.do, lhuta));
+      const zacatek = naDolu(konec - doba);
+      if(zacatek < okno.od){
+        const chybi = okno.od - zacatek;
+        potize.push({etapa:e, kod:u.kod, chybi,
+          text:'značení etapy ' + e + ' trvá ' + doba + ' min a muselo by začít '
+            + minutyNaCas(zacatek) + ', tedy ' + chybi + ' min před rozedněním. '
+            + 'Buď posuňte „V pátek se značí do etapy" na ' + e
+            + ', nebo „Hotovo před prvním běžcem" o ' + chybi + ' min níž.'});
+        return;
+      }
+      casy.push({u, text: rozsahCasu(zacatek, konec),
+        proc: 'značení ' + doba + ' min, hotovo ' + PR('trasovani_pred')
+            + ' min před prvním běžcem (' + minutyNaCas(bezci.prvni) + ')'});
+      return;
+    }
+
+    // úklid: nejdřív po startu posledního běžce, a když se nesmí po tmě,
+    // počká se na nejbližší den, do jehož světla se celý vejde
+    const doba = dobaUklidu(e);
+    if(doba == null){
+      potize.push({etapa:e, kod:u.kod, text:'etapa ještě není rozdělená na úseky, '
+        + 'dobu úklidu nemám z čeho spočítat'});
+      return;
+    }
+    let zacatek = naHoru(bezci.posledni + PR('uklid_po_beznci'));
+    if(!PR('uklid_i_po_tme')){
+      let sedi = false;
+      for(let i = 0; i < DNY.length && !sedi; i++){
+        const okno = oknoSvetla(DNY[i], false);
+        if(zacatek > okno.do) continue;
+        const z = naHoru(Math.max(zacatek, okno.od));
+        // do okna se musí vejít i zaokrouhlený konec, ne jen holá doba
+        if(naHoru(z + doba) <= okno.do){ zacatek = z; sedi = true; }
+      }
+      if(!sedi){
+        potize.push({etapa:e, kod:u.kod,
+          text:'úklid etapy ' + e + ' trvá ' + doba + ' min a po startu posledního běžce ('
+            + minutyNaCas(bezci.posledni) + ') se do žádného dne za světla nevejde. '
+            + 'Pomohlo by povolit úklid po tmě.'});
+        return;
+      }
+    }
+    casy.push({u, text: rozsahCasu(zacatek, naHoru(zacatek + doba)),
+      proc: 'úklid ' + doba + ' min, nejdřív ' + PR('uklid_po_beznci')
+          + ' min po startu posledního běžce (' + minutyNaCas(bezci.posledni) + ')'});
+  });
 
   // ---- 1) chybějící časy obsluhy, zahájení a ukončení předávky
   rucni().forEach(u => {
@@ -5323,7 +5566,7 @@ function spocitejGenerovani(){
     }
   });
 
-  return {pridat, smazat, casy, zamcenych};
+  return {pridat, smazat, casy, zamcenych, potize};
 }
 
 // co má u té noci vyplněná většina členů grupy — holá hodnota, jak je v číselníku
@@ -5353,7 +5596,12 @@ function ukazNavrhGenerovani(){
 
   if(!pridat.length && !smazat.length && !casy.length){
     cil.style.display = 'none';
-    hlaska('Podrobný plán je aktuální, není co generovat.');
+    // Prázdný návrh neznamená, že je všechno v pořádku — může to být tím, že
+    // se nevešlo úplně všechno. Mlčet by tady bylo zavádějící.
+    hlaska((navrhGen.potize && navrhGen.potize.length)
+      ? ('Není co generovat, ale ' + navrhGen.potize.length
+         + ' úkolů se nevešlo: ' + navrhGen.potize[0].text)
+      : 'Podrobný plán je aktuální, není co generovat.');
     return;
   }
 
@@ -5396,6 +5644,18 @@ function ukazNavrhGenerovani(){
     + seznam('Zmizí (dřívější výpočet)', 'smazat',
         cast(smazat, () => true, x =>
         '<b>' + esc(popisGrupy(x.parta)) + '</b> · ' + esc(x.kod) + ' · ' + esc((x.popis||'').slice(0,70))))
+    /* Co se nevešlo. Etapy se mezi dny nepřesouvají, takže výpočet nemá jak si
+       pomoci sám — jediné, co může udělat, je říct, o kolik to nevyšlo a který
+       parametr by to spravil. Stojí to nad seznamem změn, ne pod ním: je to
+       důležitější než to, co se povedlo. */
+    + ((navrhGen.potize && navrhGen.potize.length)
+        ? '<div style="background:#FFF6E5;border:1px solid #E8D5A8;border-radius:8px;'
+          + 'padding:10px 13px;margin:10px 0"><b>Nevešlo se ('
+          + navrhGen.potize.length + ')</b><ul style="margin:6px 0 0;padding-left:18px">'
+          + navrhGen.potize.map(x => '<li style="margin:3px 0">' + esc(x.text) + '</li>').join('')
+          + '</ul><div class="popisek" style="margin-top:6px">Tyhle úkoly čas nedostanou. '
+          + 'Změňte parametr v Nastavení a spusťte přegenerování znovu.</div></div>'
+        : '')
     + '<p class="popisek" style="margin:10px 0 0">Časy přejezdů a noclehů se počítají '
     + 'z okolních úkolů. Když necháte doplnění času stranou a přejezd potvrdíte, '
     + 'dostane čas, který je vidět tady v návrhu.'
@@ -5422,6 +5682,8 @@ function ukazNavrhGenerovani(){
   if(pridat.length) kolik.push('přibude ' + pridat.length);
   if(casy.length)   kolik.push('doplní se ' + casy.length + ' časů');
   if(smazat.length) kolik.push('zmizí ' + smazat.length);
+  if(navrhGen.potize && navrhGen.potize.length)
+    kolik.push(navrhGen.potize.length + ' se nevešlo');
   hlaska('Návrh je nad tabulkou: ' + kolik.join(', ')
     + '. Odškrtněte, co nechcete, a potvrďte tlačítkem Provést.'
     + (navrhGen.zamcenych ? ' (' + navrhGen.zamcenych
@@ -6240,6 +6502,19 @@ const MAPA = {
     pole:{cislo:'cislo', nazev:'nazev', lat:'gps_lat', lon:'gps_lon', typ:'typ_zajisteni',
           pozn:'poznamka', gpx:'gpx_soubor', km:'auto_km', min:'auto_min', delka:'delka_km',
           mapa:'mapa_url'}
+  },
+  /* Etapa rozdělená na úseky: délka, převýšení a hlavně jestli se tam smí autem.
+     Z toho se počítá doba značení a úklidu. Řádky se v plánovači needitují —
+     vyplňují se v samostatném náhledu a sem se jen čtou. */
+  useky: {
+    tabulka:'etapa_useky', klic:['etapa','poradi'], konflikt:['rok','etapa','poradi'],
+    rok:true, jen:[],
+    pole:{etapa:'etapa', poradi:'poradi', od_m:'od_m', do_m:'do_m', delka_m:'delka_m',
+          prevyseni_m:'prevyseni_m', klesani_m:'klesani_m', sklon_pct:'sklon_pct',
+          raz:'raz', auto:'auto', navrh:'navrh', osm_slozeni:'osm_slozeni',
+          lat:'lat', lon:'lon'},
+    naJs: r => ({...r, auto: r.auto === null ? null : !!r.auto,
+                       navrh: r.navrh === null ? null : !!r.navrh})
   },
   nocMista: {
     tabulka:'noclehy_adresy', klic:['kod'], konflikt:['rok','kod'], rok:true, jen:[],
@@ -7074,6 +7349,24 @@ function kresliJakSePocita(){
         pole('nocleh_po_ukolu','Nejdřív po posledním úkolu za', 'min')])
     + skupina('Zaokrouhlení', [
         pole('zaokrouhleni', 'Časy zaokrouhlit na', 'min')])
+    + skupina('Světlo a okna', [
+        pole('svetlo_od',      'Světlo od'),
+        pole('svetlo_do',      'Světlo do'),
+        pole('svetlo_rezerva', 'Rezerva na šero z obou konců', 'min'),
+        pole('patek_etapy_do', 'V pátek se značí do etapy', 'č.'),
+        pole('patek_okno_od',  'Páteční okno začíná v')])
+    + skupina('Tempo značení', [
+        pole('tempo_autem',       'Kde se smí autem', 'm/min'),
+        pole('tempo_bez_auta',    'Kde se autem nesmí', 'm/min'),
+        pole('prirazka_stoupani', 'Přirážka na 100 m stoupání', 'min'),
+        pole('znaceni_rezie',     'Režie na etapu', 'min'),
+        pole('znaceni_min',       'Nejkratší úkol značení', 'min')])
+    + skupina('Trasování a úklid', [
+        pole('trasovani_pred',  'Hotovo před prvním běžcem', 'min'),
+        pole('uklid_podil',     'Úklid trvá oproti značení', '%'),
+        pole('uklid_po_beznci', 'Úklid až po startu posledního', 'min'),
+        pole('uklid_i_po_tme',  'Uklízet i po tmě (1/0)'),
+        pole('soubeh_grupy',    'Kolik úkolů dělá grupa naráz')])
     + '</div>'
     + '<p class="popisek" style="margin:4px 0 0">Změna se projeví hned ve výpočtu i v popisu níž. '
     + 'Uloží se do databáze spolu se zbytkem — platí pak pro každého. '
@@ -7115,6 +7408,30 @@ function kresliJakSePocita(){
       + '— ani na pátek, ani na sobotu.',
       'Místo se odvodí z toho, co má vyplněná ' + b('většina členů grupy') + ' ve sloupcích '
       + 'Nocleh pátek a Nocleh sobota.'])
+    + h('Trasování a úklid', [
+      'Doba značení etapy se počítá z úseků: každý úsek svou délkou a tempem podle toho, '
+      + b('jestli se tam smí autem') + ' (' + PR('tempo_autem') + ' proti '
+      + PR('tempo_bez_auta') + ' m/min), plus ' + b(PR('prirazka_stoupani') + ' minut na 100 m')
+      + ' převýšení, plus ' + b(PR('znaceni_rezie') + ' minut režie') + ' na etapu. '
+      + 'Nejkratší úkol je ' + b(PR('znaceni_min') + ' minut') + '.',
+      'Značení musí být hotové ' + b(PR('trasovani_pred') + ' minut před prvním běžcem')
+      + ' a celé za světla, tedy mezi ' + b(cas(PR('svetlo_od') + PR('svetlo_rezerva')))
+      + ' a ' + b(cas(PR('svetlo_do') - PR('svetlo_rezerva')))
+      + '. Je to lhůta, ne pevný čas — dřív se smí.',
+      'Etapy do čísla ' + b(PR('patek_etapy_do')) + ' se značí v pátek, a to od '
+      + b(cas(PR('patek_okno_od'))) + '. Zbytek v sobotu.',
+      'Úklid trvá ' + b(PR('uklid_podil') + ' %') + ' času značení a smí začít '
+      + b(PR('uklid_po_beznci') + ' minut po startu posledního běžce') + '. '
+      + (PR('uklid_i_po_tme') ? 'Po tmě uklízet lze.' : b('Po tmě se neuklízí.')),
+      'Grupa smí dělat ' + b(PR('soubeh_grupy') + ' úkoly naráz') + ' — dělí se na čety.'])
+    + h('Když se plán nevejde', [
+      'Pravidla mají pořadí a poslední z nich ustoupí první: '
+      + b(String(PR_TEXT('priorita')).split(',').map(x=>({svetlo:'světlo',
+          pred_beznci:'hotovo před běžci', patek_sobota:'rozdělení pátek/sobota',
+          nocleh:'nocleh'})[x.trim()] || x.trim()).join(' → ')) + '.',
+      'Světlo neustoupí nikdy. Nocleh ano — konec noclehu se posune, práce má přednost.',
+      'Když se to nevejde ani po povolení posledního pravidla, čas se nedoplní '
+      + 'a napíše se, na čem to uvázlo. Plán, který nejde odjet, je horší než prázdné políčko.'])
     + h('Čeho se výpočet nedotkne', [
       'Ručně zadaného času. Co je vyplněné, zůstává, i když se odhad liší.',
       'Obsazeného políčka v mřížce — grupa se nikdy nepřepíše.',

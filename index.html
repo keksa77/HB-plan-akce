@@ -822,6 +822,42 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     </div>
   </section>
 
+  <!-- 4b. ÚSEKY ETAP — podstránka Nastavení, není v liště záložek -->
+  <section class="sekce" id="s-useky">
+    <div class="karta">
+      <h2>Úseky etap — tabulka etapa_useky</h2>
+      <div class="telo">
+        <p><button class="tl" onclick="prepni('s-nastaveni')">&#8592; zpět na Nastavení</button></p>
+        <p class="popisek">Každá etapa je rozdělená na úseky podle toho, jak se mění cesta.
+          Délka, převýšení a klesání jsou z GPX, povrch a sjízdnost autem z OpenStreetMap —
+          a právě ty dva sloupce jdou přepsat, protože se OSM občas plete. Z těchhle řádků
+          se počítá doba trasování a úklidu; zbytek sloupců je jen ke čtení.</p>
+        <!-- Odkud se to vzalo. Skripty, kterými se úseky poprvé spočítaly, se ztratily
+             s pracovním prostorem AI; ať je aspoň tady vidět, kde se pravidla hledají. -->
+        <p class="popisek" style="background:#FAF8F4;border:1px solid var(--linka);
+           border-radius:8px;padding:9px 12px">
+          <b>Odkud data jsou.</b> Rozdělení na úseky, délky, převýšení a klesání jsou spočítané
+          z GPX tras etap. Ráz terénu je z podélného sklonu: do 3&nbsp;% rovina, 3 až 8&nbsp;%
+          mírně, nad 8&nbsp;% prudce. Typ cesty je z OpenStreetMap, povrch se z něj odvozuje
+          a sjízdnost autem taky — ta ale prošla ruční kontrolou, při které se 64 úseků
+          z 235 opravilo z „ano" na „ne". Strojový návrh zůstal uložený vedle, aby bylo vidět,
+          kde se pravidlo mýlilo.
+          <b>Celý postup</b> — prahy, pravidla i to, jak se data z OpenStreetMap stahují —
+          je popsaný v souboru <code>HB_znalosti_useky_a_povrchy.md</code> ve složce
+          <code>Claude AI\AI Hory Bory</code>.
+        </p>
+        <div class="radek" style="margin-bottom:10px">
+          <label class="popisek">Etapa
+            <select id="filtrUsekEtapa" onchange="kresliUseky()"
+              style="margin-left:6px;padding:5px 8px;border:1px solid var(--linka);border-radius:7px;font:inherit"></select>
+          </label>
+          <span class="stav" id="souhrnUseky"></span>
+        </div>
+        <div class="obal-tab lepivaHlava"><table class="tab" id="tabUseky"></table></div>
+      </div>
+    </div>
+  </section>
+
   <!-- 10. FOTOARCHIV -->
   <section class="sekce" id="s-fotky">
     <div class="karta">
@@ -891,6 +927,16 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
           a popis pod nimi se změní s nimi — je vypsaný z týchž hodnot, podle kterých se počítá,
           takže se nemůže rozejít se skutečností.</p>
         <div id="jakSePocita" style="font-size:13px;line-height:1.75"></div>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Úseky etap</h2>
+      <div class="telo">
+        <p class="popisek">Tempa výše se počítají na úseky, na které je etapa rozdělená.
+          Každý úsek nese svůj povrch a sjízdnost autem — a když se OSM plete, opravuje se
+          to tam.</p>
+        <button class="tl" onclick="prepni('s-useky')">Otevřít úseky etap</button>
       </div>
     </div>
 
@@ -1726,7 +1772,9 @@ const OBLASTI = [
   {kod:"tymy_org",       nazev:"Grupy",                      sekce:["s-tymy"]},
   {kod:"clenove_tymu",   nazev:"Členové grup",               sekce:["s-clenove"]},
   {kod:"kontakty",       nazev:"Telefony, e-maily, čísla účtů", sekce:[]},
-  {kod:"predavky",       nazev:"Předávky",                   sekce:["s-predavky"]},
+  // Úseky patří pod předávky: je to rozpad etapy, která z předávky vychází,
+  // a nemá smysl pro ně vést v databázi vlastní řádek práv.
+  {kod:"predavky",       nazev:"Předávky",                   sekce:["s-predavky","s-useky"]},
   {kod:"nastaveni",      nazev:"Nastavení",                  sekce:["s-nastaveni"]},
   {kod:"noclehy_adresy", nazev:"Noclehy — místa",            sekce:["s-noclehy-mista"]},
   {kod:"noclehy_lide",   nazev:"Noclehy — lidé",             sekce:["s-noclehy-lide"]},
@@ -1743,8 +1791,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.19";
-const BUILD = "2026-08-25T03:55+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.23";
+const BUILD = "2026-08-25T14:35+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1936,6 +1984,15 @@ const ZALOZKY = [
   {id:"s-fotky",         nazev:"Fotoarchiv",         napoveda:"Fotky ze všech ročníků s hodnocením a nápady na popisky. Jen ke čtení, načítá se po ročnících."}
 ];
 
+/* Podstránky: obrazovky, které nemají vlastní tlačítko v liště a otevírají se odjinud.
+   Přepínají se stejně jako záložky, jen se do nabídky nepletou — lišta má být krátká
+   a úseky etap jsou věc, na kterou se chodí z Nastavení, ne každý den. */
+const PODSTRANKY = [
+  {id:"s-useky", pod:"s-nastaveni",
+   napoveda:"Rozpad etap na úseky — povrch a sjízdnost autem, ze kterých se počítá doba trasování a úklidu."}
+];
+const VSECHNY_SEKCE = () => ZALOZKY.concat(PODSTRANKY);
+
 /* Které záložky se zrovna nabízejí. Dvě síta za sebou:
    1) To-do je pracovní seznam, bez přihlášení nemá co ukazovat, tak se nenabízí vůbec.
    2) Na mobilu zůstanou jen ty, ve kterých se cestou opravdu dá pracovat. */
@@ -1960,14 +2017,17 @@ function otevriVhodnou(prefer){
   const z = zalozkyKVideni();
   const cil = z.some(x=>x.id===prefer) ? prefer : (z[0] && z[0].id);
   if(cil) prepni(cil);
-  else ZALOZKY.forEach(x=>{ const e = $('#'+x.id); if(e) e.classList.remove('videt'); });
+  else VSECHNY_SEKCE().forEach(x=>{ const e = $('#'+x.id); if(e) e.classList.remove('videt'); });
 }
 
 // Když se seznam zúží (přepnutí na mobil, odhlášení), otevřená záložka nesmí zůstat viset.
 function hlidejOtevrenou(){
   const z = zalozkyKVideni();
-  const ot = ZALOZKY.find(x=>$('#'+x.id) && $('#'+x.id).classList.contains('videt'));
-  if(ot && !z.some(x=>x.id===ot.id)) otevriVhodnou('s-podrobny');
+  const ot = VSECHNY_SEKCE().find(x=>$('#'+x.id) && $('#'+x.id).classList.contains('videt'));
+  if(!ot) return;
+  // podstránka smí zůstat otevřená jen tak dlouho, dokud je k vidění její záložka
+  const rozhoduje = (PODSTRANKY.find(x=>x.id===ot.id) || {}).pod || ot.id;
+  if(!z.some(x=>x.id===rozhoduje)) otevriVhodnou('s-podrobny');
 }
 
 function kresliNav(){
@@ -1979,11 +2039,19 @@ function kresliNav(){
         : `<span class="odd">skryté: vzdálenosti · historie plánů · fotky</span>`);
 }
 function prepni(id){
-  ZALOZKY.forEach(z=>{
-    $('#'+z.id).classList.toggle('videt', z.id===id);
+  VSECHNY_SEKCE().forEach(z=>{
+    const e = $('#'+z.id); if(!e) return;
+    e.classList.toggle('videt', z.id===id);
     const b = document.querySelector(`#nav button[data-id="${z.id}"]`);
     if(b) b.classList.toggle('aktivni', z.id===id);
   });
+  /* Když je otevřená podstránka, zůstane v liště zvýrazněná ta záložka, ze které
+     se na ni chodí — jinak by lišta vypadala, jako by nebylo otevřené nic. */
+  const pod = PODSTRANKY.find(x => x.id === id);
+  if(pod){
+    const b = document.querySelector(`#nav button[data-id="${pod.pod}"]`);
+    if(b) b.classList.add('aktivni');
+  }
   zavriEditor();
   // Sloupce „teď" u grup se počítají z aktuálních úkolů, takže se musí přepočítat
   // pokaždé, když se na tu záložku přijde — v mřížce se mezitím mohlo přehazovat.
@@ -1997,6 +2065,7 @@ function prepni(id){
   if(id==="s-tricka") kresliTricka();
   if(id==="s-noclehy-lide") kresliNocLide();
   if(id==="s-clenove") kresliClenove();
+  if(id==="s-useky") kresliUseky();
 }
 
 
@@ -2313,7 +2382,13 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
   t.querySelectorAll('input,select,textarea').forEach(el=>{
     el.onchange = ()=>{
       const r = radky[+el.dataset.i];
-      r[el.dataset.p] = (el.type==='number') ? (el.value===''?null:+el.value) : el.value;
+      /* Většina políček se ukládá tak, jak je v nich napsáno. Sloupec si ale
+         může říct o vlastní převod — třeba ano/ne z rozbalovátka na true/false,
+         které chce databáze. Bez toho by se do boolean sloupce dostal řetězec
+         a celá dávka spadla na „All object keys must match". */
+      const sl = sloupce.find(x => x.pole === el.dataset.p);
+      r[el.dataset.p] = (sl && sl.prevod) ? sl.prevod(el.value)
+        : ((el.type==='number') ? (el.value===''?null:+el.value) : el.value);
       // Sáhl do toho člověk — od téhle chvíle je řádek ruční a přegenerování ho nepřepíše.
       if(r.odvozeno){ delete r.odvozeno; hlaska('Řádek jste upravil, od teď se nepřegeneruje.'); }
       if(r.odhad && el.dataset.p === 'kdy_text') delete r.odhad;
@@ -4602,8 +4677,9 @@ function kresliPredavky(){
        načtené, tak je tu pomlčka; hádat to z holé délky by bylo horší. */
     {nadpis:"Trasování", sirka:"96px", trida:"stred", jenCist:true,
       napovedaSl:"Odhad, jak dlouho trvá etapu odsud označit. Počítá se z úseků — "
-        + "každý svým tempem podle toho, jestli se tam smí autem — plus přirážka za "
-        + "stoupání a režie na etapu. Mění se v Nastavení.",
+        + "každý svým tempem podle povrchu a podle toho, jestli se tam smí autem — "
+        + "plus přirážka za stoupání a režie na etapu. Tempa se mění v Nastavení, "
+        + "povrch jednotlivých úseků v Úsecích.",
       html:(r)=>{ const m = dobaZnaceni(r.cislo);
         return m == null ? '<span class="popisek">—</span>'
              : (Math.floor(m/60) + ':' + String(m%60).padStart(2,'0')); }},
@@ -4632,6 +4708,83 @@ function kresliPredavky(){
   kresliGrafPredavek();
 }
 
+
+/* ---------- úseky etap ----------
+   Jediné dva sloupce, které se tu opravují, jsou povrch a „autem". Zbytek je
+   měřený z GPX nebo přečtený z OpenStreetMap a přepisovat ho ručně by znamenalo
+   rozejít data s mapou. Loni se u sjízdnosti autem opravovalo 64 úseků z 235,
+   takže to není akademická možnost — OSM se plete hlavně u lesních svážnic. */
+function kresliUseky(){
+  const vyber = $('#filtrUsekEtapa');
+  const vsechny = (D.useky || []).slice()
+    .sort((a,b) => (+a.etapa - +b.etapa) || (+a.poradi - +b.poradi));
+  const etapy = [...new Set(vsechny.map(u => +u.etapa))].sort((a,b) => a-b);
+
+  if(vyber && vyber.options.length !== etapy.length + 1){
+    vyber.innerHTML = '<option value="">všechny</option>'
+      + etapy.map(e => '<option value="' + e + '">' + e + ' — '
+          + esc(popisPredavky(e)) + '</option>').join('');
+  }
+  const zvolena = vyber ? vyber.value : '';
+  const radky = zvolena === '' ? vsechny : vsechny.filter(u => +u.etapa === +zvolena);
+
+  const km = m => (m/1000).toFixed(1);
+  const souhrn = $('#souhrnUseky');
+  if(souhrn){
+    if(!radky.length){
+      souhrn.textContent = vsechny.length ? '' : 'Úseky se načtou po přihlášení.';
+    } else {
+      const delka = radky.reduce((a,u) => a + (+u.delka_m||0), 0);
+      const podle = p => radky.filter(u => u.povrch === p)
+                              .reduce((a,u) => a + (+u.delka_m||0), 0);
+      souhrn.textContent = radky.length + ' úseků, ' + km(delka) + ' km — tvrdý '
+        + km(podle('tvrdý')) + ', zpevněný ' + km(podle('zpevněný'))
+        + ', terén ' + km(podle('terén')) + ' km';
+    }
+  }
+
+  tabulka('#tabUseky', [
+    {nadpis:"Etapa", pole:"etapa", jenCist:true, sirka:"60px", trida:"stred"},
+    {nadpis:"#", pole:"poradi", jenCist:true, sirka:"46px", trida:"stred"},
+    {nadpis:"Od–do", sirka:"110px", trida:"stred", jenCist:true,
+      napovedaSl:"Kde úsek na etapě začíná a končí, v kilometrech od začátku etapy.",
+      html:(r)=> km(+r.od_m||0) + '–' + km(+r.do_m||0)},
+    {nadpis:"Délka", sirka:"78px", trida:"stred", jenCist:true,
+      html:(r)=> km(+r.delka_m||0) + ' km'},
+    {nadpis:"Stoupá", sirka:"74px", trida:"stred", jenCist:true,
+      napovedaSl:"Převýšení po směru běhu. Proti směru se z něj stane klesání a naopak.",
+      html:(r)=> (+r.prevyseni_m||0) + ' m'},
+    {nadpis:"Klesá", sirka:"70px", trida:"stred", jenCist:true,
+      html:(r)=> (+r.klesani_m||0) + ' m'},
+    {nadpis:"Ráz", pole:"raz", jenCist:true, sirka:"110px"},
+    /* Ano/ne/nevyplněno, ne zaškrtávátko: prázdná hodnota je něco jiného než
+       „ne" a u zaškrtávátka by se ty dva stavy nedaly rozeznat. */
+    {nadpis:"Smí se autem", pole:"auto", typ:"select", sirka:"120px",
+      // hodnoty jsou „true"/„false" schválně: rozbalovátko porovnává přes
+      // String(), takže takhle si sedne s boolean sloupcem v databázi
+      moznosti:[{v:'', t:'—'}, {v:'true', t:'ano'}, {v:'false', t:'ne'}],
+      prevod: v => v === '' ? null : (v === 'true'),
+      napovedaSl:"Jestli se po úseku dá projet autem. Odvozeno z OpenStreetMap, "
+        + "u lesních cest se to plete — tady se to přepisuje."},
+    {nadpis:"Povrch", pole:"povrch", typ:"select", sirka:"120px",
+      moznosti:[{v:'', t:'—'}].concat(POVRCHY.map(p => ({v:p, t:p}))),
+      napovedaSl:"Tvrdý = asfalt, beton, dlažba. Zpevněný = šotolina a svážnice. "
+        + "Terén = pěšina, hlína, tráva, rozbité cesty. Nevyplněný se počítá jako zpevněný."},
+    {nadpis:"Tempo", sirka:"76px", trida:"stred", jenCist:true,
+      napovedaSl:"Kterým tempem se tenhle úsek značí — vychází z povrchu a z toho, "
+        + "jestli se tam smí autem. Mění se v Nastavení.",
+      html:(r)=> tempoUseku(r) + ' km/h'},
+    {nadpis:"Značení", sirka:"78px", trida:"stred", jenCist:true,
+      napovedaSl:"Kolik minut zabere označit tenhle úsek, včetně přirážky za stoupání.",
+      html:(r)=>{
+        const kmh = tempoUseku(r) || 1;
+        const m = (+r.delka_m||0) * 60 / (kmh * 1000)
+                + (+r.prevyseni_m||0) / 100 * PR('prirazka_stoupani');
+        return Math.round(m) + ' min'; }},
+    {nadpis:"Co na tom je podle OSM", pole:"osm_slozeni", jenCist:true,
+      viceradkove:true, maxRadky:2, sirka:"320px"}
+  ], radky, () => { kresliUseky(); kresliPredavky(); }, false);
+}
 
 /* ---------- graf časů na předávkách (HB25) ---------- */
 // [číslo, první, dolní kvartil, medián, horní kvartil, poslední, počet týmů]
@@ -5098,8 +5251,20 @@ const PRAVIDLA_VYCHOZI = {
   svetlo_rezerva:  10,      // minut ubraných z obou konců — v lese je šero dřív
   patek_etapy_do:   4,      // etapy do tohohle čísla se značí v pátek, zbytek v sobotu
   patek_okno_od: '14:00',   // v pátek se lidi teprve sjíždějí
-  tempo_autem_kmh: 10.8,    // km/h tam, kde se smí autem
-  tempo_bez_auta_kmh: 3.6,  // km/h tam, kde se nesmí
+  /* Tempo značení: šest čísel, protože povrch dělá víc než jen auto/pěšky.
+     Dokud platilo jedno tempo pro všechno pěší, počítalo se 85 km asfaltu,
+     kam auto nesmí, stejně pomalu jako 48 km terénu.
+
+     Čísla jsou vybraná tak, aby celkový součet vyšel na stejných zhruba
+     61 hodinách jako s dvěma tempy — „zpevněný pěšky" drží nastavených
+     4,2 km/h a zbytek se kolem něj rozestoupil. Nejde tedy o to, že by se
+     značení prodloužilo nebo zkrátilo; přerovná se mezi etapami. */
+  tempo_tvrdy_autem_kmh:    10.8,  // asfalt, beton, dlažba
+  tempo_zpevneny_autem_kmh:  8.5,  // šotolina, lesní svážnice grade 1–2
+  tempo_teren_autem_kmh:     5,    // v terénu se autem nejezdí, ale ať je co nastavit
+  tempo_tvrdy_pesky_kmh:     5.5,
+  tempo_zpevneny_pesky_kmh:  4.2,
+  tempo_teren_pesky_kmh:     3,    // grade 4–5, pěšina, hlína, tráva
   prirazka_stoupani: 10,    // minut navíc na 100 m převýšení
   znaceni_rezie:   15,      // minut na etapu: zaparkovat, zorientovat se, sbalit
   znaceni_min:     60,      // nejkratší úkol značení
@@ -5246,22 +5411,73 @@ const hodinaMinutaDb = m => {
 
    Když úseky nejsou (nepřihlášený, nebo etapa ještě není rozdělená), vrací se
    null. Radši nic než číslo vycucané z délky, u které nevíme, kudy vede. */
-function dobaZnaceni(etapa){
+/* Tempo jednoho úseku: povrch krát to, jestli se tam smí autem. Povrch je
+   odvozený z OSM a dá se v Úsecích přepsat; když chybí (starší data, nový
+   úsek), bere se „zpevněný" — prostředek, na kterém se dá nejmíň splést. */
+const POVRCHY = ['tvrdý', 'zpevněný', 'terén'];
+const KLIC_POVRCHU = {'tvrdý':'tvrdy', 'zpevněný':'zpevneny', 'terén':'teren'};
+function tempoUseku(u){
+  const p = KLIC_POVRCHU[u && u.povrch] || 'zpevneny';
+  return PR('tempo_' + p + (u && u.auto ? '_autem_kmh' : '_pesky_kmh'));
+}
+
+function dobaZnaceni(etapa, proti){
   const u = (D.useky || []).filter(x => +x.etapa === +etapa);
   if(!u.length) return null;
   let minut = 0;
   u.forEach(x => {
     // tempo je v km/h, délka v metrech: metry / (km/h × 1000 / 60) = minuty
-    const kmh = x.auto ? PR('tempo_autem_kmh') : PR('tempo_bez_auta_kmh');
+    const kmh = tempoUseku(x);
     minut += (+x.delka_m || 0) * 60 / ((kmh || 1) * 1000);
-    minut += (+x.prevyseni_m || 0) / 100 * PR('prirazka_stoupani');
+    /* Kilometry jsou v obou směrech stejné, kopce ne. Kdo jede etapu proti
+       směru běhu, stoupá tam, kde běžec klesá — proto se přirážka počítá
+       jednou z převýšení a jednou z klesání. */
+    minut += (+(proti ? x.klesani_m : x.prevyseni_m) || 0) / 100 * PR('prirazka_stoupani');
   });
   minut += PR('znaceni_rezie');
-  return Math.max(Math.round(minut), PR('znaceni_min'));
+  /* Zaokrouhluje se na nejbližších deset minut, stejným krokem jako všechny
+     ostatní časy v plánu. Přesnost na minutu by stejně byla jen zdánlivá —
+     vychází z tempa odhadnutého na desetiny km/h — a v úkolu se lépe čte
+     „2:30" než „2:27". Díky tomu taky sedí konec úkolu na desítky, protože
+     začátek se zaokrouhluje na tentýž krok. */
+  return Math.max(naNejblizsi(minut), PR('znaceni_min'));
 }
-function dobaUklidu(etapa){
-  const z = dobaZnaceni(etapa);
-  return z == null ? null : Math.max(Math.round(z * PR('uklid_podil') / 100), 1);
+function dobaUklidu(etapa, proti){
+  const z = dobaZnaceni(etapa, proti);
+  if(z == null) return null;
+  const krok = PR('zaokrouhleni') || 1;
+  return Math.max(naNejblizsi(z * PR('uklid_podil') / 100), krok);
+}
+// nejbližší násobek kroku ze Zaokrouhlení — nahoru i dolů, podle toho, co je blíž
+function naNejblizsi(minut){
+  const krok = PR('zaokrouhleni') || 1;
+  return Math.round(minut / krok) * krok;
+}
+// minuty na „3:00" — časy značení jsou v hodinách čitelnější než v minutách
+const naHodiny = m => Math.floor(m/60) + ':' + String(m%60).padStart(2,'0');
+
+/* ---------- poznámka o směru ----------
+   Etapa se dá značit po směru běhu i proti němu a rozdíl dělá i půl hodiny,
+   protože se stoupá tam, kde běžec klesá. Který směr grupa zvolí, záleží na
+   tom, odkud přijíždí a kam pak jede dál — to výpočet neví, takže jen vypíše
+   oba časy a rozhodnutí nechá na lidech.
+
+   Poznámka visí na konci popisu za značkou „ · směr: ". Před každým dopsáním
+   se to staré ustřihne, aby se při přepočtu nenabalovalo jedno za druhým. */
+const ZNACKA_SMERU = ' · směr: ';
+const bezPoznamkySmeru = popis => {
+  const t = String(popis || '');
+  const i = t.indexOf(ZNACKA_SMERU);
+  return (i < 0 ? t : t.slice(0, i)).trimEnd();
+};
+function poznamkaSmeru(u){
+  if(u.typ !== 'T' && u.typ !== 'U') return null;
+  const e = +u.cislo; if(!e) return null;
+  const doba = (proti) => (u.typ === 'T') ? dobaZnaceni(e, proti) : dobaUklidu(e, proti);
+  const po = doba(false), pr = doba(true);
+  if(po == null || pr == null) return null;      // etapa ještě není na úseky
+  return ZNACKA_SMERU + 'po směru ' + naHodiny(po) + ' h / proti směru '
+       + naHodiny(pr) + ' h';
 }
 
 /* Okno světla daného dne v minutách od čtvrteční půlnoci. V pátek se navíc
@@ -5321,7 +5537,7 @@ function srovnejCasRadku(r, pole){
 }
 
 function spocitejGenerovani(){
-  const pridat = [], casy = [], navrhy = [], potize = [];
+  const pridat = [], casy = [], navrhy = [], potize = [], smery = [];
 
   /* ---- 0) trasování a úklid ----
      Pořadí odvození je dané: časy běžců jsou kotva, z nich se plní předávky,
@@ -5334,6 +5550,18 @@ function spocitejGenerovani(){
      jen se napíše, o kolik to nevyšlo a který parametr by to spravil. */
   const naDolu = m => Math.floor(m / PR('zaokrouhleni')) * PR('zaokrouhleni');
   const naHoru = m => Math.ceil(m / PR('zaokrouhleni')) * PR('zaokrouhleni');
+
+  /* Poznámka o směru se nabízí u všech trasování a úklidů, i u těch, co už čas
+     mají — čas a směr spolu nesouvisí. Zamčených se to netýká jako všeho
+     ostatního. Když se popis proti současnému stavu nemění, není co nabízet. */
+  rucni().forEach(u => {
+    if(jeZamceny(u)) return;
+    const pozn = poznamkaSmeru(u);
+    if(pozn == null) return;
+    const novy = bezPoznamkySmeru(u.popis) + pozn;
+    if(novy !== String(u.popis || ''))
+      smery.push({u, popis: novy, text: pozn.slice(ZNACKA_SMERU.length)});
+  });
 
   rucni().forEach(u => {
     if(u.typ !== 'T' && u.typ !== 'U') return;
@@ -5583,7 +5811,7 @@ function spocitejGenerovani(){
     }
   });
 
-  return {pridat, smazat, casy, zamcenych, potize};
+  return {pridat, smazat, casy, smery, zamcenych, potize};
 }
 
 // co má u té noci vyplněná většina členů grupy — holá hodnota, jak je v číselníku
@@ -5609,9 +5837,9 @@ function ukazNavrhGenerovani(){
   if(!smiPsat()){ hlaska('Na tohle nemáte právo — plán jde jen číst.'); return; }
   navrhGen = spocitejGenerovani();
   const cil = $('#navrhGenerovani');
-  const {pridat, smazat, casy} = navrhGen;
+  const {pridat, smazat, casy, smery} = navrhGen;
 
-  if(!pridat.length && !smazat.length && !casy.length){
+  if(!pridat.length && !smazat.length && !casy.length && !smery.length){
     cil.style.display = 'none';
     // Prázdný návrh neznamená, že je všechno v pořádku — může to být tím, že
     // se nevešlo úplně všechno. Mlčet by tady bylo zavádějící.
@@ -5658,6 +5886,10 @@ function ukazNavrhGenerovani(){
         cast(casy, () => true, c =>
         '<b>' + esc(c.u.kod) + '</b> ' + esc(popisPredavky(c.u.cislo))
         + ' → <b>' + esc(c.text) + '</b> <span class="popisek">(' + esc(c.proc) + ')</span>'))
+    + seznam('Dopíše se do popisu čas po směru a proti němu', 'smery',
+        cast(smery, () => true, s =>
+        '<b>' + esc(s.u.kod) + '</b> ' + esc(popisPredavky(s.u.cislo))
+        + ' → ' + esc(s.text)))
     + seznam('Zmizí (dřívější výpočet)', 'smazat',
         cast(smazat, () => true, x =>
         '<b>' + esc(popisGrupy(x.parta)) + '</b> · ' + esc(x.kod) + ' · ' + esc((x.popis||'').slice(0,70))))
@@ -5698,6 +5930,7 @@ function ukazNavrhGenerovani(){
   const kolik = [];
   if(pridat.length) kolik.push('přibude ' + pridat.length);
   if(casy.length)   kolik.push('doplní se ' + casy.length + ' časů');
+  if(smery.length)  kolik.push('u ' + smery.length + ' se dopíše směr');
   if(smazat.length) kolik.push('zmizí ' + smazat.length);
   if(navrhGen.potize && navrhGen.potize.length)
     kolik.push(navrhGen.potize.length + ' se nevešlo');
@@ -5710,14 +5943,15 @@ function ukazNavrhGenerovani(){
 /* Co je právě zaškrtnuté. Čte se z panelu, ne z nějakého druhého seznamu —
    jeden zdroj pravdy, takže se nemá co rozejít s tím, co je vidět. */
 function vybraneZNavrhu(){
-  const v = {pridat: [], smazat: [], casy: []};
+  const v = {pridat: [], smazat: [], casy: [], smery: []};
   if(!navrhGen) return v;
   const boxy = document.querySelectorAll('#navrhGenerovani input[type=checkbox][data-sada]');
   // Panel není vykreslený (volá se to programově, třeba z testu nebo z jiného
   // místa v kódu) — pak není co odškrtávat a platí celý návrh.
   if(!boxy.length) return {pridat: navrhGen.pridat.slice(),
                            smazat: navrhGen.smazat.slice(),
-                           casy:   navrhGen.casy.slice()};
+                           casy:   navrhGen.casy.slice(),
+                           smery:  navrhGen.smery.slice()};
   boxy.forEach(el => {
     if(!el.checked) return;
     const sada = el.getAttribute('data-sada'), i = +el.getAttribute('data-i');
@@ -5748,8 +5982,9 @@ function prepocitejNavrh(){
     }
   });
   const v = vybraneZNavrhu();
-  const n = v.pridat.length + v.smazat.length + v.casy.length;
-  const celkem = navrhGen.pridat.length + navrhGen.smazat.length + navrhGen.casy.length;
+  const n = v.pridat.length + v.smazat.length + v.casy.length + v.smery.length;
+  const celkem = navrhGen.pridat.length + navrhGen.smazat.length
+               + navrhGen.casy.length + navrhGen.smery.length;
   const b = $('#navrhProvest');
   if(!b) return;
   b.disabled = !n;
@@ -5768,12 +6003,14 @@ function zrusNavrhGenerovani(){
 function provedGenerovani(){
   if(!navrhGen){ hlaska('Návrh už neplatí, spusťte ho znovu.'); return; }
   // Provede se jen to, co zůstalo zaškrtnuté.
-  const {pridat, smazat, casy} = vybraneZNavrhu();
-  const celkem = navrhGen.pridat.length + navrhGen.smazat.length + navrhGen.casy.length;
-  const vybrano = pridat.length + smazat.length + casy.length;
+  const {pridat, smazat, casy, smery} = vybraneZNavrhu();
+  const celkem = navrhGen.pridat.length + navrhGen.smazat.length
+               + navrhGen.casy.length + navrhGen.smery.length;
+  const vybrano = pridat.length + smazat.length + casy.length + smery.length;
   if(!vybrano){ hlaska('Nic není zaškrtnuté, tak se nic neprovedlo.'); return; }
 
   smazat.forEach(u => { const i = D.ukoly.indexOf(u); if(i >= 0) D.ukoly.splice(i,1); });
+  smery.forEach(s => { s.u.popis = s.popis; });
   casy.forEach(c => {
     c.u.kdy_text = c.text;
     const r = rozeberCas(c.text);
@@ -5789,7 +6026,7 @@ function provedGenerovani(){
   planZmenen = vybrano < celkem; kresliPruhGenerovani();
   oznacZmenu(); vseKresli();
   hlaska('Hotovo — přibylo ' + pridat.length + ', doplněno časů ' + casy.length
-       + ', zmizelo ' + smazat.length + '.'
+       + ', směrů ' + smery.length + ', zmizelo ' + smazat.length + '.'
        + (vybrano < celkem ? ' Zbylých ' + (celkem - vybrano)
             + ' změn jste nechal stranou; tlačítkem Přegenerovat je nabídnu znovu.' : ''));
 }
@@ -6520,15 +6757,16 @@ const MAPA = {
           pozn:'poznamka', gpx:'gpx_soubor', km:'auto_km', min:'auto_min', delka:'delka_km',
           mapa:'mapa_url'}
   },
-  /* Etapa rozdělená na úseky: délka, převýšení a hlavně jestli se tam smí autem.
-     Z toho se počítá doba značení a úklidu. Řádky se v plánovači needitují —
-     vyplňují se v samostatném náhledu a sem se jen čtou. */
+  /* Etapa rozdělená na úseky: délka, převýšení, povrch a jestli se tam smí
+     autem. Z toho se počítá doba značení a úklidu. Geometrie (od_m, do_m,
+     převýšení, osm_slozeni) se bere z GPX a z OpenStreetMap a needituje se;
+     ručně se přepisuje jen povrch a auto — tam se OSM občas plete. */
   useky: {
     tabulka:'etapa_useky', klic:['etapa','poradi'], konflikt:['rok','etapa','poradi'],
     rok:true, jen:[],
     pole:{etapa:'etapa', poradi:'poradi', od_m:'od_m', do_m:'do_m', delka_m:'delka_m',
           prevyseni_m:'prevyseni_m', klesani_m:'klesani_m', sklon_pct:'sklon_pct',
-          raz:'raz', auto:'auto', navrh:'navrh', osm_slozeni:'osm_slozeni',
+          raz:'raz', auto:'auto', povrch:'povrch', navrh:'navrh', osm_slozeni:'osm_slozeni',
           lat:'lat', lon:'lon'},
     naJs: r => ({...r, auto: r.auto === null ? null : !!r.auto,
                        navrh: r.navrh === null ? null : !!r.navrh})
@@ -7373,9 +7611,15 @@ function kresliJakSePocita(){
         pole('svetlo_rezerva', 'Rezerva na šero z obou konců', 'min'),
         pole('patek_etapy_do', 'V pátek se značí do etapy', 'č.'),
         pole('patek_okno_od',  'Páteční okno začíná v')])
-    + skupina('Tempo značení', [
-        pole('tempo_autem_kmh',    'Kde se smí autem', 'km/h', '0.1'),
-        pole('tempo_bez_auta_kmh', 'Kde se autem nesmí', 'km/h', '0.1'),
+    + skupina('Tempo značení autem', [
+        pole('tempo_tvrdy_autem_kmh',    'Tvrdý povrch', 'km/h', '0.1'),
+        pole('tempo_zpevneny_autem_kmh', 'Zpevněný povrch', 'km/h', '0.1'),
+        pole('tempo_teren_autem_kmh',    'Terén', 'km/h', '0.1')])
+    + skupina('Tempo značení pěšky', [
+        pole('tempo_tvrdy_pesky_kmh',    'Tvrdý povrch', 'km/h', '0.1'),
+        pole('tempo_zpevneny_pesky_kmh', 'Zpevněný povrch', 'km/h', '0.1'),
+        pole('tempo_teren_pesky_kmh',    'Terén', 'km/h', '0.1')])
+    + skupina('Značení — přirážky', [
         pole('prirazka_stoupani', 'Přirážka na 100 m stoupání', 'min'),
         pole('znaceni_rezie',     'Režie na etapu', 'min'),
         pole('znaceni_min',       'Nejkratší úkol značení', 'min')])
@@ -7427,11 +7671,17 @@ function kresliJakSePocita(){
       'Místo se odvodí z toho, co má vyplněná ' + b('většina členů grupy') + ' ve sloupcích '
       + 'Nocleh pátek a Nocleh sobota.'])
     + h('Trasování a úklid', [
-      'Doba značení etapy se počítá z úseků: každý úsek svou délkou a tempem podle toho, '
-      + b('jestli se tam smí autem') + ' (' + PR('tempo_autem_kmh') + ' proti '
-      + PR('tempo_bez_auta_kmh') + ' km/h), plus ' + b(PR('prirazka_stoupani') + ' minut na 100 m')
-      + ' převýšení, plus ' + b(PR('znaceni_rezie') + ' minut režie') + ' na etapu. '
-      + 'Nejkratší úkol je ' + b(PR('znaceni_min') + ' minut') + '.',
+      'Doba značení etapy se počítá z úseků: každý úsek svou délkou a tempem podle '
+      + b('povrchu') + ' a podle toho, ' + b('jestli se tam smí autem') + '. Autem '
+      + PR('tempo_tvrdy_autem_kmh') + ' / ' + PR('tempo_zpevneny_autem_kmh') + ' / '
+      + PR('tempo_teren_autem_kmh') + ' km/h, pěšky ' + PR('tempo_tvrdy_pesky_kmh') + ' / '
+      + PR('tempo_zpevneny_pesky_kmh') + ' / ' + PR('tempo_teren_pesky_kmh')
+      + ' km/h (tvrdý / zpevněný / terén). K tomu ' + b(PR('prirazka_stoupani') + ' minut na 100 m')
+      + ' převýšení a ' + b(PR('znaceni_rezie') + ' minut režie') + ' na etapu. '
+      + 'Výsledek se zaokrouhlí na ' + b('nejbližších ' + PR('zaokrouhleni') + ' minut')
+      + '; nejkratší úkol je ' + b(PR('znaceni_min') + ' minut') + '.',
+      'Povrch je u každého úseku odvozený z OpenStreetMap a jde ho přepsat na obrazovce '
+      + b('Úseky') + '. Když u úseku chybí, počítá se jako zpevněný.',
       'Značit se musí začít ' + b('nejpozději ' + PR('trasovani_pred')
       + ' minut před prvním běžcem') + ' — parta vyráží před ním a značí mu cestu. '
       + 'Je to nejzazší termín, ne pevný čas: dřív se vyrazit smí, a právě proto '
@@ -7511,7 +7761,8 @@ function nabidniDopocet(drive, ted){
   if(drive && ted && !zmenaTykajiciSePlanu(drive, ted)) return;
   let n;
   try{ n = spocitejGenerovani(); }catch(e){ return; }
-  if(!n.pridat.length && !n.casy.length) return;      // mazání samo o sobě panel nevyvolá
+  // mazání ani samotný dopsaný směr panel nevyvolá — to počká na Přegenerovat
+  if(!n.pridat.length && !n.casy.length) return;
   ukazNavrhGenerovani();
 }
 

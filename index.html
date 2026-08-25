@@ -1743,8 +1743,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.18";
-const BUILD = "2026-08-25T03:33+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.19";
+const BUILD = "2026-08-25T03:55+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -5098,8 +5098,8 @@ const PRAVIDLA_VYCHOZI = {
   svetlo_rezerva:  10,      // minut ubraných z obou konců — v lese je šero dřív
   patek_etapy_do:   4,      // etapy do tohohle čísla se značí v pátek, zbytek v sobotu
   patek_okno_od: '14:00',   // v pátek se lidi teprve sjíždějí
-  tempo_autem:    180,      // m/min tam, kde se smí autem
-  tempo_bez_auta:  60,      // m/min tam, kde se nesmí
+  tempo_autem_kmh: 10.8,    // km/h tam, kde se smí autem
+  tempo_bez_auta_kmh: 3.6,  // km/h tam, kde se nesmí
   prirazka_stoupani: 10,    // minut navíc na 100 m převýšení
   znaceni_rezie:   15,      // minut na etapu: zaparkovat, zorientovat se, sbalit
   znaceni_min:     60,      // nejkratší úkol značení
@@ -5251,8 +5251,9 @@ function dobaZnaceni(etapa){
   if(!u.length) return null;
   let minut = 0;
   u.forEach(x => {
-    const tempo = x.auto ? PR('tempo_autem') : PR('tempo_bez_auta');
-    minut += (+x.delka_m || 0) / (tempo || 1);
+    // tempo je v km/h, délka v metrech: metry / (km/h × 1000 / 60) = minuty
+    const kmh = x.auto ? PR('tempo_autem_kmh') : PR('tempo_bez_auta_kmh');
+    minut += (+x.delka_m || 0) * 60 / ((kmh || 1) * 1000);
     minut += (+x.prevyseni_m || 0) / 100 * PR('prirazka_stoupani');
   });
   minut += PR('znaceni_rezie');
@@ -5351,23 +5352,39 @@ function spocitejGenerovani(){
       const vPatek = e <= PR('patek_etapy_do');
       const okno = oknoSvetla(vPatek ? 'PÁ' : 'SO', vPatek);
       const lhuta = bezci.prvni - PR('trasovani_pred');
-      /* Konec se zaokrouhluje DOLŮ, ne nahoru jako u předávek. Tam je pozdější
-         konec na stranu bezpečí, tady je to lhůta — o deset minut později už
-         znamená, že běžec vyběhne na neoznačenou etapu. Stálo to jednu minutu
-         a test to chytil. */
-      const konec = naDolu(Math.min(okno.do, lhuta));
-      const zacatek = naDolu(konec - doba);
+      /* Lhůta se vztahuje na ZAČÁTEK značení, ne na konec: parta musí vyrazit
+         nejpozději tolik minut před prvním běžcem a značí před ním. Dřív se
+         vyrazit smí — právě proto se etapy 1 až 4 stíhají v pátek, i když je
+         první běžec na nich až v sobotu ráno.
+
+         Zaokrouhluje se dolů: o deset minut dřív vyrazit je na stranu bezpečí,
+         o deset minut později už ne. A když se konec vysype ze světla, posune
+         se celý úkol dozadu, ne že se zkrátí. */
+      let zacatek = naDolu(Math.min(lhuta, okno.do - doba));
+      let konec = naHoru(zacatek + doba);
+      if(konec > okno.do){
+        zacatek = naDolu(zacatek - (konec - okno.do));
+        konec = naHoru(zacatek + doba);
+      }
       if(zacatek < okno.od){
         const chybi = okno.od - zacatek;
+        /* Dvě různé příčiny, a každá se řeší jinak. Buď je etapa delší než celý
+           den světla — pak nepomůže žádný parametr a musí se rozdělit mezi dvě
+           grupy. Nebo je jen lhůta před běžcem moc velká a stačí ji zkrátit. */
+        const delkaOkna = okno.do - okno.od;
         potize.push({etapa:e, kod:u.kod, chybi,
-          text:'značení etapy ' + e + ' trvá ' + doba + ' min a muselo by začít '
-            + minutyNaCas(zacatek) + ', tedy ' + chybi + ' min před rozedněním. '
-            + 'Buď posuňte „V pátek se značí do etapy" na ' + e
-            + ', nebo „Hotovo před prvním běžcem" o ' + chybi + ' min níž.'});
+          text: (doba > delkaOkna)
+            ? ('značení etapy ' + e + ' trvá ' + doba + ' min, ale celé okno světla má jen '
+               + delkaOkna + ' min. Tohle žádný parametr nespraví — etapa se musí '
+               + 'rozdělit mezi dvě grupy.')
+            : ('značení etapy ' + e + ' trvá ' + doba + ' min a muselo by začít '
+               + minutyNaCas(zacatek) + ', tedy ' + chybi + ' min před rozedněním. '
+               + 'Buď posuňte „V pátek se značí do etapy" na ' + e
+               + ', nebo „Značení začne nejpozději" o ' + chybi + ' min níž.')});
         return;
       }
       casy.push({u, text: rozsahCasu(zacatek, konec),
-        proc: 'značení ' + doba + ' min, hotovo ' + PR('trasovani_pred')
+        proc: 'značení ' + doba + ' min, začátek nejpozději ' + PR('trasovani_pred')
             + ' min před prvním běžcem (' + minutyNaCas(bezci.prvni) + ')'});
       return;
     }
@@ -7308,7 +7325,7 @@ function kresliJakSePocita(){
 
   // ---- políčka, kterými se ta čísla mění
   const smi = smiPsat();
-  const pole = (klic, popis, jednotka) => {
+  const pole = (klic, popis, jednotka, krok) => {
     const vych = PRAVIDLA_VYCHOZI[klic];
     const je = (D.nastaveni.pravidla || {})[klic];
     const hodnota = (je == null || je === '') ? vych : je;
@@ -7319,7 +7336,8 @@ function kresliJakSePocita(){
       // po deseti. Je to tentýž druh údaje, tak ať se chová stejně — a číselník
       // po deseti minutách je jeden a týž pro celou stránku.
       + '<input type="' + (jeCas ? 'time' : 'number') + '" value="' + esc(hodnota) + '"'
-      + (jeCas ? (' step="600" list="' + CASY10_ID + '"') : ' min="0" step="1"')
+      + (jeCas ? (' step="600" list="' + CASY10_ID + '"')
+               : (' min="0" step="' + (krok || 1) + '"'))
       + (smi ? '' : ' disabled')
       + ' title="Výchozí hodnota je ' + esc(vych) + '. Prázdné políčko se vrátí na ni."'
       + ' onchange="zmenPravidlo(\'' + klic + '\', this.value)"'
@@ -7356,13 +7374,13 @@ function kresliJakSePocita(){
         pole('patek_etapy_do', 'V pátek se značí do etapy', 'č.'),
         pole('patek_okno_od',  'Páteční okno začíná v')])
     + skupina('Tempo značení', [
-        pole('tempo_autem',       'Kde se smí autem', 'm/min'),
-        pole('tempo_bez_auta',    'Kde se autem nesmí', 'm/min'),
+        pole('tempo_autem_kmh',    'Kde se smí autem', 'km/h', '0.1'),
+        pole('tempo_bez_auta_kmh', 'Kde se autem nesmí', 'km/h', '0.1'),
         pole('prirazka_stoupani', 'Přirážka na 100 m stoupání', 'min'),
         pole('znaceni_rezie',     'Režie na etapu', 'min'),
         pole('znaceni_min',       'Nejkratší úkol značení', 'min')])
     + skupina('Trasování a úklid', [
-        pole('trasovani_pred',  'Hotovo před prvním běžcem', 'min'),
+        pole('trasovani_pred',  'Značení začne nejpozději před prvním běžcem', 'min'),
         pole('uklid_podil',     'Úklid trvá oproti značení', '%'),
         pole('uklid_po_beznci', 'Úklid až po startu posledního', 'min'),
         pole('uklid_i_po_tme',  'Uklízet i po tmě (1/0)'),
@@ -7410,14 +7428,17 @@ function kresliJakSePocita(){
       + 'Nocleh pátek a Nocleh sobota.'])
     + h('Trasování a úklid', [
       'Doba značení etapy se počítá z úseků: každý úsek svou délkou a tempem podle toho, '
-      + b('jestli se tam smí autem') + ' (' + PR('tempo_autem') + ' proti '
-      + PR('tempo_bez_auta') + ' m/min), plus ' + b(PR('prirazka_stoupani') + ' minut na 100 m')
+      + b('jestli se tam smí autem') + ' (' + PR('tempo_autem_kmh') + ' proti '
+      + PR('tempo_bez_auta_kmh') + ' km/h), plus ' + b(PR('prirazka_stoupani') + ' minut na 100 m')
       + ' převýšení, plus ' + b(PR('znaceni_rezie') + ' minut režie') + ' na etapu. '
       + 'Nejkratší úkol je ' + b(PR('znaceni_min') + ' minut') + '.',
-      'Značení musí být hotové ' + b(PR('trasovani_pred') + ' minut před prvním běžcem')
-      + ' a celé za světla, tedy mezi ' + b(cas(PR('svetlo_od') + PR('svetlo_rezerva')))
-      + ' a ' + b(cas(PR('svetlo_do') - PR('svetlo_rezerva')))
-      + '. Je to lhůta, ne pevný čas — dřív se smí.',
+      'Značit se musí začít ' + b('nejpozději ' + PR('trasovani_pred')
+      + ' minut před prvním běžcem') + ' — parta vyráží před ním a značí mu cestu. '
+      + 'Je to nejzazší termín, ne pevný čas: dřív se vyrazit smí, a právě proto '
+      + 'se první etapy stíhají v pátek, i když na ně běžci vybíhají až v sobotu.',
+      'Celé značení musí padnout do světla, tedy mezi '
+      + b(cas(PR('svetlo_od') + PR('svetlo_rezerva'))) + ' a '
+      + b(cas(PR('svetlo_do') - PR('svetlo_rezerva'))) + '.',
       'Etapy do čísla ' + b(PR('patek_etapy_do')) + ' se značí v pátek, a to od '
       + b(cas(PR('patek_okno_od'))) + '. Zbytek v sobotu.',
       'Úklid trvá ' + b(PR('uklid_podil') + ' %') + ' času značení a smí začít '

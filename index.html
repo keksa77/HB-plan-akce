@@ -703,6 +703,10 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
         <span class="vicevyber" id="filtrTyp"
           title="Ukáže jen vybrané typy úkolů — třeba přejezdy a noclehy naráz."></span>
       </label>
+      <label class="stav">Předávka:
+        <span class="vicevyber" id="filtrPredavka"
+          title="Ukáže všechno, co se té předávky týká, napříč grupami: obsluhu, zahájení a ukončení, trasování a úklid té etapy a přejezdy, které tam vedou nebo odtud jedou."></span>
+      </label>
       <label class="stav proSpravu">Kód:
         <input id="filtrKod" list="seznamKodu" placeholder="všechny kódy" autocomplete="off"
           title="Napište část kódu, například P1 najde P1 i P10 až P19. Nebo vyberte ze seznamu kódů, které se v plánu opravdu vyskytují."
@@ -1735,8 +1739,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.12";
-const BUILD = "2026-08-25T01:09+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.14";
+const BUILD = "2026-08-25T01:53+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -3701,7 +3705,31 @@ function najdiOdkazy(text){
 /* ---------- 1b. podrobný plán ---------- */
 /* Vybrané položky filtrů. Prázdná množina znamená „všechno" — tak se filtr
    chová stejně jako dřív, dokud v něm někdo nezačne zaškrtávat. */
-const FILTRY_PODROBNY = {parta: new Set(), typ: new Set(), stav: new Set()};
+const FILTRY_PODROBNY = {parta: new Set(), typ: new Set(), stav: new Set(),
+                         predavka: new Set()};
+
+/* Kterých předávek se úkol týká. Odpověď není u všech typů stejná:
+
+     P, PZ, PK  – obsluha, zahájení a ukončení stojí přímo na předávce,
+                  číslo mají ve sloupci cislo,
+     T, U       – trasování a úklid patří etapě, a etapa N začíná na předávce N,
+     A          – přejezd na žádné předávce nestojí, je mezi dvěma, a proto má
+                  místo sloupce cislo dvojici predavka_od a predavka_do,
+     ostatní    – nocleh, servis a schůzky se k předávce nevážou.
+
+   Ručně psaný přejezd má obě čísla prázdná, dokud je někdo nedoplní — takový
+   se pod žádnou předávkou neukáže. Je to schválně: radši ho nezobrazit, než
+   ho hádat z věty typu „Odjezd z Brna". */
+function predavkyUkolu(u){
+  const ven = new Set();
+  if(!u) return ven;
+  if(['P','PZ','PK','T','U'].indexOf(u.typ) >= 0 && u.cislo != null) ven.add(+u.cislo);
+  if(u.typ === 'A'){
+    if(u.predavka_od != null && u.predavka_od !== '') ven.add(+u.predavka_od);
+    if(u.predavka_do != null && u.predavka_do !== '') ven.add(+u.predavka_do);
+  }
+  return ven;
+}
 
 /* Výběr, ve kterém jde zaškrtnout víc položek. Kreslí se do <span id=...>;
    sada je množina vybraných hodnot, popisVse text pro „nic nevybráno". */
@@ -3786,6 +3814,18 @@ function naplnFiltryPodrobny(){
     TYPY.map(t=>({v:t, t:(NAZVY_TYPU[t] || t) + ' (' + t + ')'})), FILTRY_PODROBNY.typ);
   kresliVicevyber('filtrStav', 'všechny stavy',
     STAVY.map(x=>({v:x, t:x})), FILTRY_PODROBNY.stav);
+  // V nabídce jsou jen předávky, ke kterým v plánu opravdu něco je — prázdné
+  // řádky by v seznamu třiceti položek jen překážely.
+  const sPredavkou = new Set();
+  D.ukoly.forEach(u => predavkyUkolu(u).forEach(c => sPredavkou.add(c)));
+  /* Hodnota musí být řetězec, ne číslo. Zaškrtávátko vrací value vždycky jako
+     text, takže množina by se plnila „2" a porovnávala s číslem 2 — a filtr by
+     mlčky neukázal nic. Přesně to se stalo napoprvé. */
+  kresliVicevyber('filtrPredavka', 'všechny předávky',
+    [...sPredavkou].sort((a,b)=>a-b).map(c => {
+      const p = D_predavka(c);
+      return {v: String(c), s: 'PŘED ' + c, t: c + (p && p.nazev ? ' ' + p.nazev : '')};
+    }), FILTRY_PODROBNY.predavka);
 
   // našeptávač kódů — jen ty, které se v plánu opravdu vyskytují
   const kody = [...new Set(D.ukoly.map(u=>u.kod).filter(Boolean))].sort((a,b)=>
@@ -3793,15 +3833,37 @@ function naplnFiltryPodrobny(){
   $('#seznamKodu').innerHTML = kody.map(k=>`<option value="${esc(k)}">`).join('');
 }
 
+/* Skok z tabulky Předávky do podrobného plánu. Ostatní filtry se ruší
+   schválně: kdyby zůstal zapnutý filtr grupy, ukázala by se jen její část
+   a vypadalo by to, že na předávce nikdo jiný není. */
+function ukazUkolyPredavky(cislo){
+  FILTRY_PODROBNY.parta.clear(); FILTRY_PODROBNY.typ.clear(); FILTRY_PODROBNY.stav.clear();
+  FILTRY_PODROBNY.predavka.clear(); FILTRY_PODROBNY.predavka.add(String(+cislo));
+  if($('#filtrKod')) $('#filtrKod').value = '';
+  if($('#filtrNeuplne')) $('#filtrNeuplne').checked = false;
+  prepni('s-podrobny');
+  kresliPodrobny();
+  const p = D_predavka(+cislo);
+  hlaska('Podrobný plán je zúžený na předávku ' + cislo
+    + (p && p.nazev ? ' ' + p.nazev : '') + ' — všechny grupy, seřazeno podle času. '
+    + 'Tlačítkem Zrušit filtry se vrátíte na celý plán.');
+}
+
 /* Tisk bere to, co je zrovna vyfiltrované — takže „vytisknout plán jedné grupy"
    znamená vybrat ji ve filtru a dát Tisk. Do záhlaví se napíše, čí plán to je,
    ať se papír na předávce nedá splést s jiným. */
 function tiskniPodrobny(){
   const g = [...FILTRY_PODROBNY.parta], t = [...FILTRY_PODROBNY.typ], st = [...FILTRY_PODROBNY.stav];
+  const pr = [...FILTRY_PODROBNY.predavka].map(Number).sort((x,y)=>x-y);
   const neuplne = $('#filtrNeuplne') && $('#filtrNeuplne').checked;
   const upresneni = [
     g.length ? ((g.length === 1 ? 'grupa ' : 'grupy ') + g.map(popisGrupy).join(', '))
              : 'všechny grupy',
+    // Vytištěný plán jedné předávky si člověk bere s sebou na místo, tak ať je
+    // z hlavičky poznat, o kterou jde.
+    pr.length ? ((pr.length === 1 ? 'předávka ' : 'předávky ')
+                 + pr.map(c => c + ((D_predavka(c)||{}).nazev ? ' ' + D_predavka(c).nazev : ''))
+                      .join(', ')) : null,
     t.length ? t.map(x => NAZVY_TYPU[x] || x).join(', ') : null,
     st.length ? ((st.length === 1 ? 'stav ' : 'stavy ') + st.join(', ')) : null,
     neuplne ? 'jen neúplné' : null
@@ -3815,6 +3877,7 @@ function tiskniPodrobny(){
 
 function zrusFiltryPodrobny(){
   FILTRY_PODROBNY.parta.clear(); FILTRY_PODROBNY.typ.clear(); FILTRY_PODROBNY.stav.clear();
+  FILTRY_PODROBNY.predavka.clear();
   $('#filtrKod').value = '';
   $('#filtrNeuplne').checked = false;
   kresliPodrobny();
@@ -3843,12 +3906,18 @@ function kresliPodrobny(){
   document.body.classList.toggle('hostMobil', mobil && !prihlasen);
   naplnFiltryPodrobny();
   const fp = FILTRY_PODROBNY.parta, ft = FILTRY_PODROBNY.typ, fs = FILTRY_PODROBNY.stav;
+  const fpr = FILTRY_PODROBNY.predavka;
   const fk = ($('#filtrKod').value || '').trim().toLowerCase();
 
   /* Kdo plán edituje, čte ho po grupách — vidí, co která grupa dělá celý den.
      Kdo si ho jen otevře na mobilu u trati, se ptá „co se děje teď", a tomu
      odpovídá řazení podle času přes všechny grupy. */
-  const podleCasu = mobil && !prihlasen;
+  /* A stejně tak, když si někdo vybere předávku: ptá se „kdo tam kdy bude",
+     ne „co dělá která grupa". Řadit to po grupách by odpověď rozsypalo do
+     několika bloků. Když je zároveň vybraná grupa, platí zase řazení po
+     grupách — to je pohled na plán jedné party. */
+  const podleCasu = (mobil && !prihlasen)
+    || (FILTRY_PODROBNY.predavka.size > 0 && FILTRY_PODROBNY.parta.size === 0);
   /* U trati se řadí podle času, jenže část úkolů má čas jen ve větě („so 6:30")
      a den prázdný. Tak se čte obojí, a když den chybí a čas ne, bere se sobota —
      závodní den. Co čas nemá vůbec, jde na konec. */
@@ -3879,6 +3948,9 @@ function kresliPodrobny(){
     && (!ft.size || ft.has(x.typ))
     && (!fk || String(x.kod||'').toLowerCase().indexOf(fk)>=0)
     && (!fs.size || fs.has(x.stav))
+    // Filtr na předávku se ptá „týká se tenhle úkol té předávky?" — u obsluhy
+    // podle sloupce cislo, u přejezdu podle dvojice od/do.
+    && (!fpr.size || [...predavkyUkolu(x)].some(c => fpr.has(String(c))))
     && (!fn || jeNeuplny(x)));
 
   const cil = $('#podrobny'); cil.innerHTML = '';
@@ -3915,6 +3987,26 @@ function kresliPodrobny(){
       moznosti:TYPY.map(t=>({v:t, t:NAZVY_TYPU[t] || t}))},
     {nadpis:"Úkol", pole:"popis", viceradkove:true, maxRadky:3},
     {nadpis:"Kód",  pole:"kod",  sirka:"74px"},
+    /* Které předávky se úkol týká. U obsluhy, zahájení, ukončení, trasování
+       a úklidu je to jedno číslo ve sloupci cislo a jen se ukazuje — mění se
+       v mřížce plánu. U přejezdu jsou to dvě čísla, odkud a kam, a ta jdou
+       vyplnit ručně: generované přejezdy je mají, ty psané rukou zatím ne
+       a bez nich se pod žádnou předávkou neukážou. */
+    {nadpis:"PŘED", sirka:"104px", pevnaSirka:true, trida:"stred",
+      napovedaSl:"U obsluhy a značení číslo předávky nebo etapy. U přejezdu dvě čísla — "
+        + "odkud a kam se jede. Podle nich funguje filtr Předávka; ručně psaný přejezd "
+        + "se v něm objeví, teprve až mu ta čísla doplníte.",
+      html:(r, i) => {
+        if(r.typ !== 'A')
+          return r.cislo == null ? '<span class="popisek">—</span>' : String(r.cislo);
+        const pole = (jm, hod) => '<input type="number" min="1" max="31" step="1"'
+          + ' data-i="' + i + '" data-p="' + jm + '"'
+          + ' value="' + esc(hod == null ? '' : hod) + '"'
+          + ' style="width:38px;padding:2px 3px;text-align:center">';
+        return pole('predavka_od', r.predavka_od)
+          + '<span class="popisek" style="margin:0 3px">→</span>'
+          + pole('predavka_do', r.predavka_do);
+      }},
     {nadpis:"Kdy",  pole:"kdy_text", sirka:"104px", pevnaSirka:true,
       napovedaSl:"Věta o čase, jak ji někdo napsal — z ní se vytáhly Den, Od a Do. "
         + "Dnes už z ní nic nepočítá, zůstává jen ke kontrole a jako místo na poznámku "
@@ -4428,6 +4520,17 @@ function kresliPredavky(){
   tabulka('#tabPredavky', bezCitlivych([
     {nadpis:"#", pole:"cislo", typ:"number", sirka:"60px", trida:"stred"},
     {nadpis:"Název místa", pole:"nazev", sirka:"210px"},
+    /* Rychlá cesta z předávky do plánu. Zajímá-li někoho konkrétní místo, chce
+       vidět, kdo tam kdy bude — a to jsou úkoly několika grup pohromadě, ne
+       plán jedné z nich. Odkaz proto nastaví filtr a přepne na podrobný plán,
+       kde se to pak řadí podle času. */
+    {nadpis:"Úkoly", sirka:"92px", trida:"stred", jenCist:true,
+      napovedaSl:"Otevře podrobný plán jen s tím, co se téhle předávky týká — "
+        + "obsluha, zahájení a ukončení, trasování a úklid etapy odsud a přejezdy, "
+        + "které sem vedou nebo odsud jedou. Napříč všemi grupami, seřazené podle času.",
+      html:(r)=> r.cislo == null ? '' :
+        '<button class="tl" style="padding:2px 8px;font-size:12px"'
+        + ' onclick="ukazUkolyPredavky(' + (+r.cislo) + ')">zobrazit</button>'},
     {nadpis:"Typ zajištění", pole:"typ", typ:"select", moznosti:["","Local","Interně HB"], sirka:"140px"},
     {nadpis:"Cesta autem", pole:"_km", typ:"text", jenCist:true, sirka:"120px",
       napovedaSl:"Kolik je to autem na následující předávku — kilometry a minuty. "
@@ -4867,6 +4970,7 @@ function dopoctiPrejezdy(){
       const mistoB = (D.predavky[b.cislo-1]||{}).nazev || ("předávka "+b.cislo);
       D.ukoly.push({
         parta: t.kod, typ:"A", kod:"A", cislo:null,
+        predavka_od: a.cislo, predavka_do: b.cislo,
         kdy_text:"", den: b.den || a.den, kdy_od: a.kdy_do || a.kdy_od || "", kdy_do: b.kdy_od || "",
         popis: "přejezd " + a.cislo + " " + mistoA + " → " + b.cislo + " " + mistoB
                + ", " + v.km + " km, " + v.min + " min"
@@ -5139,6 +5243,9 @@ function spocitejGenerovani(){
       const odM = konecUkolu(cA), doM = minuty(cB.den, cB.od);
       navrhy.push({
         parta: t.kod, typ: 'A', kod: volnyKod('A-'+t.kod+'-g'+(i+1)), cislo: null,
+        // Přejezd není na předávce, je mezi dvěma. Obě čísla tady máme v ruce,
+        // tak ať se nezahodí do věty — filtr na předávku pak nemusí luštit text.
+        predavka_od: a.cislo, predavka_do: b.cislo,
         kdy_text: (odM != null && doM != null) ? rozsahCasu(odM, doM) : '',
         den: cA.den || cB.den,
         kdy_od: cA.do || cA.od || '', kdy_do: cB.od || '',
@@ -6112,7 +6219,11 @@ const MAPA = {
     filtr: r => !r.auto && !r.odvozeno,
     pole:{kod:'kod', parta:'kod_tymu', typ:'typ', cislo:'cislo', den:'den',
           kdy_od:'kdy_od', kdy_do:'kdy_do', kdy_text:'kdy_text', popis:'popis',
-          stav:'stav', zdroj:'zdroj', zamek:'zamek'},
+          stav:'stav', zdroj:'zdroj', zamek:'zamek',
+          // Přejezd nestojí na předávce, ale mezi dvěma — proto má místo
+          // sloupce cislo dvě čísla. Generátor je obě zná, ručně psaný
+          // přejezd je má prázdné, dokud je někdo nedoplní.
+          predavka_od:'predavka_od', predavka_do:'predavka_do'},
     // Databáze vrací čas jako „06:30:00", políčko v tabulce chce „06:30".
     // Bez oříznutí by se řádek tvářil jako změněný hned po načtení.
     // Zámek je v databázi boolean a musí jím i zůstat — undefined by celou

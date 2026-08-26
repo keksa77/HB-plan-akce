@@ -132,6 +132,9 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
   white-space:normal;padding:2px 6px;max-height:36px}
 .clenoveVypis b{font-weight:800}
 .tab td.stred input{text-align:center}
+/* Kód hlavních úkolů — trasování a obsluhy předávky. Tučné je samo políčko,
+   ne buňka: kód se pořád dá přepsat, jen je v dlouhém plánu vidět dřív. */
+.tab td.kodHlavni input{font-weight:800}
 .tab td.smaz{width:34px;text-align:center}
 /* Čerstvě přidaný řádek. Seznamy se řadí, takže nový řádek nepřistane dole,
    ale někde uprostřed — bez zvýraznění ho uživatel nenajde. Žlutá drží,
@@ -1782,8 +1785,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.37";
-const BUILD = "2026-08-26T16:47+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.38";
+const BUILD = "2026-08-26T17:12+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2294,28 +2297,32 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
     sloupce.forEach(s=>{
       const v = r[s.pole];
       const lbl = s.nadpis ? ` data-th="${esc(s.nadpis)}"` : '';
+      // Třída buňky bývá pevná, ale smí být i funkce řádku — tak se zvýrazní
+      // jen některé řádky (kód u trasování a obsluhy) a políčko přitom zůstane
+      // přepsatelné. Kdyby se to řešilo přes html:, přestalo by se dát psát.
+      const trida = (typeof s.trida === 'function' ? (s.trida(r) || '') : (s.trida || ''));
       if(s.html){
-        h += `<td class="${s.trida||''}"${lbl} style="padding:5px 8px;white-space:nowrap">${s.html(r,i)}</td>`;
+        h += `<td class="${trida}"${lbl} style="padding:5px 8px;white-space:nowrap">${s.html(r,i)}</td>`;
       } else if(s.jenCist){
-        h += `<td class="${s.trida||''}"${lbl} style="padding:7px 8px;font-size:13px;color:var(--pisek)">${esc(v)}</td>`;
+        h += `<td class="${trida}"${lbl} style="padding:7px 8px;font-size:13px;color:var(--pisek)">${esc(v)}</td>`;
       } else if(s.typ==='napoveda'){
         // Volný text s nabídkou obvyklých hodnot. Používá se u popisných polí,
         // kde databáze nic nehlídá — dá se vybrat ze seznamu i napsat vlastní.
         const moznosti = (typeof s.moznosti==='function'? s.moznosti(r) : s.moznosti) || [];
         const id = 'nap-' + s.pole + '-' + Math.abs(String(s.nadpis).length*37 + i);
-        h += `<td class="${s.trida||''}"${lbl}>`
+        h += `<td class="${trida}"${lbl}>`
           + `<input type="text" list="${id}" data-i="${i}" data-p="${s.pole}" value="${esc(v)}">`
           + `<datalist id="${id}">`
           + moznosti.filter(x=>x!=='').map(m=>`<option value="${esc(m)}"></option>`).join('')
           + '</datalist></td>';
       } else if(s.typ==='time'){
         // hodina a minuta zvlášť, minuty po pěti — viz poleCasu()
-        h += `<td class="${s.trida||''}"${lbl}>`
+        h += `<td class="${trida}"${lbl}>`
           + poleCasu(v, `data-i="${i}" data-p="${s.pole}"`) + '</td>';
       } else if(s.typ==='select'){
         const moznosti = (typeof s.moznosti==='function'? s.moznosti(r) : s.moznosti);
         // volba může být holá hodnota, nebo dvojice {v: hodnota, t: co je vidět}
-        h += `<td class="${s.trida||''}"${lbl}><select data-i="${i}" data-p="${s.pole}">`
+        h += `<td class="${trida}"${lbl}><select data-i="${i}" data-p="${s.pole}">`
           + moznosti.map(m=>{
               const hod = (m && typeof m === 'object') ? m.v : m;
               const vid = (m && typeof m === 'object') ? m.t : m;
@@ -2328,7 +2335,7 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
         // a při psaní se pole samo roztáhne
         const strop = s.maxRadky ? ` data-max="${s.maxRadky}"` : '';
         const cely  = (s.maxRadky && v) ? ` title="${esc(v)}"` : '';
-        h += `<td class="${s.trida||''}"${lbl}><textarea rows="1" data-i="${i}" data-p="${s.pole}"${strop}${cely}
+        h += `<td class="${trida}"${lbl}><textarea rows="1" data-i="${i}" data-p="${s.pole}"${strop}${cely}
                  style="overflow:hidden;resize:none;white-space:pre-wrap">${esc(v)}</textarea></td>`;
       } else {
         // Adresa v poli se nedá proklikat, tak se vedle ní ukáže ikonka.
@@ -2338,7 +2345,7 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
                                     : ('Otevřít ' + esc(o.popis) + ' v nové záložce'))
           + '" style="text-decoration:none;font-size:14px">'
           + (o.telefon ? '&#9742;' : (o.mail ? '&#9993;' : '&#128279;')) + '</a>').join('');
-        h += `<td class="${s.trida||''}"${lbl}>`
+        h += `<td class="${trida}"${lbl}>`
           + (ikony ? '<span style="display:flex;align-items:center;gap:2px">' : '')
           + `<input type="${s.typ||'text'}" data-i="${i}" data-p="${s.pole}" value="${esc(v)}"`
           + (ikony ? ' style="flex:1;min-width:0"' : '') + '>'
@@ -4139,10 +4146,17 @@ function kresliPodrobny(){
       napovedaSl:"Grupa i její šéf pohromadě, stejně jako v mřížce plánu. Kód se dá "
         + "přehodit — úkol se rovnou přesune jinam. Jméno se mění u členů grup, tady se "
         + "jen ukazuje."},
+    /* Kód stojí hned za grupou, protože se podle něj úkol hledá a odkazuje se
+       na něj v mailech i v hlášení kontroly. Tučně jsou jen trasování (T)
+       a obsluha předávky (P) — dvě hlavní práce; zahájení, ukončení, úklid,
+       přejezdy a noclehy se od nich takhle odliší na první pohled. */
+    {nadpis:"Kód",  pole:"kod",  sirka:"84px",
+      trida: r => (r.typ === 'T' || r.typ === 'P') ? 'kodHlavni' : '',
+      napovedaSl:"Kód úkolu, podle kterého se pozná v databázi a v mailech. "
+        + "Tučně trasování a obsluha předávky."},
     {nadpis:"Typ",  pole:"typ",  typ:"select", sirka:"132px",
       moznosti:TYPY.map(t=>({v:t, t:NAZVY_TYPU[t] || t}))},
     {nadpis:"Úkol", pole:"popis", viceradkove:true, maxRadky:3},
-    {nadpis:"Kód",  pole:"kod",  sirka:"74px"},
     /* Které předávky se úkol týká. U obsluhy, zahájení, ukončení, trasování
        a úklidu je to jedno číslo ve sloupci cislo a jen se ukazuje — mění se
        v mřížce plánu. U přejezdu jsou to dvě čísla, odkud a kam, a ta jdou

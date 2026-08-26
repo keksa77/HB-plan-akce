@@ -1782,8 +1782,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.28";
-const BUILD = "2026-08-26T02:41+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.29";
+const BUILD = "2026-08-26T03:15+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4321,21 +4321,24 @@ function kresliTymy(){
       napovedaSl:"Čím se grupa přesouvá. Nabídka je jen návod — dá se napsat cokoli, "
         + "databáze to nehlídá, protože na tom nic nestojí."},
     {nadpis:"Min značení", pole:"min_znaceni", typ:"number", sirka:"105px", trida:"stred",
-      napovedaSl:"Nejmíň etap trasování, které grupa vezme. Jednotka je počet etap, ne kilometry — "
-        + "mřížka přiděluje značení po etapách. Nechte prázdné, když grupa neznačí."},
+      napovedaSl:"Nejmíň etap trasování, které grupa vezme ZA JEDEN DEN. Jednotka je počet etap, "
+        + "ne kilometry — mřížka přiděluje značení po etapách. Nechte prázdné, když grupa neznačí."},
     {nadpis:"Max značení", pole:"max_znaceni", typ:"number", sirka:"105px", trida:"stred",
-      napovedaSl:"Nejvíc etap trasování, které grupa zvládne. Když je menší než minimum, "
-        + "políčko zčervená — databáze to nehlídá, hlídá to tahle tabulka."},
+      napovedaSl:"Nejvíc etap trasování, které grupa zvládne ZA JEDEN DEN — přes celý víkend "
+        + "jich tedy může mít víc a není to chyba. Když je maximum menší než minimum, políčko "
+        + "zčervená; databáze to nehlídá, hlídá to tahle tabulka."},
     {nadpis:"Značení teď", sirka:"98px", trida:"stred", html:(r)=>bunkaKapacity(r,'T'),
-      napovedaSl:"Kolik etap trasování má grupa právě teď v mřížce. Zelená znamená, "
-        + "že sedí do zadaného rozpětí, červená že je mimo. Počítá se za běhu, needituje se."},
+      napovedaSl:"Kolik etap trasování má grupa právě teď v mřížce dohromady. Porovnává se ale "
+        + "den po dni: zelená znamená, že se do rozpětí vejde každý jednotlivý den, červená že "
+        + "některý den vyčnívá. Po najetí myší je rozpis po dnech. Počítá se za běhu, needituje se."},
     {nadpis:"Min úklid", pole:"min_uklid", typ:"number", sirka:"95px", trida:"stred",
-      napovedaSl:"Nejmíň etap úklidu značení. Nechte prázdné, když grupa neuklízí."},
+      napovedaSl:"Nejmíň etap úklidu značení za jeden den. Nechte prázdné, když grupa neuklízí."},
     {nadpis:"Max úklid", pole:"max_uklid", typ:"number", sirka:"95px", trida:"stred",
-      napovedaSl:"Nejvíc etap úklidu značení, které grupa zvládne."},
+      napovedaSl:"Nejvíc etap úklidu značení, které grupa zvládne za jeden den. Součet přes celý "
+        + "víkend může být vyšší a není to chyba."},
     {nadpis:"Úklid teď", sirka:"92px", trida:"stred", html:(r)=>bunkaKapacity(r,'U'),
-      napovedaSl:"Kolik etap úklidu má grupa právě teď v mřížce. Zelená sedí do rozpětí, "
-        + "červená je mimo. Počítá se za běhu, needituje se."},
+      napovedaSl:"Kolik etap úklidu má grupa právě teď v mřížce dohromady. Do rozpětí se porovnává "
+        + "každý den zvlášť; po najetí myší je rozpis po dnech. Počítá se za běhu, needituje se."},
     {nadpis:"Barva", pole:"barva", typ:"color", sirka:"80px"},
     {nadpis:"Poznámka", pole:"poznamka", viceradkove:true, maxRadky:2}
   ], D.tymy, ()=>{kresliTymy();kresliPaletu();naplnFiltrPart();kresliPlan();
@@ -4367,9 +4370,17 @@ function bunkaClenu(r){
 /* Kolik etap má grupa zrovna přidělených a jestli to sedí do jejího rozpětí.
    Bez tohohle srovnání je min/max jen dvojice čísel, ke kterým se člověk musí
    dopočítávat sám. Počítá se z živých úkolů, neukládá se nikam. */
+/* Kolik etap má grupa v mřížce a jestli to sedí do zadaného rozpětí.
+
+   Rozpětí platí NA JEDEN DEN, ne na celý závodní víkend: grupa, která značí
+   dvě etapy v pátek a dvě v sobotu, není přetížená, i když je jich dohromady
+   čtyři. Porovnává se proto den po dni a mimo rozpětí je až ten den, který
+   z něj vyčnívá. Dny, na které grupě nic nepadlo, se nepočítají — nula není
+   podlezené minimum, jen den, kdy grupa tuhle práci nedělá. */
 function bunkaKapacity(r, typ){
-  const kolik = (D.ukoly || []).filter(u =>
-    u.typ === typ && u.parta === r.kod && u.cislo != null && !u.auto && !u.odvozeno).length;
+  const ukoly = (D.ukoly || []).filter(u =>
+    u.typ === typ && u.parta === r.kod && u.cislo != null && !u.auto && !u.odvozeno);
+  const kolik = ukoly.length;
   const cislo = h => (h === '' || h == null) ? null : +h;
   const mn = cislo(typ === 'T' ? r.min_znaceni : r.min_uklid);
   const mx = cislo(typ === 'T' ? r.max_znaceni : r.max_uklid);
@@ -4378,14 +4389,35 @@ function bunkaKapacity(r, typ){
   if(mn == null && mx == null)
     return '<span class="kap" title="Rozpětí není zadané, tak se nic nehodnotí.">' + kolik + '</span>';
 
-  const malo = mn != null && kolik < mn;
-  const moc  = mx != null && kolik > mx;
+  /* Úkoly bez vyplněného dne se do porovnání nepočítají. Není to den, na kterém
+     by grupa byla přetížená nebo nevytížená — je to úkol, kterému ještě nikdo
+     neurčil, kdy se dělá. V rozpisu jsou vidět zvlášť, ať se na ně nezapomene. */
+  const poDnech = new Map();
+  let bezDne = 0;
+  ukoly.forEach(u => {
+    const d = (u.den || '').trim();
+    if(DNY.indexOf(d) < 0){ bezDne++; return; }
+    poDnech.set(d, (poDnech.get(d) || 0) + 1);
+  });
+  const dny = [...poDnech.entries()].sort((a, b) => DNY.indexOf(a[0]) - DNY.indexOf(b[0]));
+  const nejvic = dny.reduce((a, x) => Math.max(a, x[1]), 0);
+  const nejmin = dny.length ? dny.reduce((a, x) => Math.min(a, x[1]), Infinity) : 0;
+
+  const malo = mn != null && dny.length > 0 && nejmin < mn;
+  const moc  = mx != null && nejvic > mx;
   const rozpeti = (mn == null ? '?' : mn) + '–' + (mx == null ? '?' : mx);
-  const proc = malo ? ('Chybí ' + (mn - kolik) + ' do minima ' + mn + '.')
-             : moc  ? ('O ' + (kolik - mx) + ' víc, než je maximum ' + mx + '.')
-             : ('Sedí do rozpětí ' + rozpeti + '.');
+  const rozpis = dny.map(x => x[0] + ' ' + x[1]).join(', ');
+  const proc = (dny.length === 0 ? (bezDne ? 'Žádný z úkolů nemá určený den, tak se nic nehodnotí.'
+                                           : 'Zatím nic nemá.')
+             : malo ? ('Nejslabší den má ' + nejmin + ', minimum je ' + mn + '.')
+             : moc  ? ('Nejvytíženější den má ' + nejvic + ', maximum je ' + mx + '.')
+             : ('Každý den sedí do rozpětí ' + rozpeti + '.'))
+    + (rozpis ? ' Po dnech: ' + rozpis + '.' : '')
+    + (bezDne ? ' Bez určeného dne: ' + bezDne + ' — do porovnání se nepočítá.' : '')
+    + ' Rozpětí platí na jeden den, součet přes víkend může být vyšší.';
   return '<span class="kap ' + (malo || moc ? 'mimo' : 'sedi') + '" title="' + esc(proc) + '">'
-       + kolik + '<i>z ' + rozpeti + '</i></span>';
+       + kolik + '<i>' + (dny.length > 1 ? ('max ' + nejvic + '/den, ') : '')
+       + 'z ' + rozpeti + '</i></span>';
 }
 
 /* Maximum menší než minimum je nesmysl, ale v databázi to schválně nehlídá žádné

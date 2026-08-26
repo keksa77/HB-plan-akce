@@ -1782,8 +1782,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.30";
-const BUILD = "2026-08-26T14:00+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.31";
+const BUILD = "2026-08-26T14:32+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -6385,14 +6385,21 @@ function zkontrolujNavaznosti(){
          domluvený s lidmi. Když jsou zamčené oba, návrh to řekne rovnou —
          časem se pak hýbat nedá a musí se změnit obsazení nebo zámek. */
       const zA = jeZamceny(n.a), zB = jeZamceny(n.b);
-      const posunB = minutyNaCas(n.konecA + n.v.min);
-      const zkratA = minutyNaCas(n.zacatekB - n.v.min);
+      /* Navržený čas se zaokrouhluje na krok, po kterém jdou minuty v políčkách —
+         jinak by tu stálo „na 15:11", což se do plánu ani zadat nedá. A na
+         stranu bezpečí: začátek pozdějšího nahoru, konec dřívějšího dolů. */
+      const posunB = minutyNaCas(naDesitky(n.konecA + n.v.min, true));
+      const zkratA = minutyNaCas(naDesitky(n.zacatekB - n.v.min, false));
       const navrh = (zA && zB)
         ? 'Oba řádky jsou zamčené — buď jeden odemkněte, nebo předávku předejte jiné grupě.'
         : zA ? ('Posuňte začátek <b>' + esc(n.b.kod) + '</b> na <b>' + posunB + '</b>.')
         : zB ? ('Ukončete <b>' + esc(n.a.kod) + '</b> nejpozději v <b>' + zkratA + '</b>.')
         : ('Posuňte začátek <b>' + esc(n.b.kod) + '</b> na <b>' + posunB + '</b>, nebo ukončete <b>'
            + esc(n.a.kod) + '</b> v <b>' + zkratA + '</b>.');
+      /* Záporný čas k dispozici není „málo času na přejezd", ale překryv: grupa
+         má být na dvou místech zároveň. Stojí za to to říct nahlas, protože se
+         to řeší jinak než zkrácením o pár minut. */
+      const prekryv = n.kDispozici < 0;
       // malý schodek je spíš napjatý plán než nemožnost — ať se nehledí stejně
       const tesne = n.schodek <= PR('zaokrouhleni') * 2;
       h += '<tr><td style="padding:7px 10px;font-weight:800;color:'+barva(n.parta)+'">'+esc(n.parta)+'</td>'
@@ -6400,7 +6407,11 @@ function zkontrolujNavaznosti(){
         + '<span style="color:var(--pisek)">'+rozsahUkolu(n.a)+'</span><br>'+znackaUkolu(n.a)+'</td>'
         + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.b.kod)+' '+esc(mB)+'<br>'
         + '<span style="color:var(--pisek)">'+rozsahUkolu(n.b)+'</span><br>'+znackaUkolu(n.b)+'</td>'
-        + '<td class="stred" style="padding:7px">'+n.kDispozici+' min</td>'
+        + '<td class="stred" style="padding:7px"'
+        + (prekryv ? ' title="Záporný čas znamená překryv — úkoly jdou přes sebe, grupa by musela '
+                   + 'být na dvou místech zároveň."' : '') + '>'
+        + n.kDispozici + ' min'
+        + (prekryv ? '<br><span class="popisek">překryv</span>' : '') + '</td>'
         + '<td class="stred" style="padding:7px">'+n.v.min+' min ('+n.v.km+' km)</td>'
         + '<td class="stred" style="padding:7px;font-weight:800;color:'
         + (tesne ? '#B3762A' : 'var(--vinova)') + '" title="'

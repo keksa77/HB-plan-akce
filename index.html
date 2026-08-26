@@ -1782,8 +1782,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.31";
-const BUILD = "2026-08-26T14:32+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.32";
+const BUILD = "2026-08-26T14:39+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -3981,6 +3981,7 @@ function ukazUkolyPredavky(cislo){
   if($('#filtrNeuplne')) $('#filtrNeuplne').checked = false;
   prepni('s-podrobny');
   kresliPodrobny();
+  posunNa($('#podrobny'));          // ať je vyfiltrovaná tabulka rovnou v obraze
   const p = D_predavka(+cislo);
   hlaska('Podrobný plán je zúžený na předávku ' + cislo
     + (p && p.nazev ? ' ' + p.nazev : '') + ' — všechny grupy, seřazeno podle času. '
@@ -6269,6 +6270,10 @@ function ukazUkolyGrupy(kod){
   if($('#filtrNeuplne')) $('#filtrNeuplne').checked = false;
   prepni('s-podrobny');
   kresliPodrobny();
+  /* Po přepnutí zůstane stránka odscrollovaná tam, kde byla kontrola návazností,
+     takže vyfiltrovaná tabulka je mimo obraz a vypadá to, že se nic nestalo.
+     Posun na ni je proto součást toho kliknutí. */
+  posunNa($('#podrobny'));
   hlaska('Podrobný plán je zúžený na grupu ' + kod
     + ' — tlačítkem Zrušit filtry se vrátíte na celý plán.');
 }

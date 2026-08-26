@@ -1782,8 +1782,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.32";
-const BUILD = "2026-08-26T14:39+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.33";
+const BUILD = "2026-08-26T14:55+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -7004,16 +7004,24 @@ const MAPA = {
     naDb:  r => ({...r, sef: r.sef === 'ano', historie: !!r.historie})
   },
   ukoly: {
-    // Plán úkolů. Do teď v mapě chyběl, takže se tabulka ukoly nikdy neplnila.
-    // Klíč v databázi je ročník + kód, proto musí být kód jedinečný — viz novyKodUkolu().
-    // Dopočítané řádky (přejezdy, noclehy, odvozené časy) se neukládají: generátor
-    // je při každém načtení smaže a spočítá znovu, v databázi by se jen zdvojovaly.
+    /* Plán úkolů. Klíč v databázi je ročník + kód, proto musí být kód
+       jedinečný — viz novyKodUkolu().
+
+       Dopočítané řádky (přejezdy, noclehy) se od 26. 8. 2026 UKLÁDAJÍ, i když
+       je vyrobil generátor. Dřív se zahazovaly s odůvodněním, že by se
+       v databázi zdvojovaly — jenže tím pádem po každém obnovení stránky
+       zmizely a návrh je nabízel znovu, i když je někdo před chvílí odsouhlasil.
+       Zdvojení hlídá generátor sám: porovnává podpis (druh + grupa + popis)
+       a co už v plánu je, znovu nepřidá.
+
+       Nadále se neukládá jen `auto` — to je pozůstatek staršího dopočtu
+       přejezdů, který se při každém přegenerování maže celý. */
     tabulka:'ukoly', klic:['kod'], konflikt:['rok','kod'], rok:true,
-    jen:['zRocniku','auto','odvozeno','odhad'],
-    filtr: r => !r.auto && !r.odvozeno,
+    jen:['zRocniku','auto','odhad'],
+    filtr: r => !r.auto,
     pole:{kod:'kod', parta:'kod_tymu', typ:'typ', cislo:'cislo', den:'den',
           kdy_od:'kdy_od', kdy_do:'kdy_do', kdy_text:'kdy_text', popis:'popis',
-          stav:'stav', zdroj:'zdroj', zamek:'zamek',
+          stav:'stav', zdroj:'zdroj', zamek:'zamek', odvozeno:'odvozeno',
           // Přejezd nestojí na předávce, ale mezi dvěma — proto má místo
           // sloupce cislo dvě čísla. Generátor je obě zná, ručně psaný
           // přejezd je má prázdné, dokud je někdo nedoplní.
@@ -7023,8 +7031,8 @@ const MAPA = {
     // Zámek je v databázi boolean a musí jím i zůstat — undefined by celou
     // dávku shodilo na „All object keys must match".
     naJs: r => ({...r, kdy_od: (r.kdy_od||'').slice(0,5), kdy_do: (r.kdy_do||'').slice(0,5),
-                       zamek: !!r.zamek}),
-    naDb: r => ({...r, zamek: !!r.zamek})
+                       zamek: !!r.zamek, odvozeno: !!r.odvozeno}),
+    naDb: r => ({...r, zamek: !!r.zamek, odvozeno: !!r.odvozeno})
   },
   predavky: {
     tabulka:'predavky', klic:['cislo'], konflikt:['rok','cislo'], rok:true, jen:['prvni','posledni','_km'],

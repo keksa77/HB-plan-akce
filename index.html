@@ -932,16 +932,6 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     </div>
 
     <div class="karta">
-      <h2>Úseky etap</h2>
-      <div class="telo">
-        <p class="popisek">Tempa výše se počítají na úseky, na které je etapa rozdělená.
-          Každý úsek nese svůj povrch a sjízdnost autem — a když se OSM plete, opravuje se
-          to tam.</p>
-        <button class="tl" onclick="prepni('s-useky')">Otevřít úseky etap</button>
-      </div>
-    </div>
-
-    <div class="karta">
       <h2>Verze webu</h2>
       <div class="telo">
         <p class="popisek">Co přesně je právě nahrané. Číslo commitu a jeho čas se berou
@@ -1792,8 +1782,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.27";
-const BUILD = "2026-08-26T02:29+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.28";
+const BUILD = "2026-08-26T02:41+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4774,14 +4764,29 @@ function kresliUseky(){
   const souhrn = $('#souhrnUseky');
   if(souhrn){
     if(!radky.length){
-      souhrn.textContent = vsechny.length ? '' : 'Úseky se načtou po přihlášení.';
+      souhrn.innerHTML = vsechny.length ? '' : 'Úseky se načtou po přihlášení.';
     } else {
       const delka = radky.reduce((a,u) => a + (+u.delka_m||0), 0);
       const podle = p => radky.filter(u => u.povrch === p)
                               .reduce((a,u) => a + (+u.delka_m||0), 0);
-      souhrn.textContent = radky.length + ' úseků, ' + km(delka) + ' km — tvrdý '
+      /* Součet se dělá po etapách, ne po úsecích: režie a nejkratší úkol se
+         počítají na celou etapu, takže sečíst holé úseky by dalo jiné číslo
+         než to, které pak stojí v plánu. */
+      const etapyVyberu = [...new Set(radky.map(u => +u.etapa))];
+      const soucet = (fn, proti) => etapyVyberu
+        .reduce((a, e) => a + (fn(e, proti) || 0), 0);
+      const zn = soucet(dobaZnaceni, false), znP = soucet(dobaZnaceni, true);
+      const uk = soucet(dobaUklidu, false),  ukP = soucet(dobaUklidu, true);
+      const rozdil = znP - zn;
+      souhrn.innerHTML = radky.length + ' úseků, ' + km(delka) + ' km — tvrdý '
         + km(podle('tvrdý')) + ', zpevněný ' + km(podle('zpevněný'))
-        + ', terén ' + km(podle('terén')) + ' km';
+        + ', terén ' + km(podle('terén')) + ' km'
+        + '<br><b>Trasování ' + naHodiny(zn) + ' po směru, ' + naHodiny(znP)
+        + ' proti směru</b> · úklid ' + naHodiny(uk) + ' / ' + naHodiny(ukP)
+        + (rozdil === 0 ? ' — v obou směrech stejné'
+            : (' — proti směru o ' + Math.abs(rozdil) + ' min '
+               + (rozdil > 0 ? 'déle' : 'rychleji')))
+        + (etapyVyberu.length > 1 ? ' (součet za ' + etapyVyberu.length + ' etap)' : '');
     }
   }
 
@@ -7801,6 +7806,13 @@ function kresliJakSePocita(){
     + '<p class="popisek" style="margin:4px 0 0">Změna se projeví hned ve výpočtu i v popisu níž. '
     + 'Uloží se do databáze spolu se zbytkem — platí pak pro každého. '
     + 'Prázdné políčko znamená výchozí hodnotu.</p>'
+    /* Tlačítko patří sem, mezi políčka a vysvětlivky: tempa výš se počítají
+       právě na úseky a kdo si je zrovna přenastavuje, potřebuje se do nich
+       podívat hned, ne až pod dvěma obrazovkami textu. */
+    + '<div style="margin:14px 0 2px;padding-top:12px;border-top:1px solid var(--linka)">'
+    + '<button class="tl" onclick="prepni(\'s-useky\')">Otevřít úseky etap</button>'
+    + '<span class="popisek" style="margin-left:10px">Tempa výše se počítají na úseky, '
+    + 'na které je etapa rozdělená — tam se také opravuje povrch a sjízdnost autem.</span></div>'
 
     + h('Odkud se berou časy', [
       'Sloupce <i>První běžec</i> a <i>Poslední běžec</i> u předávek jsou '

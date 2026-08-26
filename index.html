@@ -1782,8 +1782,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.29";
-const BUILD = "2026-08-26T03:15+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.30";
+const BUILD = "2026-08-26T14:00+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -6260,14 +6260,50 @@ function posunNa(el){
   });
 }
 
+/* Zúží podrobný plán na jednu grupu. Protějšek k ukazUkolyPredavky() — používá
+   to kontrola návazností, aby se od nalezené dvojice dalo skočit rovnou do plánu. */
+function ukazUkolyGrupy(kod){
+  FILTRY_PODROBNY.parta.clear(); FILTRY_PODROBNY.typ.clear(); FILTRY_PODROBNY.stav.clear();
+  FILTRY_PODROBNY.predavka.clear(); FILTRY_PODROBNY.parta.add(String(kod));
+  if($('#filtrKod')) $('#filtrKod').value = '';
+  if($('#filtrNeuplne')) $('#filtrNeuplne').checked = false;
+  prepni('s-podrobny');
+  kresliPodrobny();
+  hlaska('Podrobný plán je zúžený na grupu ' + kod
+    + ' — tlačítkem Zrušit filtry se vrátíte na celý plán.');
+}
+
+/* Stav úkolu na jeden pohled: zámek a stav. Rozhoduje o tom, kterým z dvojice
+   se smí hnout — zamčený nebo potvrzený je domluvený s lidmi. */
+function znackaUkolu(u){
+  const z = jeZamceny(u);
+  const st = String(u.stav || '').trim();
+  return (z ? '<span title="Zamčeno — přegenerování se ho nedotkne a hýbat se má tím druhým.">&#128274;</span> ' : '')
+    + '<span class="popisek">' + esc(st || 'bez stavu') + '</span>';
+}
+// celý rozsah úkolu, ne jen ten konec, o který zrovna jde
+function rozsahUkolu(u){
+  const od = (u.kdy_od || '').slice(0,5), doK = (u.kdy_do || '').slice(0,5);
+  if(!od && !doK) return String(u.kdy_text || '').trim() || 'bez času';
+  return (u.den ? esc(u.den) + ' ' : '') + (od || '?') + (doK ? ' – ' + doK : '');
+}
+
 function zkontrolujNavaznosti(){
   const nalezy = [];
   const neposouzeno = [];
   D.tymy.forEach(t=>{
-    const rada = radaParty(t.kod).filter(u=>u.cislo);
+    const cela = radaParty(t.kod);
+    const rada = cela.filter(u=>u.cislo);
     for(let i=0;i<rada.length-1;i++){
       const a = rada[i], b = rada[i+1];
       if(a.cislo===b.cislo) continue;
+      /* Přejezd mezi tou dvojicí, pokud už v plánu je. Kontrola porovnává dvě
+         předávková místa a přejezdy (typ A) přeskakuje, takže by o něm jinak
+         nepadla zmínka — a přitom je to často právě ten řádek, kterým se má
+         hnout. Hledá se mezi nimi v pořadí, ne podle čísel předávek: ruční
+         přejezd čísla nemá. */
+      const mezi = cela.slice(cela.indexOf(a) + 1, cela.indexOf(b))
+        .filter(x => x.typ === 'A');
       const v = vzdal(a.cislo, b.cislo);
       const konecA = minuty(a.den, a.kdy_do || a.kdy_od);
       const zacatekB = minuty(b.den, b.kdy_od);
@@ -6285,11 +6321,12 @@ function zkontrolujNavaznosti(){
       if(!v) chybi.push('v tabulce vzdáleností není dvojice <b>'
         + esc(popisPredavky(a.cislo)) + '</b> → <b>' + esc(popisPredavky(b.cislo)) + '</b>');
 
-      if(chybi.length){ neposouzeno.push({parta:t.kod, a, b, chybi}); continue; }
+      if(chybi.length){ neposouzeno.push({parta:t.kod, a, b, chybi, mezi}); continue; }
 
       const kDispozici = zacatekB - konecA;
       if(kDispozici < v.min){
-        nalezy.push({parta:t.kod, a, b, v, kDispozici});
+        nalezy.push({parta:t.kod, a, b, v, kDispozici, mezi,
+                     schodek: v.min - kDispozici, zacatekB, konecA});
       }
     }
   });
@@ -6302,24 +6339,26 @@ function zkontrolujNavaznosti(){
       + '<p class="popisek">U těchhle dvojic chybí údaj, bez kterého se nedá spočítat, jestli se '
       + 'grupa stihne přesunout. Doplňte ho v podrobném plánu (sloupce Den, Od, Do) nebo '
       + 'v tabulce vzdáleností.</p>'
+      + '<p><button class="tl hlavni" onclick="ukazNavrhGenerovani()">Doplnit chybějící časy</button>'
+      + '<span class="popisek" style="margin-left:10px">Trasování a úklidy bez času umí dopočítat '
+      + 'generátor — tohle spustí návrh a ukáže, co by doplnil.</span></p>'
       + '<div class="obal-tab"><table class="tab"><thead><tr><th style="width:110px">Grupa</th>'
       + '<th style="width:230px">Z čeho</th><th style="width:230px">Na co</th>'
-      + '<th>Co chybí</th></tr></thead><tbody>';
+      + '<th>Co chybí</th><th style="width:86px"></th></tr></thead><tbody>';
     neposouzeno.forEach(n=>{
-      const kdy = (den, cas, slovo) => {
-        if(!den && !cas) return 'bez dne i času';
-        if(!cas) return esc(den) + ', čas nevyplněný';
-        if(!den) return 'bez dne, ' + slovo + ' ' + esc(cas);
-        return esc(den) + ' ' + slovo + ' ' + esc(cas);
-      };
-      const casA = kdy(n.a.den, n.a.kdy_do || n.a.kdy_od, 'do');
-      const casB = kdy(n.b.den, n.b.kdy_od, 'od');
       h += '<tr><td style="padding:7px 10px;font-weight:800;color:'+barva(n.parta)+'">'+esc(n.parta)+'</td>'
         + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.a.kod)+' '+esc(popisPredavky(n.a.cislo))
-        + '<br><span style="color:var(--pisek)">'+casA+'</span></td>'
+        + '<br><span style="color:var(--pisek)">'+rozsahUkolu(n.a)+'</span>'
+        + '<br>'+znackaUkolu(n.a)+'</td>'
         + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.b.kod)+' '+esc(popisPredavky(n.b.cislo))
-        + '<br><span style="color:var(--pisek)">'+casB+'</span></td>'
-        + '<td style="padding:7px 10px;font-size:12.5px">' + n.chybi.join('<br>') + '</td></tr>';
+        + '<br><span style="color:var(--pisek)">'+rozsahUkolu(n.b)+'</span>'
+        + '<br>'+znackaUkolu(n.b)+'</td>'
+        + '<td style="padding:7px 10px;font-size:12.5px">' + n.chybi.join('<br>')
+        + (n.mezi.length ? ('<br><span class="popisek">mezi nimi je přejezd '
+            + n.mezi.map(x => esc(x.kod) + ' ' + rozsahUkolu(x)).join(', ') + '</span>') : '')
+        + '</td>'
+        + '<td class="stred" style="padding:7px"><button class="tl" style="padding:2px 8px;font-size:12px"'
+        + ' onclick="ukazUkolyGrupy(\''+esc(n.parta)+'\')">v plánu</button></td></tr>';
     });
     return h + '</tbody></table></div></div></div>';
   }
@@ -6332,21 +6371,49 @@ function zkontrolujNavaznosti(){
   } else {
     let h = '<div class="karta"><h2>Nemožné návaznosti — ' + nalezy.length + '</h2><div class="telo">'
       + '<p class="popisek">Grupa by musela být na dvou místech dřív, než tam stihne dojet. '
-      + 'Časy i vzdálenosti jsou z plánu, ne odhad.</p>'
+      + 'Časy i vzdálenosti jsou z plánu, ne odhad. Oranžový schodek je těsný — do dvou '
+      + 'zaokrouhlení, může to vyjít; vínový je nestihnutelný. Zámek u řádku znamená, '
+      + 'že je domluvený s lidmi a hýbat se má tím druhým.</p>'
       + '<div class="obal-tab"><table class="tab"><thead><tr><th style="width:110px">Grupa</th>'
-      + '<th>Z čeho</th><th>Na co</th><th style="width:110px">K dispozici</th>'
-      + '<th style="width:110px">Potřeba</th><th style="width:90px">Schodek</th></tr></thead><tbody>';
+      + '<th>Z čeho</th><th>Na co</th><th style="width:96px">K dispozici</th>'
+      + '<th style="width:104px">Potřeba</th><th style="width:80px">Schodek</th>'
+      + '<th>Návrh opravy</th><th style="width:86px"></th></tr></thead><tbody>';
     nalezy.forEach(n=>{
       const mA = popisPredavky(n.a.cislo);
       const mB = popisPredavky(n.b.cislo);
+      /* Kterým z dvojice se smí hnout, rozhoduje zámek: zamčený řádek je
+         domluvený s lidmi. Když jsou zamčené oba, návrh to řekne rovnou —
+         časem se pak hýbat nedá a musí se změnit obsazení nebo zámek. */
+      const zA = jeZamceny(n.a), zB = jeZamceny(n.b);
+      const posunB = minutyNaCas(n.konecA + n.v.min);
+      const zkratA = minutyNaCas(n.zacatekB - n.v.min);
+      const navrh = (zA && zB)
+        ? 'Oba řádky jsou zamčené — buď jeden odemkněte, nebo předávku předejte jiné grupě.'
+        : zA ? ('Posuňte začátek <b>' + esc(n.b.kod) + '</b> na <b>' + posunB + '</b>.')
+        : zB ? ('Ukončete <b>' + esc(n.a.kod) + '</b> nejpozději v <b>' + zkratA + '</b>.')
+        : ('Posuňte začátek <b>' + esc(n.b.kod) + '</b> na <b>' + posunB + '</b>, nebo ukončete <b>'
+           + esc(n.a.kod) + '</b> v <b>' + zkratA + '</b>.');
+      // malý schodek je spíš napjatý plán než nemožnost — ať se nehledí stejně
+      const tesne = n.schodek <= PR('zaokrouhleni') * 2;
       h += '<tr><td style="padding:7px 10px;font-weight:800;color:'+barva(n.parta)+'">'+esc(n.parta)+'</td>'
         + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.a.kod)+' '+esc(mA)+'<br>'
-        + '<span style="color:var(--pisek)">'+esc(n.a.den)+' do '+esc(n.a.kdy_do||n.a.kdy_od)+'</span></td>'
+        + '<span style="color:var(--pisek)">'+rozsahUkolu(n.a)+'</span><br>'+znackaUkolu(n.a)+'</td>'
         + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.b.kod)+' '+esc(mB)+'<br>'
-        + '<span style="color:var(--pisek)">'+esc(n.b.den)+' od '+esc(n.b.kdy_od)+'</span></td>'
+        + '<span style="color:var(--pisek)">'+rozsahUkolu(n.b)+'</span><br>'+znackaUkolu(n.b)+'</td>'
         + '<td class="stred" style="padding:7px">'+n.kDispozici+' min</td>'
         + '<td class="stred" style="padding:7px">'+n.v.min+' min ('+n.v.km+' km)</td>'
-        + '<td class="stred" style="padding:7px;font-weight:800;color:var(--vinova)">'+(n.v.min-n.kDispozici)+' min</td></tr>';
+        + '<td class="stred" style="padding:7px;font-weight:800;color:'
+        + (tesne ? '#B3762A' : 'var(--vinova)') + '" title="'
+        + (tesne ? 'Těsné — schodek je do dvou zaokrouhlení, může to vyjít.'
+                 : 'Nestihnutelné — schodek je větší než dvě zaokrouhlení.') + '">'
+        + n.schodek + ' min</td>'
+        + '<td style="padding:7px 10px;font-size:12.5px">' + navrh
+        + (n.mezi.length ? ('<br><span class="popisek">Mezi nimi je přejezd '
+            + n.mezi.map(x => esc(x.kod) + ' ' + rozsahUkolu(x)).join(', ')
+            + ' — nejspíš stačí posunout ten.</span>') : '')
+        + '</td>'
+        + '<td class="stred" style="padding:7px"><button class="tl" style="padding:2px 8px;font-size:12px"'
+        + ' onclick="ukazUkolyGrupy(\''+esc(n.parta)+'\')">v plánu</button></td></tr>';
     });
     h += '</tbody></table></div>';
     if(bezCasu) h += '<p class="popisek" style="margin-top:10px">Dalších ' + bezCasu

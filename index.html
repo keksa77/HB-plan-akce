@@ -1782,8 +1782,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.35";
-const BUILD = "2026-08-26T15:29+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.36";
+const BUILD = "2026-08-26T16:19+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -5366,7 +5366,11 @@ const PRAVIDLA_VYCHOZI = {
   uklid_podil:     80,      // úklid trvá tolik procent času značení
   uklid_po_beznci: 15,      // uklízet se smí až tolik minut po startu posledního běžce
   uklid_i_po_tme:   0,      // 1 = uklízet se smí i po tmě, 0 = jen za světla
-  soubeh_grupy:     2,      // kolik úkolů smí grupa dělat naráz — dělí se na čety
+  /* Kolik úkolů smí grupa dělat naráz. Platí, že tolik, kolik má členů —
+     každý člověk může být na jednom místě. Tenhle parametr je jen záloha
+     pro grupy, které zapsané lidi nemají; jakmile je mají, rozhoduje jejich
+     počet. */
+  soubeh_grupy:     2,
 
   /* Čeho se výpočet drží, seřazeno od nejtvrdšího po to, které smí ustoupit
      první. Světlo neustoupí nikdy — po tmě se fáborek neuváže ani nenajde.
@@ -6308,9 +6312,40 @@ function rozsahUkolu(u){
   return (u.den ? esc(u.den) + ' ' : '') + (od || '?') + (doK ? ' – ' + doK : '');
 }
 
+/* Kolik úkolů smí grupa dělat naráz. Tolik, kolik má členů — každý člověk může
+   být na jednom místě, a grupa se na tolik čet rozdělí. Když zapsané lidi nemá,
+   platí záloha z Nastavení. Odložení členové (historie) se nepočítají. */
+function souberGrupy(kod){
+  const lidi = zivi().filter(c => c.kod_tymu === kod).length;
+  return lidi || PR('soubeh_grupy');
+}
+
+/* Nejvíc úkolů, které grupě běží v jednu chvíli. Počítá se přes hrany:
+   na začátku úkolu se přičte, na konci odečte — a když má úkol jen začátek,
+   bere se za okamžik, ne za směnu. */
+function nejvicNarazGrupy(ukoly, cas){
+  const hrany = [];
+  ukoly.forEach(u => {
+    const c = cas(u);
+    if(c.od == null) return;
+    hrany.push({m: c.od, d: 1});
+    hrany.push({m: (c.do == null || c.do <= c.od) ? c.od : c.do, d: -1});
+  });
+  // konce před začátky ve stejnou minutu: úkol, který v tu chvíli končí,
+  // už místo neblokuje
+  hrany.sort((a, b) => a.m - b.m || a.d - b.d);
+  let ted = 0, nej = 0, kdy = null;
+  hrany.forEach(h => {
+    ted += h.d;
+    if(ted > nej){ nej = ted; kdy = h.m; }
+  });
+  return {nej, kdy};
+}
+
 function zkontrolujNavaznosti(){
   const nalezy = [];
   const neposouzeno = [];
+  const preplneni = [];
   D.tymy.forEach(t=>{
     const cela = radaParty(t.kod);
     const rada = cela.filter(u=>u.cislo);
@@ -6344,10 +6379,33 @@ function zkontrolujNavaznosti(){
       if(chybi.length){ neposouzeno.push({parta:t.kod, a, b, chybi, mezi}); continue; }
 
       const kDispozici = zacatekB - konecA;
+      /* Překryv není nemožná návaznost. Grupa smí dělat naráz tolik úkolů,
+         kolik má členů — dva úkoly přes sebe znamenají dvě čety, ne jednoho
+         člověka na dvou místech. Jestli se to vejde do počtu lidí, se hlídá
+         zvlášť, přes celou grupu; tady by to jen svádělo k tomu posouvat časy,
+         které jsou správně. */
+      if(kDispozici < 0) continue;
       if(kDispozici < v.min){
         nalezy.push({parta:t.kod, a, b, v, kDispozici, mezi,
                      schodek: v.min - kDispozici, zacatekB, konecA});
       }
+    }
+
+    /* A teď to, co se z dvojic poznat nedá: kolik úkolů grupě běží naráz.
+       Souběh je v pořádku, dokud se vejde do počtu lidí — každý člověk může
+       být na jednom místě. Přes to je grupa přeplněná a musí se buď někdo
+       přidat, nebo úkol předat jinam. */
+    const strop = souberGrupy(t.kod);
+    const naraz = nejvicNarazGrupy(rada, u => {
+      const od = minuty(u.den, u.kdy_od);
+      let doM = u.kdy_do ? minuty(u.den, u.kdy_do) : null;
+      // konec dřív než začátek = přes půlnoc, jinak by úkol vyšel jako okamžik
+      if(od != null && doM != null && doM < od) doM += 1440;
+      return {od, do: doM};
+    });
+    if(naraz.nej > strop){
+      preplneni.push({parta: t.kod, naraz: naraz.nej, lidi: strop, kdy: naraz.kdy,
+        lidiZapsani: zivi().filter(c => c.kod_tymu === t.kod).length});
     }
   });
   const bezCasu = neposouzeno.length;
@@ -6383,17 +6441,48 @@ function zkontrolujNavaznosti(){
     return h + '</tbody></table></div></div></div>';
   }
 
+  /* Přeplněné grupy — víc úkolů naráz než lidí. Vlastní tabulka, protože se to
+     neřeší posunutím času, ale lidmi: buď někoho přidat, nebo úkol předat jinam. */
+  function tabulkaPreplneni(){
+    if(!preplneni.length) return '';
+    let h = '<div class="karta"><h2>Víc úkolů naráz než lidí — ' + preplneni.length
+      + '</h2><div class="telo">'
+      + '<p class="popisek">Grupa smí dělat naráz tolik úkolů, kolik má členů — každý '
+      + 'člověk může být na jednom místě. Souběh sám o sobě chyba není; chyba je až '
+      + 'tohle. Neřeší se posunutím času, ale lidmi: přidat člena, nebo úkol předat '
+      + 'jiné grupě.</p>'
+      + '<div class="obal-tab"><table class="tab"><thead><tr><th style="width:110px">Grupa</th>'
+      + '<th style="width:150px">Nejvíc naráz</th><th style="width:130px">Lidí v grupě</th>'
+      + '<th>Kdy</th><th style="width:86px"></th></tr></thead><tbody>';
+    preplneni.forEach(x => {
+      h += '<tr><td style="padding:7px 10px;font-weight:800;color:'+barva(x.parta)+'">'
+        + esc(x.parta)+'</td>'
+        + '<td class="stred" style="padding:7px;font-weight:800;color:var(--vinova)">'
+        + x.naraz + ' úkolů</td>'
+        + '<td class="stred" style="padding:7px">' + x.lidi
+        + (x.lidiZapsani ? '' : ' <span class="popisek">(záloha, nikdo zapsaný)</span>') + '</td>'
+        + '<td style="padding:7px 10px;font-size:12.5px">' + esc(minutyNaCas(x.kdy)) + '</td>'
+        + '<td class="stred" style="padding:7px"><button class="tl" style="padding:2px 8px;font-size:12px"'
+        + ' onclick="ukazUkolyGrupy(\''+esc(x.parta)+'\')">v plánu</button></td></tr>';
+    });
+    return h + '</tbody></table></div></div></div>';
+  }
+
   const cil = $("#kontrola");
   if(!nalezy.length){
     cil.innerHTML = '<div class="karta"><div class="telo">Žádná nemožná návaznost.'
-      + (bezCasu ? ' ' + bezCasu + ' dvojic ale nešlo posoudit — proč, je v tabulce níž.' : '')
-      + '</div></div>' + tabulkaNeposouzeno();
+      + (preplneni.length ? ' ' + preplneni.length
+          + ' grupám ale běží víc úkolů naráz, než mají lidí — je to v tabulce níž.' : '')
+      + (bezCasu ? ' ' + bezCasu + ' dvojic nešlo posoudit — proč, je v tabulce níž.' : '')
+      + '</div></div>' + tabulkaPreplneni() + tabulkaNeposouzeno();
   } else {
     let h = '<div class="karta"><h2>Nemožné návaznosti — ' + nalezy.length + '</h2><div class="telo">'
       + '<p class="popisek">Grupa by musela být na dvou místech dřív, než tam stihne dojet. '
       + 'Časy i vzdálenosti jsou z plánu, ne odhad. Oranžový schodek je těsný — do dvou '
       + 'zaokrouhlení, může to vyjít; vínový je nestihnutelný. Zámek u řádku znamená, '
-      + 'že je domluvený s lidmi a hýbat se má tím druhým.</p>'
+      + 'že je domluvený s lidmi a hýbat se má tím druhým. Úkoly, které jdou přes sebe, '
+      + 'tady nejsou — souběh je v pořádku, dokud se vejde do počtu lidí v grupě, '
+      + 'a hlídá se zvlášť.</p>'
       + '<div class="obal-tab"><table class="tab"><thead><tr><th style="width:110px">Grupa</th>'
       + '<th>Z čeho</th><th>Na co</th><th style="width:96px">K dispozici</th>'
       + '<th style="width:104px">Potřeba</th><th style="width:80px">Schodek</th>'
@@ -6416,10 +6505,6 @@ function zkontrolujNavaznosti(){
         : zB ? ('Ukončete <b>' + esc(n.a.kod) + '</b> nejpozději v <b>' + zkratA + '</b>.')
         : ('Posuňte začátek <b>' + esc(n.b.kod) + '</b> na <b>' + posunB + '</b>, nebo ukončete <b>'
            + esc(n.a.kod) + '</b> v <b>' + zkratA + '</b>.');
-      /* Záporný čas k dispozici není „málo času na přejezd", ale překryv: grupa
-         má být na dvou místech zároveň. Stojí za to to říct nahlas, protože se
-         to řeší jinak než zkrácením o pár minut. */
-      const prekryv = n.kDispozici < 0;
       // malý schodek je spíš napjatý plán než nemožnost — ať se nehledí stejně
       const tesne = n.schodek <= PR('zaokrouhleni') * 2;
       h += '<tr><td style="padding:7px 10px;font-weight:800;color:'+barva(n.parta)+'">'+esc(n.parta)+'</td>'
@@ -6427,11 +6512,7 @@ function zkontrolujNavaznosti(){
         + '<span style="color:var(--pisek)">'+rozsahUkolu(n.a)+'</span><br>'+znackaUkolu(n.a)+'</td>'
         + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.b.kod)+' '+esc(mB)+'<br>'
         + '<span style="color:var(--pisek)">'+rozsahUkolu(n.b)+'</span><br>'+znackaUkolu(n.b)+'</td>'
-        + '<td class="stred" style="padding:7px"'
-        + (prekryv ? ' title="Záporný čas znamená překryv — úkoly jdou přes sebe, grupa by musela '
-                   + 'být na dvou místech zároveň."' : '') + '>'
-        + n.kDispozici + ' min'
-        + (prekryv ? '<br><span class="popisek">překryv</span>' : '') + '</td>'
+        + '<td class="stred" style="padding:7px">' + n.kDispozici + ' min</td>'
         + '<td class="stred" style="padding:7px">'+n.v.min+' min ('+n.v.km+' km)</td>'
         + '<td class="stred" style="padding:7px;font-weight:800;color:'
         + (tesne ? '#B3762A' : 'var(--vinova)') + '" title="'
@@ -6450,18 +6531,19 @@ function zkontrolujNavaznosti(){
     if(bezCasu) h += '<p class="popisek" style="margin-top:10px">Dalších ' + bezCasu
       + ' dvojic nešlo posoudit — proč, je v tabulce níž.</p>';
     h += '</div></div>';
-    cil.innerHTML = h + tabulkaNeposouzeno();
+    cil.innerHTML = h + tabulkaPreplneni() + tabulkaNeposouzeno();
   }
   // Výsledek se kreslí nad tabulku podrobného plánu. Když je člověk rozkoukaný
   // někde uprostřed třiceti řádků, panel mu zůstane nad hlavou a hláška vypadá,
   // že se nedá zjistit kde. Tak se k němu stránka posune sama.
   posunNa(cil);
+  const dovetek = (preplneni.length ? (', ' + preplneni.length + ' grup má víc úkolů naráz než lidí') : '')
+                + (bezCasu ? (', k tomu ' + bezCasu + ' neposouzených') : '');
   hlaska(nalezy.length
-    ? (nalezy.length + ' nemožných návazností — rozepsané nad tabulkou'
-       + (bezCasu ? (', k tomu ' + bezCasu + ' neposouzených') : ''))
-    : (bezCasu ? ('Návaznosti sedí · ' + bezCasu + ' dvojic nešlo posoudit, nad tabulkou')
-               : 'Návaznosti sedí'));
-  return nalezy.length;
+    ? (nalezy.length + ' nemožných návazností — rozepsané nad tabulkou' + dovetek)
+    : ((preplneni.length || bezCasu) ? ('Návaznosti sedí' + dovetek + ' — nad tabulkou')
+                                     : 'Návaznosti sedí'));
+  return nalezy.length + preplneni.length;
 }
 
 /* ---------- 9. trička ---------- */
@@ -7943,7 +8025,7 @@ function kresliJakSePocita(){
         pole('uklid_podil',     'Úklid trvá oproti značení', '%'),
         pole('uklid_po_beznci', 'Úklid až po startu posledního', 'min'),
         pole('uklid_i_po_tme',  'Uklízet i po tmě (1/0)'),
-        pole('soubeh_grupy',    'Kolik úkolů dělá grupa naráz')])
+        pole('soubeh_grupy',    'Souběh u grup bez zapsaných lidí')])
     + '</div>'
     + '<p class="popisek" style="margin:4px 0 0">Změna se projeví hned ve výpočtu i v popisu níž. '
     + 'Uloží se do databáze spolu se zbytkem — platí pak pro každého. '
@@ -8024,7 +8106,9 @@ function kresliJakSePocita(){
       'Úklid trvá ' + b(PR('uklid_podil') + ' %') + ' času značení a smí začít '
       + b(PR('uklid_po_beznci') + ' minut po startu posledního běžce') + '. '
       + (PR('uklid_i_po_tme') ? 'Po tmě uklízet lze.' : b('Po tmě se neuklízí.')),
-      'Grupa smí dělat ' + b(PR('soubeh_grupy') + ' úkoly naráz') + ' — dělí se na čety.'])
+      'Grupa smí dělat naráz ' + b('tolik úkolů, kolik má členů') + ' — dělí se na čety '
+      + 'a každý člověk může být na jednom místě. U grup, které zapsané lidi nemají, '
+      + 'se počítá se zálohou ' + b(PR('soubeh_grupy')) + '.'])
     + h('Když se plán nevejde', [
       'Pravidla mají pořadí a poslední z nich ustoupí první: '
       + b(String(PR_TEXT('priorita')).split(',').map(x=>({svetlo:'světlo',

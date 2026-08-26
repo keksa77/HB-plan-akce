@@ -1785,8 +1785,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.38";
-const BUILD = "2026-08-26T17:12+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.39";
+const BUILD = "2026-08-26T17:25+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -5664,6 +5664,19 @@ function casBezcu(etapa){
    zakládal ty samé přejezdy, takže návrh po uložení nikdy nezmizel. */
 const podpisOdvozeneho = u => [u.typ, u.parta, String(u.popis||'').trim()].join('|');
 
+/* Je tenhle úkol typu A opravdu přejezd mezi dvěma předávkami?
+
+   Typ A se používá i na poznámky k pohybu grupy, které přejezd nejsou:
+   „Odjezd z Brna", „Příjezd do cíle", „lokace dle doporučení". Rozhoduje se
+   proto podle dvou věcí — jestli má vyplněná obě čísla předávek (odkud a kam),
+   nebo jestli popis začíná slovem přejezd. Nic z toho není neomylné, a právě
+   proto se řádek jen NABÍDNE ke smazání a nemaže se sám. */
+function vypadaJakoPrejezd(u){
+  if(u.typ !== 'A') return false;
+  if(u.predavka_od && u.predavka_do) return true;
+  return /^\s*p[řr]ejezd\b/i.test(String(u.popis || ''));
+}
+
 /* Text „Kdy" a sloupce Od/Do jsou dva zápisy téhož a musí si odpovídat.
    Dokud se hlídaly každý zvlášť, rozešly se u sedmnácti úkolů — nejhůř
    u P11 grupy G14 o 140 minut, což generátoru přehodilo pořadí a nabídlo
@@ -6026,6 +6039,30 @@ function spocitejGenerovani(){
   stavajici.forEach(u => { if(!mam.has(podpisOdvozeneho(u))) mam.set(podpisOdvozeneho(u), u); });
   const chci = new Set(navrhy.map(podpisOdvozeneho));
   const smazat = stavajici.filter(u => !chci.has(podpisOdvozeneho(u)));
+
+  /* Grupa přepnutá na „bez přejezdů" — co s tím, co v plánu už je.
+
+     Do 26. 8. 2026 se mazaly jen řádky, které vyrobil generátor (mají příznak
+     odvozeno). Jenže přejezdy G10, G8 a G18 nikdo negeneroval, jsou psané
+     rukou — a ty generátor neviděl, takže přepnutí přepínače na nich nic
+     nezměnilo. Odtud „nemažou se".
+
+     Teď se nabídnou ke smazání i ruční řádky, ale jen ty, které opravdu vypadají
+     jako přejezd mezi dvěma předávkami. Typ A totiž nese i poznámky jako
+     „Odjezd z Brna", „Příjezd Mikulov" nebo „rekreace v okolí Hlohovce" —
+     ty s přejezdy nemají co dělat a smazat by se neměly. Zamčený řádek se
+     nenabízí nikdy, ať je jakýkoli. A pořád je to jen návrh: v panelu se dá
+     odškrtnout. */
+  const jeVeSmazat = new Set(smazat);
+  D.tymy.filter(t => t.prejezdy === 'ne').forEach(t => {
+    D.ukoly.forEach(u => {
+      if(u.parta !== t.kod || u.typ !== 'A') return;
+      if(jeZamceny(u) || jeVeSmazat.has(u)) return;
+      if(!vypadaJakoPrejezd(u)) return;
+      u._procSmaz = 'grupa je nastavená na „bez přejezdů"';
+      smazat.push(u); jeVeSmazat.add(u);
+    });
+  });
   const videne = new Set();
   navrhy.forEach(n => {
     const p = podpisOdvozeneho(n);
@@ -6119,9 +6156,11 @@ function ukazNavrhGenerovani(){
         cast(smery, () => true, s =>
         '<b>' + esc(s.u.kod) + '</b> ' + esc(popisPredavky(s.u.cislo))
         + ' → ' + esc(s.text)))
-    + seznam('Zmizí (dřívější výpočet)', 'smazat',
+    + seznam('Zmizí', 'smazat',
         cast(smazat, () => true, x =>
-        '<b>' + esc(popisGrupy(x.parta)) + '</b> · ' + esc(x.kod) + ' · ' + esc((x.popis||'').slice(0,70))))
+        '<b>' + esc(popisGrupy(x.parta)) + '</b> · ' + esc(x.kod) + ' · '
+        + esc((x.popis||'').slice(0,70))
+        + ' <span class="popisek">(' + esc(x._procSmaz || 'dřívější výpočet') + ')</span>'))
     /* Co se nevešlo. Etapy se mezi dny nepřesouvají, takže výpočet nemá jak si
        pomoci sám — jediné, co může udělat, je říct, o kolik to nevyšlo a který
        parametr by to spravil. Stojí to nad seznamem změn, ne pod ním: je to

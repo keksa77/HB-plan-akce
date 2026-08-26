@@ -1782,8 +1782,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.33";
-const BUILD = "2026-08-26T14:55+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.35";
+const BUILD = "2026-08-26T15:29+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4318,6 +4318,15 @@ function kresliTymy(){
       napovedaSl:"Kdo je v grupě. Šéf je tučně a stojí první. Do řádku se vejdou dva "
         + "řádky jmen, zbytek se ukáže po najetí myší — mění se to u členů grup."},
     {nadpis:"Pořadí", pole:"poradi", typ:"number", sirka:"90px", trida:"stred"},
+    /* Přejezdy nepotřebuje jen grupa, která se po trati opravdu nepřesouvá
+       autem. Odvodit se to z Dopravy NEDÁ: „kolo" u grupy zpravidla znamená
+       auto plus kola — po trati se jede autem a po etapě na kole. Proto se to
+       nepředvyplňuje a rozhoduje o tom člověk. */
+    {nadpis:"Přejezdy", pole:"prejezdy", typ:"select", moznosti:["ano","ne"], sirka:"104px",
+      napovedaSl:"Má generátor téhle grupě počítat přejezdy mezi předávkami? "
+        + "Dejte ne jen tam, kde se grupa po trati nepřesouvá autem — silniční "
+        + "vzdálenosti by pro ni nic neznamenaly. Pozor, „kolo\u201c ve sloupci "
+        + "Doprava tohle neznamená: obvykle jde o auto plus kola."},
     {nadpis:"Doprava", pole:"doprava", typ:"napoveda", moznosti:DOPRAVY, sirka:"150px",
       napovedaSl:"Čím se grupa přesouvá. Nabídka je jen návod — dá se napsat cokoli, "
         + "databáze to nehlídá, protože na tom nic nestojí."},
@@ -5916,8 +5925,14 @@ function spocitejGenerovani(){
       .filter(x => x.m != null)
       .sort((a,b) => a.m - b.m);
 
-    // ---- 2) přejezdy mezi dvěma po sobě jdoucími místy
-    for(let i = 0; i < rada.length-1; i++){
+    /* ---- 2) přejezdy mezi dvěma po sobě jdoucími místy
+       Grupám bez auta se nepočítají vůbec: pěší ani cyklisté se po silnici
+       mezi předávkami nepřesouvají a čas z tabulky silničních vzdáleností by
+       pro ně nic neznamenal. Když se příznak zapne dodatečně, dřívější
+       přejezdy té grupy zmizí — nedostanou se do návrhu, takže spadnou
+       do „zmizí". */
+    const bezPrejezdu = (t.prejezdy === 'ne');
+    for(let i = 0; !bezPrejezdu && i < rada.length - 1; i++){
       const a = rada[i].u, b = rada[i+1].u;
       if(!a.cislo || !b.cislo || a.cislo === b.cislo) continue;
       if(a.typ === 'A' || b.typ === 'A') continue;      // ruční přejezd už tam je
@@ -6971,19 +6986,23 @@ let sadySChybou = [];       // a které se načíst nepovedly — ty se nesmí u
    jen   = pole, která databáze nezná a při načtení se musí zachovat */
 const MAPA = {
   tymy: {
-    tabulka:'tymy_org', klic:['kod'], konflikt:['rok','kod'], rok:true, jen:['barva','zRocniku'],
+    tabulka:'tymy_org', klic:['kod'], konflikt:['rok','kod'], rok:true,
+    jen:['barva','zRocniku','prejezdy'],
     pole:{kod:'kod', nazev:'nazev', poradi:'poradi', doprava:'doprava',
           poznamka:'poznamka', stitek:'stitek', aktivni:'aktivni',
           min_znaceni:'min_znaceni', max_znaceni:'max_znaceni',
           min_uklid:'min_uklid',     max_uklid:'max_uklid',
-          v_podrobnem:'v_podrobnem'},
+          v_podrobnem:'v_podrobnem', bez_prejezdu:'bez_prejezdu'},
     // Obě „ano/ne" jsou v databázi boolean, v tabulce se ale píšou slovem.
     // Prázdná hodnota znamená ano — grupa se schová jen tehdy, když to někdo
     // vysloveně nastaví.
     naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano',
-                       v_podrobnem: r.v_podrobnem === false ? 'ne' : 'ano'}),
+                       v_podrobnem: r.v_podrobnem === false ? 'ne' : 'ano',
+                       // tenhle je obráceně: v tabulce se ptáme „plánovat přejezdy?"
+                       prejezdy: r.bez_prejezdu === true ? 'ne' : 'ano'}),
     naDb: r => ({...r, aktivni: r.aktivni !== 'ne',
-                       v_podrobnem: r.v_podrobnem !== 'ne'})
+                       v_podrobnem: r.v_podrobnem !== 'ne',
+                       bez_prejezdu: r.prejezdy === 'ne'})
   },
   clenove: {
     tabulka:'clenove_tymu', klic:['id'], konflikt:['id'], rok:true, jen:['zRocniku'],

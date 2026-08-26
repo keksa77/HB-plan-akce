@@ -1792,8 +1792,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.25";
-const BUILD = "2026-08-26T01:42+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.27";
+const BUILD = "2026-08-26T02:29+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4722,6 +4722,16 @@ function kresliPredavky(){
              : (Math.floor(m/60) + ':' + String(m%60).padStart(2,'0')); }},
     {nadpis:"První běžec", pole:"prvni", jenCist:true, sirka:"104px", trida:"stred"},
     {nadpis:"Poslední běžec", pole:"posledni", jenCist:true, sirka:"118px", trida:"stred"},
+    /* Okno, ve kterém se předávka smí zavřít. Na nočních předávkách projde
+       poslední běžec ve tři ráno a nikdo tam v tu dobu sbalovat nepojede —
+       ukončení se pak odloží na nejbližší chvíli uvnitř okna. Prázdno znamená
+       výchozí okno z Nastavení. */
+    {nadpis:"Zavřít od", pole:"zavrit_od", typ:"time", sirka:"120px",
+      napovedaSl:"Od kdy se tahle předávka smí zavřít. Prázdno = výchozí okno z Nastavení. "
+        + "Okno smí přecházet přes půlnoc (od 22:00 do 6:00)."},
+    {nadpis:"Zavřít do", pole:"zavrit_do", typ:"time", sirka:"120px",
+      napovedaSl:"Do kdy se tahle předávka smí zavřít. Když ukončení podle posledního "
+        + "běžce vyjde mimo okno, posune se na nejbližší začátek okna — nikdy dozadu."},
     {nadpis:"Poznámka", pole:"pozn", viceradkove:true, maxRadky:2},
     {nadpis:"Etapa km", pole:"delka", typ:"number", sirka:"96px", trida:"stred",
       napovedaSl:"Běžecká délka etapy z téhle předávky na další, spočítaná z GPX. "
@@ -5297,6 +5307,11 @@ const PRAVIDLA_VYCHOZI = {
   tempo_tvrdy_pesky_kmh:     5.5,
   tempo_zpevneny_pesky_kmh:  4.2,
   tempo_teren_pesky_kmh:     3,    // grade 4–5, pěšina, hlína, tráva
+  /* Výchozí okno pro zavírání předávek. Celý den znamená „nic neomezuj" —
+     kdo chce noční předávky zavírat až ráno, buď zúží tohle okno pro všechny,
+     nebo vyplní vlastní okno u konkrétní předávky v tabulce Předávky. */
+  pk_okno_od:    '00:00',
+  pk_okno_do:    '23:59',
   prirazka_stoupani: 10,    // minut navíc na 100 m převýšení
   znaceni_rezie:   15,      // minut na etapu: zaparkovat, zorientovat se, sbalit
   znaceni_min:     60,      // nejkratší úkol značení
@@ -5522,6 +5537,53 @@ function oknoSvetla(den, jePatecniZnaceni){
   return {od: jePatecniZnaceni ? Math.max(od, d + PR('patek_okno_od')) : od, do: doKdy};
 }
 
+/* ---------- okno, ve kterém se předávka smí zavřít ----------
+   Ukončení se vázalo jen na posledního běžce. Jenže na předávkách 15 až 21
+   projde poslední běžec mezi půlnocí a šestou ráno a nikdo tam v tu dobu
+   sbalovat nepojede — zavírají se ráno, až tudy pojede svozová grupa.
+
+   Okno se zadává u každé předávky zvlášť (sloupce Zavřít od a Zavřít do);
+   když je prázdné, platí výchozí okno z Nastavení. Smí přecházet přes půlnoc,
+   pak se bere jako jeden kus noci. Posouvá se vždycky DOPŘEDU — předávka se
+   nedá zavřít dřív, než tudy proběhne poslední běžec. */
+// „6:00" z minut v rámci dne — na rozdíl od minutyNaCas() bez dne v týdnu
+const minutyDne = m => Math.floor(m/60) + ':' + String(m%60).padStart(2,'0');
+function oknoZavirani(p){
+  const cas = t => {
+    const m = String(t || '').trim().match(/^(\d{1,2}):(\d{2})/);
+    return m ? (+m[1])*60 + (+m[2]) : null;
+  };
+  const od = cas(p && p.zavrit_od), doK = cas(p && p.zavrit_do);
+  return {od: od == null ? PR('pk_okno_od') : od,
+          do: doK == null ? PR('pk_okno_do') : doK,
+          vlastni: od != null || doK != null};
+}
+function doOknaZavirani(minuta, p, nejdriv){
+  const DEN = 1440;
+  const o = oknoZavirani(p);
+  if(o.od === 0 && o.do >= DEN - 1) return minuta;      // celý den = neomezuj
+  const denCast = ((minuta % DEN) + DEN) % DEN;
+  const pulnoc = minuta - denCast;
+  const pres = o.od > o.do;                             // okno přes půlnoc
+  const uvnitr = pres ? (denCast >= o.od || denCast <= o.do)
+                      : (denCast >= o.od && denCast <= o.do);
+  if(uvnitr) return minuta;
+
+  /* Okno se míjí dvojím způsobem a každý se řeší jinak.
+
+     Je-li čas PŘED oknem — typicky noční předávka s ranním oknem — čeká se na
+     jeho začátek. Je-li ZA oknem, ale okno téhož dne ještě leželo za posledním
+     běžcem, vrátí se na jeho konec: u oken navázaných na posledního běžce
+     („zavřít do patnácti minut po něm") je pozdější čas horší než dřívější.
+     Dozadu se ale nikdy nejde před posledního běžce — dřív se zavřít nedá. */
+  const zacatek = pulnoc + o.od;
+  const konec   = pulnoc + o.do;
+  if(!pres && minuta > konec && (nejdriv == null || konec >= nejdriv)) return konec;
+  let cil = zacatek;
+  if(cil < minuta) cil += DEN;                          // začátek už utekl, tedy zítra
+  return cil;
+}
+
 // Časy běžců v téže ose jako zbytek plánu: minuty od čtvrteční půlnoci.
 // GRAF_HB25 je vede od sobotní půlnoci, sobota je třetí den v týdnu závodu.
 function casBezcu(etapa){
@@ -5732,13 +5794,50 @@ function spocitejGenerovani(){
     // Zaokrouhlení na stranu bezpečí; „do" je o délku úkolu dál — zahájení
     // i ukončení je okamžik, ne směna.
     const jeZahajeni = (u.typ === 'PZ');
-    const novy = naDesitky(zaklad + (jeZahajeni ? -PR('zahajeni_pred') : PR('ukonceni_po')), !jeZahajeni);
+    let novy = naDesitky(zaklad + (jeZahajeni ? -PR('zahajeni_pred') : PR('ukonceni_po')), !jeZahajeni);
+    /* Okno na zavírání platí jen pro ukončení. Zahájení musí být hotové před
+       prvním běžcem, takže by se mu okno pralo s během závodu. */
+    let posun = 0;
+    if(!jeZahajeni){
+      /* Dřív než poslední běžec se zavřít nedá — to je spodní mez, pod kterou
+         se okno nesmí protlačit. Zaokrouhluje se dovnitř okna: začátek nahoru,
+         konec dolů, ať se krok pěti minut nevysype ven z toho, co je povolené. */
+      const cil = doOknaZavirani(novy, p, zaklad);
+      const vOkne = (cil > novy) ? Math.max(naDesitky(cil, true), cil)
+                  : (cil < novy) ? Math.max(naDesitky(cil, false), zaklad)
+                  : novy;
+      /* Posun dopředu smí skončit nejpozději v neděli večer. Kdyby okno
+         vycházelo až na pondělí, plán by to nepobral — osa má čtyři dny a
+         čas by se zobrazil jako čtvrtek. Takový případ se nehádá: čas zůstane,
+         jak vyšel z posledního běžce, a napíše se, že okno nesedí. */
+      const konecPlanu = (DNY.length - 1) * 1440 + 1439;
+      if(vOkne > konecPlanu){
+        const o = oknoZavirani(p);
+        potize.push({etapa: u.cislo, kod: u.kod,
+          text: 'předávku ' + u.cislo + ' by podle posledního běžce ('
+            + minutyNaCas(novy) + ') šlo zavřít až mimo závodní víkend, protože okno '
+            + minutyDne(o.od) + '–' + minutyDne(o.do) + ' už toho dne skončilo. '
+            + 'Buď okno u téhle předávky rozšiřte, nebo ho nechte prázdné.'});
+      } else {
+        posun = vOkne - novy;
+        novy = vOkne;
+      }
+    }
     casy.push({u, text: rozsahCasu(novy, novy + PR(jeZahajeni ? 'usek_zahajeni' : 'usek_ukonceni')),
                proc: (jeZahajeni
                  ? ('první běžec ' + zdroj + ' − ' + PR('zahajeni_pred') + ' min')
                  : ('poslední běžec ' + zdroj + ' + ' + PR('ukonceni_po') + ' min'))
                  + ', zaokrouhleno na ' + PR('zaokrouhleni') + ' min '
-                 + (jeZahajeni ? 'dolů' : 'nahoru')});
+                 + (jeZahajeni ? 'dolů' : 'nahoru')
+                 + (posun !== 0
+                     ? ('; ' + (posun > 0 ? 'posunuto o ' : 'vráceno o ')
+                        + (Math.abs(posun) >= 60
+                            ? (Math.round(Math.abs(posun)/60*10)/10 + ' h')
+                            : (Math.abs(posun) + ' min'))
+                        + ' do okna '
+                        + minutyDne(oknoZavirani(p).od) + '–' + minutyDne(oknoZavirani(p).do)
+                        + (oknoZavirani(p).vlastni ? ' u téhle předávky' : ' z Nastavení'))
+                     : '')});
   });
 
   /* Časy se do řetězce musí promítnout hned, jinak by přejezdy počítaly ze
@@ -6814,7 +6913,11 @@ const MAPA = {
     // sloupci delka_km a cas autem se neukladal vubec, takze se pri nacteni ztratil.
     pole:{cislo:'cislo', nazev:'nazev', lat:'gps_lat', lon:'gps_lon', typ:'typ_zajisteni',
           pozn:'poznamka', gpx:'gpx_soubor', km:'auto_km', min:'auto_min', delka:'delka_km',
-          mapa:'mapa_url'}
+          mapa:'mapa_url', zavrit_od:'zavrit_od', zavrit_do:'zavrit_do'},
+    // databáze vrací čas jako „06:00:00", políčko chce „06:00" — bez oříznutí
+    // by se řádek tvářil jako změněný hned po načtení
+    naJs: r => ({...r, zavrit_od: (r.zavrit_od||'').slice(0,5),
+                       zavrit_do: (r.zavrit_do||'').slice(0,5)})
   },
   /* Etapa rozdělená na úseky: délka, převýšení, povrch a jestli se tam smí
      autem. Z toho se počítá doba značení a úklidu. Geometrie (od_m, do_m,
@@ -7661,6 +7764,9 @@ function kresliJakSePocita(){
         pole('ukonceni_po',   'Ukončení končí po posledním běžci', 'min'),
         pole('usek_zahajeni', 'Zahájení předávky trvá', 'min'),
         pole('usek_ukonceni', 'Ukončení předávky trvá', 'min')])
+    + skupina('Kdy se smí zavírat', [
+        pole('pk_okno_od', 'Zavírat nejdřív v'),
+        pole('pk_okno_do', 'Zavírat nejpozději v')])
     + skupina('Nocleh', [
         pole('nocleh_od',      'Spát se jde v'),
         pole('nocleh_do',      'Vstává se v'),
@@ -7708,6 +7814,14 @@ function kresliJakSePocita(){
       + b('mínus ' + PR('obsluha_pred') + ' minut') + ' do posledního '
       + b('plus ' + PR('ukonceni_po') + ' minut') + '. Je tam dřív než ten, kdo otevírá.',
       'Ukončení (PK) = poslední běžec ' + b('plus ' + PR('ukonceni_po') + ' minut') + '.',
+      'Zavírat se smí jen v okně ' + b(minutyDne(PR('pk_okno_od')) + ' – ' + minutyDne(PR('pk_okno_do')))
+      + '. Když ukončení podle posledního běžce vyjde mimo, ' + b('posune se dopředu')
+      + ' na nejbližší začátek okna — nikdy dozadu, předávka se nedá zavřít dřív, '
+      + 'než tudy proběhne poslední běžec. Okno smí přecházet přes půlnoc. '
+      + 'Jednotlivá předávka může mít okno vlastní, ve sloupcích '
+      + b('Zavřít od') + ' a ' + b('Zavřít do') + ' v tabulce Předávky; tohle je výchozí '
+      + 'pro ty, které vlastní nemají. Na nočních předávkách kolem patnácté až '
+      + 'jednadvacáté projde poslední běžec mezi půlnocí a šestou — právě kvůli nim to je.',
       'Otevřít předávku trvá ' + b(PR('usek_zahajeni') + ' minut') + ', sbalit ji '
       + b(PR('usek_ukonceni') + ' minut') + ' — o tolik je <i>do</i> dál než <i>od</i>.'])
     + h('Zaokrouhlení', [

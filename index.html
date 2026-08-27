@@ -1799,8 +1799,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.51";
-const BUILD = "2026-08-27T16:35+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.52";
+const BUILD = "2026-08-27T16:55+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -6328,11 +6328,27 @@ function spocitejGenerovani(){
       smazat.push(u); jeVeSmazat.add(u);
     });
   });
+  /* Co v plánu stojí zamčené nebo psané rukou, generátor nesmí založit znovu.
+
+     Do 27. 8. 2026 se dvojnásobky hledaly jen mezi řádky, které výpočet sám
+     spravuje (`stavajici`). Jenže zamknutí odvozený řádek povyšuje na ruční,
+     takže ze `stavajici` vypadl — generátor ho přestal vidět a při každém
+     přegenerování k němu přidal vlastní kopii s koncovkou `~2`. Odtud dvojice
+     jako `A-G7-g8` a `A-G7-g9` nebo `A-G13-g11` a `A-G13-g15`, které popisují
+     tentýž přesun.
+
+     Mazat se takový řádek nesmí (je zamčený nebo ruční), ale navrhovat ho
+     podruhé nemá smysl. Čas se mu taky nesrovnává — zamčené se nepřepisuje. */
+  const uzTam = new Set(D.ukoly
+    .filter(u => jeZamceny(u) || !jeOdvozeny(u))
+    .map(podpisOdvozeneho));
+
   const videne = new Set();
   navrhy.forEach(n => {
     const p = podpisOdvozeneho(n);
     if(videne.has(p)) return;                          // navrhlo se dvakrát
     videne.add(p);
+    if(uzTam.has(p)) return;                           // už tam stojí, jen na to výpočet nesmí
     const uz = mam.get(p);
     if(!uz){ pridat.push(n); return; }
     // Řádek už v plánu je, ale okolní úkoly se mezitím pohnuly — čas se srovná.

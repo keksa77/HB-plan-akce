@@ -1799,8 +1799,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.50";
-const BUILD = "2026-08-27T15:44+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.51";
+const BUILD = "2026-08-27T16:35+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -6184,6 +6184,16 @@ function spocitejGenerovani(){
       if(!v) continue;                                   // vzdálenost neznáme, nehádáme
       const cA = casUkoluCely(a), cB = casUkoluCely(b);
       const odM = konecUkolu(cA), doM = minuty(cB.den, cB.od);
+      /* Dva úkoly, které běží přes sebe, nejsou posloupnost — jsou to dvě čety.
+         Přejezd mezi nimi nikdo nejede: buď je auto vysadí na obou místech
+         naráz, nebo jedna četa jede na kole. Bez téhle podmínky vznikaly
+         řádky s obráceným časem („ne 09:40 – 07:40"), protože se konec
+         prvního úkolu bral za začátek cesty a začátek druhého za její konec.
+
+         Kontrola návazností tyhle dvojice přeskakuje odjakživa (`kDispozici < 0`);
+         generátor to do 27. 8. 2026 nedělal, a proto si ty dvě části stránky
+         odporovaly. */
+      if(odM != null && doM != null && doM < odM) continue;
       navrhy.push({
         parta: t.kod, typ: 'A', kod: volnyKod('A-'+t.kod+'-g'+(i+1)), cislo: null,
         // Přejezd není na předávce, je mezi dvěma. Obě čísla tady máme v ruce,
@@ -6230,7 +6240,11 @@ function spocitejGenerovani(){
         if(c && c.min){
           const vstal = vstavaniVDni(doDen, zacatek.u.typ);
           const doUkolu = (zacatek.m == null) ? null : zacatek.m;
-          navrhy.push({
+          /* Když první nedělní úkol začíná dřív, než se podle parametru vstává
+             (typicky obsluha předávky, která visí na běžcích), řádek by vyšel
+             pozpátku. Radši žádný než obrácený — a je to i pravda: ta grupa
+             vstala dřív, než co je v Nastavení. */
+          if(doUkolu != null && doUkolu >= vstal) navrhy.push({
             parta: t.kod, typ: 'A', kod: volnyKod('A-'+t.kod+'-rano-'+znak), cislo: null,
             predavka_od: c.z, predavka_do: c.do,
             kdy_text: (doUkolu != null) ? rozsahCasu(vstal, doUkolu) : '',

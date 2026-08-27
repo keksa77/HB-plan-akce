@@ -1799,8 +1799,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.49";
-const BUILD = "2026-08-27T15:10+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.50";
+const BUILD = "2026-08-27T15:44+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -5448,6 +5448,11 @@ const PRAVIDLA_VYCHOZI = {
      27. 8. 2026 tu místo toho stála holá hranice `uklid_nedele_od`, která
      ale nocleh neřešila: úkol v 6:20 ho zkrátil, i když se v tu dobu spalo. */
   nedele_vstavani: '07:00',
+  /* V sobotu se vstává dvakrát: kdo jede na start, vyráží dřív než kdo jede
+     značit. *Zadáno 27. 8. 2026.* Platí to stejně jako v neděli — po vstávání
+     se ještě jede z pátečního noclehu na místo, viz `cestaZNoclehu`. */
+  sobota_vstavani_start:   '05:00',
+  sobota_vstavani_znaceni: '06:30',
   uklid_i_po_tme:   0,      // 1 = uklízet se smí i po tmě, 0 = jen za světla
   /* Kolik úkolů smí grupa dělat naráz. Platí, že tolik, kolik má členů —
      každý člověk může být na jednom místě. Tenhle parametr je jen záloha
@@ -5669,6 +5674,27 @@ function poznamkaSmeru(u){
    začíná úklid, a zároveň tvrdit, že se vstává v sedm. */
 const vstavaniVNedeli = () => Math.max(0, denIndex('NE')) * 1440 + PR('nedele_vstavani');
 
+/* Kdy se vstává v sobotu. Dvě hodiny, ne jedna: kdo jede na start, vyráží
+   dřív než kdo jede značit. Rozhoduje druh úkolu — značení má svou hodinu,
+   všechno ostatní tu ranní.
+
+   Předávek se to ale netýká. Obsluha, zahájení a ukončení předávky visí na
+   časech běžců, ne na tom, kdy kdo vstal — kdyby je vstávání posunulo,
+   posunul by se závod. Proto se hranice uplatňuje jen tam, kde má výpočet
+   volnost: u značení a úklidu. */
+function vstavaniVSobotu(typ){
+  const klic = (typ === 'T') ? 'sobota_vstavani_znaceni' : 'sobota_vstavani_start';
+  return Math.max(0, denIndex('SO')) * 1440 + PR(klic);
+}
+// hranice pro daný den a druh úkolu; ostatní dny se neomezují
+function vstavaniVDni(den, typ){
+  if(den === 'NE') return vstavaniVNedeli();
+  if(den === 'SO') return vstavaniVSobotu(typ);
+  return -Infinity;
+}
+// ze kterého noclehu se ráno toho dne vyráží
+const noclehPredDnem = den => (den === 'NE') ? 'so' : (den === 'SO') ? 'p' : null;
+
 /* ---------- ranní cesta z noclehu na etapu ----------
    Vstávání samo o sobě nestačí. Kdo spí v Nové Lhotě a uklízí etapu 12,
    nezačne v sedm — v sedm teprve vstává a pak jede hodinu autem. Cesta se
@@ -5702,6 +5728,22 @@ function cestaZNoclehu(kodGrupy, etapa, znak){
   });
   if(!nej) return null;
   return {...nej, z, kdeKod, kde: (D.nocMista.find(x=>x.kod===kdeKod)||{}).nazev || kdeKod};
+}
+/* Totéž pro libovolný úkol, ne jen pro etapu. Trasování a úklid se vážou
+   k etapě, která má dva konce; obsluha a zahájení předávky mají jedno
+   konkrétní místo. Úkol bez místa (akce „pomoc v cíli") cestu nedá. */
+function cestaZNoclehuNaUkol(kodGrupy, u, znak){
+  if(!u || !u.cislo) return null;
+  if(u.typ === 'T' || u.typ === 'U') return cestaZNoclehu(kodGrupy, u.cislo, znak);
+  const kdeKod = noclehGrupyHodnota(kodGrupy, znak);
+  if(!kdeKod || kdeKod === NERESI) return null;
+  const z = predavkaNoclehu(kdeKod); if(!z) return null;
+  const c = +u.cislo; if(!D_predavka(c)) return null;
+  if(c === z) return {min:0, km:0, do:c, z, kdeKod,
+                      kde: (D.nocMista.find(x=>x.kod===kdeKod)||{}).nazev || kdeKod};
+  const v = vzdal(z, c); if(!v) return null;
+  return {min:v.min, km:v.km, do:c, z, kdeKod,
+          kde: (D.nocMista.find(x=>x.kod===kdeKod)||{}).nazev || kdeKod};
 }
 
 function oknoSvetla(den, jePatecniZnaceni){
@@ -5901,21 +5943,41 @@ function spocitejGenerovani(){
         zacatek = naDolu(zacatek - (konec - okno.do));
         konec = naHoru(zacatek + doba);
       }
-      if(zacatek < okno.od){
-        const chybi = okno.od - zacatek;
-        /* Dvě různé příčiny, a každá se řeší jinak. Buď je etapa delší než celý
-           den světla — pak nepomůže žádný parametr a musí se rozdělit mezi dvě
-           grupy. Nebo je jen lhůta před běžcem moc velká a stačí ji zkrátit. */
+      /* Dvě spodní hranice, obě skutečné: rozednění a vstávání. Značení se
+         plánuje na NEJPOZDĚJŠÍ možný začátek, takže se ani pod jednu z nich
+         posunout nedá — když se pod ně dostane, je to nemožnost, ne posun.
+         Hlásí se ta, která je zrovna tvrdší, ať rada sedí na příčinu.
+
+         Vstávání se týká jen sobotního značení; páteční se značí, jak se lidi
+         sjedou, a to řeší vlastní parametr „Značení v pátek nejdřív od". */
+      const cestaT = vPatek ? null : cestaZNoclehu(u.parta, e, noclehPredDnem('SO'));
+      const vstal  = vPatek ? -Infinity
+                            : vstavaniVSobotu('T') + (cestaT ? cestaT.min : 0);
+      const spodni = Math.max(okno.od, vstal);
+      if(zacatek < spodni){
+        const chybi = spodni - zacatek;
         const delkaOkna = okno.do - okno.od;
         potize.push({etapa:e, kod:u.kod, chybi,
           text: (doba > delkaOkna)
+            /* Etapa je delší než celý den světla — tohle nespraví žádný
+               parametr, musí se rozdělit mezi dvě grupy. */
             ? ('značení etapy ' + e + ' trvá ' + doba + ' min, ale celé okno světla má jen '
                + delkaOkna + ' min. Tohle žádný parametr nespraví — etapa se musí '
                + 'rozdělit mezi dvě grupy.')
-            : ('značení etapy ' + e + ' trvá ' + doba + ' min a muselo by začít '
-               + minutyNaCas(zacatek) + ', tedy ' + chybi + ' min před rozedněním. '
-               + 'Buď posuňte „V pátek se značí do etapy" na ' + e
-               + ', nebo „Značení začne nejpozději" o ' + chybi + ' min níž.')});
+            : (vstal > okno.od)
+              ? ('značení etapy ' + e + ' by muselo začít ' + minutyNaCas(zacatek)
+                 + ', ale v sobotu se na značení vstává v '
+                 + hodinaMinuta(PR('sobota_vstavani_znaceni'))
+                 + (cestaT && cestaT.min
+                    ? ' a z noclehu (' + cestaT.kde + ') je to na předávku ' + cestaT.do
+                      + ' ještě ' + cestaT.min + ' min'
+                    : '')
+                 + ' — dřív než v ' + minutyNaCas(spodni) + ' se tam grupa nedostane. '
+                 + 'Buď tuhle etapu značit v pátek, nebo posunout vstávání.')
+              : ('značení etapy ' + e + ' trvá ' + doba + ' min a muselo by začít '
+                 + minutyNaCas(zacatek) + ', tedy ' + chybi + ' min před rozedněním. '
+                 + 'Buď posuňte „V pátek se značí do etapy" na ' + e
+                 + ', nebo „Značení začne nejpozději" o ' + chybi + ' min níž.')});
         return;
       }
       casy.push({u, text: rozsahCasu(zacatek, konec),
@@ -5932,20 +5994,25 @@ function spocitejGenerovani(){
         + 'dobu úklidu nemám z čeho spočítat'});
       return;
     }
-    /* V neděli se vstává nejdřív v nastavenou hodinu a dřív se uklízet nezačne.
-       Není to zákaz, je to skutečnost — nikdo nevyrazí na trať, dokud nevstal.
-       Ostatních dnů se to netýká: v sobotu se uklízí za běžci a tam každá
-       hodina hraje. */
-    /* Po vstávání se ještě jede na etapu. Ta cesta se přičítá ke vstávání,
-       ne k času úklidu — grupa vyráží ze svého noclehu, ne od poslední
-       předávky. Když nocleh nemá vyplněnou předávku, cesta je nula a platí
-       jen holá hodina vstávání jako dřív. */
-    const cesta = cestaZNoclehu(u.parta, e, 'so');
-    const nedeleOd = vstavaniVNedeli() + (cesta ? cesta.min : 0);
-    const nejdrivVDni = den => (den === 'NE') ? nedeleOd : -Infinity;
+    /* Vstávání je hranice, pod kterou se ten den nezačne — v sobotu i v neděli.
+       Není to zákaz, je to skutečnost: nikdo nevyrazí na trať, dokud nevstal.
+       A po vstávání se ještě jede z noclehu na etapu; ta cesta se přičítá
+       k hodině vstávání, ne k době úklidu, protože grupa vyráží od svého
+       noclehu, ne od poslední předávky.
+
+       Každý den má svou hranici a svůj nocleh: v sobotu se vstává z pátečního,
+       v neděli ze sobotního. Když nocleh nemá vyplněnou předávku, cesta je
+       nula a platí holá hodina vstávání. */
+    const cestaVDni = {}, hraniceVDni = {};
+    ['SO','NE'].forEach(den => {
+      const c = cestaZNoclehu(u.parta, e, noclehPredDnem(den));
+      cestaVDni[den] = c;
+      hraniceVDni[den] = vstavaniVDni(den, u.typ) + (c ? c.min : 0);
+    });
+    const nejdrivVDni = den => (den in hraniceVDni) ? hraniceVDni[den] : -Infinity;
 
     let zacatek = naHoru(bezci.posledni + PR('uklid_po_beznci'));
-    let vNedeliOdlozeno = false;
+    let odlozenoVDni = null;
     if(!PR('uklid_i_po_tme')){
       let sedi = false;
       for(let i = 0; i < DNY.length && !sedi; i++){
@@ -5954,7 +6021,7 @@ function spocitejGenerovani(){
         const z = naHoru(Math.max(zacatek, okno.od, nejdrivVDni(DNY[i])));
         // do okna se musí vejít i zaokrouhlený konec, ne jen holá doba
         if(naHoru(z + doba) <= okno.do){
-          vNedeliOdlozeno = DNY[i] === 'NE' && z > naHoru(Math.max(zacatek, okno.od));
+          odlozenoVDni = (z > naHoru(Math.max(zacatek, okno.od))) ? DNY[i] : null;
           zacatek = z; sedi = true;
         }
       }
@@ -5966,15 +6033,18 @@ function spocitejGenerovani(){
         return;
       }
     }else{
-      // po tmě se uklízet smí, ale nedělní hranice platí i tak
+      // po tmě se uklízet smí, ale hranice vstávání platí i tak
       const den = DNY[Math.floor(zacatek / 1440)];
-      if(den === 'NE' && zacatek < nedeleOd){ zacatek = nedeleOd; vNedeliOdlozeno = true; }
+      if(zacatek < nejdrivVDni(den)){ zacatek = nejdrivVDni(den); odlozenoVDni = den; }
     }
+    const cesta = odlozenoVDni ? cestaVDni[odlozenoVDni] : null;
+    const kdyVstavani = odlozenoVDni
+      ? hodinaMinuta(vstavaniVDni(odlozenoVDni, u.typ) % 1440) : '';
     casy.push({u, text: rozsahCasu(zacatek, naHoru(zacatek + doba)),
       proc: 'úklid ' + doba + ' min, nejdřív ' + PR('uklid_po_beznci')
           + ' min po startu posledního běžce (' + minutyNaCas(bezci.posledni) + ')'
-          + (vNedeliOdlozeno ? '; v neděli se vstává v '
-             + hodinaMinuta(PR('nedele_vstavani'))
+          + (odlozenoVDni ? '; v ' + (odlozenoVDni === 'NE' ? 'neděli' : 'sobotu')
+             + ' se vstává v ' + kdyVstavani
              + (cesta && cesta.min
                 ? ' a pak je cesta z noclehu (' + cesta.kde + ', předávka ' + cesta.z
                   + ') na předávku ' + cesta.do + ', ' + cesta.km + ' km, ' + cesta.min + ' min'
@@ -6134,7 +6204,6 @@ function spocitejGenerovani(){
     const maRucniNocleh = noc => rucni().some(u =>
       u.typ === 'N' && u.parta === t.kod && String(u.kod||'').endsWith('-' + noc));
     [['PÁ','SO','p'], ['SO','NE','so']].forEach(([odDen, doDen, znak]) => {
-      if(maRucniNocleh(znak)) return;
       // Když má grupa u té noci „neřeší se", není co plánovat — řádek nevznikne.
       // Platí to stejně pro pátek i pro sobotu.
       if(noclehGrupyHodnota(t.kod, znak) === NERESI) return;
@@ -6145,6 +6214,38 @@ function spocitejGenerovani(){
       if(!pred.length || !po.length) return;
       const konec = pred[pred.length-1], zacatek = po[0];
       const kde = noclehGrupy(t.kod, znak);
+
+      /* ---- ranní přejezd z noclehu na první úkol dne ----
+         Zatím jen v neděli — tak to bylo zadané 27. 8. 2026. Do soboty se
+         cesta počítá taky (posouvá úklid a hlídá značení), ale řádek z ní
+         nevzniká, ať plán zbytečně nenabobtná.
+
+         Stojí to PŘED řádkem noclehu schválně: grupa, která má nocleh napsaný
+         ručně, ho generovat nepotřebuje, ale ráno stejně nikam nedojede sama.
+
+         Čas se nevymýšlí: od vstávání do začátku toho prvního úkolu. Ten už
+         je spočítaný tak, že se do něj cesta vejde, takže se tu jen vypíše. */
+      if(doDen === 'NE' && !bezPrejezdu){
+        const c = cestaZNoclehuNaUkol(t.kod, zacatek.u, znak);
+        if(c && c.min){
+          const vstal = vstavaniVDni(doDen, zacatek.u.typ);
+          const doUkolu = (zacatek.m == null) ? null : zacatek.m;
+          navrhy.push({
+            parta: t.kod, typ: 'A', kod: volnyKod('A-'+t.kod+'-rano-'+znak), cislo: null,
+            predavka_od: c.z, predavka_do: c.do,
+            kdy_text: (doUkolu != null) ? rozsahCasu(vstal, doUkolu) : '',
+            den: doDen,
+            kdy_od: hodinaMinutaDb(vstal),
+            kdy_do: (doUkolu != null) ? hodinaMinutaDb(doUkolu) : '',
+            popis: 'ranní přejezd z noclehu (' + (c.kde || c.kdeKod) + ') → '
+                 + c.do + ' ' + popisPredavky(c.do) + ', ' + c.km + ' km, ' + c.min + ' min',
+            stav: 'plán', zdroj: 'generováno', odvozeno: true,
+            _proc: 'z noclehu na ' + (zacatek.u.kod || zacatek.u.typ)
+          });
+        }
+      }
+
+      if(maRucniNocleh(znak)) return;
       /* Kdy se spí. Začátek je 22:00, a když se grupa do té doby nestihne dostat
          z posledního úkolu, tak hodinu po jeho konci. Konec je 7:00, a když
          ráno začíná něco dřív, tak v tu chvíli. Konec předchozího úkolu je jeho
@@ -6175,6 +6276,7 @@ function spocitejGenerovani(){
         stav: 'plán', zdroj: 'generováno', odvozeno: true,
         _proc: 'mezi ' + (konec.u.kod||konec.u.typ) + ' a ' + (zacatek.u.kod||zacatek.u.typ)
       });
+
     });
   });
 
@@ -6593,9 +6695,39 @@ function proNeprejede(kod){
   return null;
 }
 
+/* Strop souběhu: jedna četa s autem plus tolik čet, kolik je kol.
+   *Rozhodnuto 27. 8. 2026.* Do té doby se počítali lidé, jenže tři lidi
+   s jedním autem jsou pořád jedna četa — nerozdělí se na tři party, které
+   by byly každá jinde. Autem se navíc jezdí každý přejezd, takže bez něj
+   se druhá četa nikam nedostane.
+
+   Grupa, u které nikdo nevyplnil ani auto, ani kolo, ani řidiče, se
+   neposuzuje podle vybavení — na tu platí dál počet lidí. Jinak by po
+   zavedení těch políček spadly všechny grupy naráz na jednu četu.
+
+   Strop se nikdy nepočítá vyšší než počet lidí: dvě kola dvě čety neudělají,
+   když je v grupě jeden člověk. */
 function souberGrupy(kod){
   const lidi = zivi().filter(c => c.kod_tymu === kod).length;
+  const vyb = vybaveniGrupy(kod);
+  if(vyb.vyplneno){
+    const cet = vyb.aut + vyb.kol;
+    if(cet > 0) return Math.min(cet, lidi || cet);
+  }
   return lidi || PR('soubeh_grupy');
+}
+// čím je strop daný — do vysvětlivky u přeplněné grupy
+function duvodStropu(kod){
+  const vyb = vybaveniGrupy(kod);
+  const lidi = zivi().filter(c => c.kod_tymu === kod).length;
+  if(vyb.vyplneno && (vyb.aut + vyb.kol) > 0){
+    const casti = [];
+    if(vyb.aut) casti.push(vyb.aut + '× auto');
+    if(vyb.kol) casti.push(vyb.kol + '× kolo');
+    const cet = vyb.aut + vyb.kol;
+    return casti.join(' + ') + (lidi && cet > lidi ? ', omezeno na ' + lidi + ' lidí' : '');
+  }
+  return lidi ? (lidi + ' lidí, vybavení nevyplněné') : 'záloha z Nastavení';
 }
 
 /* Nejvíc úkolů, které grupě běží v jednu chvíli. Počítá se přes hrany:
@@ -6690,6 +6822,7 @@ function zkontrolujNavaznosti(){
     });
     if(naraz.nej > strop){
       preplneni.push({parta: t.kod, naraz: naraz.nej, lidi: strop, kdy: naraz.kdy,
+        duvod: duvodStropu(t.kod),
         lidiZapsani: zivi().filter(c => c.kod_tymu === t.kod).length});
     }
 
@@ -6776,14 +6909,16 @@ function zkontrolujNavaznosti(){
      neřeší posunutím času, ale lidmi: buď někoho přidat, nebo úkol předat jinam. */
   function tabulkaPreplneni(){
     if(!preplneni.length) return '';
-    let h = '<div class="karta"><h2>Víc úkolů naráz než lidí — ' + preplneni.length
+    let h = '<div class="karta"><h2>Víc úkolů naráz, než má grupa čet — ' + preplneni.length
       + '</h2><div class="telo">'
-      + '<p class="popisek">Grupa smí dělat naráz tolik úkolů, kolik má členů — každý '
-      + 'člověk může být na jednom místě. Souběh sám o sobě chyba není; chyba je až '
-      + 'tohle. Neřeší se posunutím času, ale lidmi: přidat člena, nebo úkol předat '
+      + '<p class="popisek">Četa je auto nebo kolo, ne člověk — tři lidi s jedním autem '
+      + 'jsou pořád jedna četa a nerozdělí se na tři místa. U grupy, kde vybavení nikdo '
+      + 'nevyplnil, se zatím počítají lidé. Souběh sám o sobě chyba není; chyba je až '
+      + 'tohle. Neřeší se posunutím času: přidat auto nebo kolo, nebo úkol předat '
       + 'jiné grupě.</p>'
       + '<div class="obal-tab"><table class="tab"><thead><tr><th style="width:110px">Grupa</th>'
-      + '<th style="width:150px">Nejvíc naráz</th><th style="width:130px">Lidí v grupě</th>'
+      + '<th style="width:150px">Nejvíc naráz</th><th style="width:110px">Čet</th>'
+      + '<th style="width:210px">Z čeho</th>'
       + '<th>Kdy</th><th style="width:86px"></th></tr></thead><tbody>';
     preplneni.forEach(x => {
       h += '<tr><td style="padding:7px 10px;font-weight:800;color:'+barva(x.parta)+'">'
@@ -6792,6 +6927,7 @@ function zkontrolujNavaznosti(){
         + x.naraz + ' úkolů</td>'
         + '<td class="stred" style="padding:7px">' + x.lidi
         + (x.lidiZapsani ? '' : ' <span class="popisek">(záloha, nikdo zapsaný)</span>') + '</td>'
+        + '<td style="padding:7px 10px;font-size:12.5px">' + esc(x.duvod || '') + '</td>'
         + '<td style="padding:7px 10px;font-size:12.5px">' + esc(minutyNaCas(x.kdy)) + '</td>'
         + '<td class="stred" style="padding:7px"><button class="tl" style="padding:2px 8px;font-size:12px"'
         + ' onclick="ukazUkolyGrupy(\''+esc(x.parta)+'\')">v plánu</button></td></tr>';
@@ -6803,7 +6939,7 @@ function zkontrolujNavaznosti(){
   if(!nalezy.length){
     cil.innerHTML = '<div class="karta"><div class="telo">Žádná nemožná návaznost.'
       + (preplneni.length ? ' ' + preplneni.length
-          + ' grupám ale běží víc úkolů naráz, než mají lidí — je to v tabulce níž.' : '')
+          + ' grupám ale běží víc úkolů naráz, než mají čet — je to v tabulce níž.' : '')
       + (bezCasu ? ' ' + bezCasu + ' dvojic nešlo posoudit — proč, je v tabulce níž.' : '')
       + '</div></div>' + tabulkaNemaCim() + tabulkaPreplneni() + tabulkaNeposouzeno();
   } else {
@@ -6873,7 +7009,7 @@ function zkontrolujNavaznosti(){
   // že se nedá zjistit kde. Tak se k němu stránka posune sama.
   posunNa(cil);
   const dovetek = (nemaCim.length ? (', ' + nemaCim.length + '× nestačí auto nebo řidič') : '')
-                + (preplneni.length ? (', ' + preplneni.length + ' grup má víc úkolů naráz než lidí') : '')
+                + (preplneni.length ? (', ' + preplneni.length + ' grup má víc úkolů naráz než čet') : '')
                 + (bezCasu ? (', k tomu ' + bezCasu + ' neposouzených') : '');
   hlaska(nalezy.length
     ? (nalezy.length + ' nemožných návazností — rozepsané nad tabulkou' + dovetek)
@@ -8372,6 +8508,8 @@ function kresliJakSePocita(){
         pole('trasovani_pred',  'Značení začne nejpozději před prvním běžcem', 'min'),
         pole('uklid_podil',     'Úklid trvá oproti značení', '%'),
         pole('uklid_po_beznci', 'Úklid až po startu posledního', 'min'),
+        pole('sobota_vstavani_start',   'V sobotu se vstává na start v'),
+        pole('sobota_vstavani_znaceni', 'V sobotu se vstává na značení v'),
         pole('nedele_vstavani', 'V neděli se vstává nejdřív v'),
         pole('uklid_i_po_tme',  'Uklízet i po tmě (1/0)'),
         pole('soubeh_grupy',    'Souběh u grup bez zapsaných lidí')])
@@ -8455,16 +8593,21 @@ function kresliJakSePocita(){
       'Úklid trvá ' + b(PR('uklid_podil') + ' %') + ' času značení a smí začít '
       + b(PR('uklid_po_beznci') + ' minut po startu posledního běžce') + '. '
       + (PR('uklid_i_po_tme') ? 'Po tmě uklízet lze.' : b('Po tmě se neuklízí.')),
-      'V neděli se vstává v ' + b(cas(PR('nedele_vstavani')))
+      'V sobotu se vstává v ' + b(cas(PR('sobota_vstavani_start'))) + ', kdo jede na start, '
+      + 'a v ' + b(cas(PR('sobota_vstavani_znaceni'))) + ', kdo jede značit. V neděli se '
+      + 'vstává v ' + b(cas(PR('nedele_vstavani')))
       + ' a teprve pak se jede z noclehu na etapu — ' + b('ta cesta se připočítává')
       + ' podle silniční vzdálenosti z předávky, u které nocleh leží, na bližší '
       + 'konec uklízené etapy. Místo bez vyplněné předávky cestu nepočítá. Touž '
       + 'hodinou vstávání končí i nocleh ze soboty na neděli, takže si ty dvě věci '
-      + 'neodporují. Ostatních dnů se to netýká — v sobotu se uklízí za běžci '
-      + 'a tam každá hodina hraje.',
-      'Grupa smí dělat naráz ' + b('tolik úkolů, kolik má členů') + ' — dělí se na čety '
-      + 'a každý člověk může být na jednom místě. U grup, které zapsané lidi nemají, '
-      + 'se počítá se zálohou ' + b(PR('soubeh_grupy')) + '.'])
+      + 'neodporují. Předávek se hranice netýká — obsluha, zahájení a ukončení visí '
+      + 'na časech běžců. U značení jen upozorní: to se plánuje na nejpozdější možný '
+      + 'začátek, takže se posunout nedá a nemožnost se hlásí jako potíž.',
+      'Grupa smí dělat naráz ' + b('tolik úkolů, kolik má čet') + ' — a četa je '
+      + b('auto nebo kolo') + ', ne člověk: tři lidi s jedním autem jsou pořád jedna '
+      + 'četa. Strop nikdy nepřeleze počet lidí. U grupy, kde vybavení nikdo nevyplnil, '
+      + 'se počítají dál lidé, a když nemá zapsané ani ty, platí záloha '
+      + b(PR('soubeh_grupy')) + '.'])
     + h('Auta a řidiči', [
       'Přejezd mezi předávkami se jezdí ' + b('vždycky autem') + '. Grupa má nejvýš '
       + b('jedno auto') + ', i kdyby ho přivezlo víc lidí — druhá četa se z toho neudělá.',

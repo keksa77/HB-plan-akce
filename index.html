@@ -1799,8 +1799,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.53";
-const BUILD = "2026-08-27T18:24+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.54";
+const BUILD = "2026-08-27T18:54+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4201,6 +4201,11 @@ function kresliPodrobny(){
         + "\u201epátek odpoledne\u201c. Nic se z něj nepočítá a přegenerování do něj nesahá; "
         + "smaže se jen tehdy, když by spočítanému času odporoval. O tom, jestli výpočet "
         + "na řádek smí, rozhoduje výhradně zámek."},
+    {nadpis:"Doba", pole:"doba_min", typ:"number", sirka:"78px", trida:"stred",
+      napovedaSl:"Kolik minut úkol trvá. Prázdné = spočítá se z úseků etapy podle "
+        + "parametrů. Vyplňte, když úkol pokrývá jen část etapy (kódy s „b\u201c) "
+        + "nebo když je u téhle etapy ruční odhad lepší než vzorec. Vlastní doba "
+        + "platí pro oba směry, takže se u ní nenabízí poznámka o směru."},
     {nadpis:"Den",  pole:"den", typ:"select", moznosti:["", ...DNY], sirka:"88px",
       napovedaSl:"Den závodního víkendu. Čtvrtek je tam kvůli grupám, které vyjíždějí den předem."},
     {nadpis:"Od",   pole:"kdy_od", typ:"time", sirka:"120px"},
@@ -5401,7 +5406,7 @@ function retezGrupy(kod){
   const radky = [];
   prace.forEach(({u, m, den}) => {
     const e = +u.cislo;
-    const doba = (u.typ === 'T') ? dobaZnaceni(e) : dobaUklidu(e);
+    const doba = dobaUkolu(u);
     const bezci = casBezcu(e);
     if(doba == null || !bezci){
       radky.push({u, chybi: doba == null ? 'etapa není rozdělená na úseky'
@@ -5752,6 +5757,24 @@ function dobaZnaceni(etapa, proti){
      začátek se zaokrouhluje na tentýž krok. */
   return Math.max(naNejblizsi(minut), PR('znaceni_min'));
 }
+/* Kolik minut trvá KONKRÉTNÍ úkol. Většinou se to spočítá z úseků etapy,
+   ale úkol si smí nést vlastní číslo ve sloupci „Doba" — a to pak platí.
+
+   *Zavedeno 27. 8. 2026 (v5.53).* Jsou na to dva doložené důvody. Zaprvé úkol
+   někdy pokrývá jen část etapy: kódy s „b" na konci (T2b, U2b, T17b, U6b) dělí
+   etapu mezi dvě grupy a doba spočítaná pro celou na ně nesedí ze zásady.
+   Zadruhé se u pár etap ukázalo, že ruční odhad je lepší než vzorec — a spravit
+   to globálním doladěním temp nejde, protože rozdíly jdou na obě strany:
+   z 37 úkolů, které mají sedět, jich při nejlepším možném nastavení sedělo
+   míň než při dnešním. Vlastní doba je proto výjimka u řádku, ne přepsání
+   pravidla pro všechny. */
+function dobaUkolu(u, proti){
+  const vlastni = +(u && u.doba_min);
+  if(vlastni > 0) return vlastni;         // vlastní doba směr neřeší, je jedna
+  const e = +(u && u.cislo); if(!e) return null;
+  return (u.typ === 'T') ? dobaZnaceni(e, proti) : dobaUklidu(e, proti);
+}
+
 function dobaUklidu(etapa, proti){
   const z = dobaZnaceni(etapa, proti);
   if(z == null) return null;
@@ -5782,6 +5805,8 @@ const bezPoznamkySmeru = popis => {
 };
 function poznamkaSmeru(u){
   if(u.typ !== 'T' && u.typ !== 'U') return null;
+  // úkol s vlastní dobou má jedno číslo pro oba směry, není co porovnávat
+  if(+(u.doba_min) > 0) return null;
   const e = +u.cislo; if(!e) return null;
   const doba = (proti) => (u.typ === 'T') ? dobaZnaceni(e, proti) : dobaUklidu(e, proti);
   const po = doba(false), pr = doba(true);
@@ -6049,7 +6074,7 @@ function spocitejGenerovani(){
     const bezci = casBezcu(e); if(!bezci) return;
 
     if(u.typ === 'T'){
-      const doba = dobaZnaceni(e);
+      const doba = dobaUkolu(u);
       if(doba == null){
         potize.push({etapa:e, kod:u.kod, text:'etapa ještě není rozdělená na úseky, '
           + 'dobu značení nemám z čeho spočítat'});
@@ -6117,7 +6142,7 @@ function spocitejGenerovani(){
 
     // úklid: nejdřív po startu posledního běžce, a když se nesmí po tmě,
     // počká se na nejbližší den, do jehož světla se celý vejde
-    const doba = dobaUklidu(e);
+    const doba = dobaUkolu(u);
     if(doba == null){
       potize.push({etapa:e, kod:u.kod, text:'etapa ještě není rozdělená na úseky, '
         + 'dobu úklidu nemám z čeho spočítat'});
@@ -7833,7 +7858,8 @@ const MAPA = {
           // Přejezd nestojí na předávce, ale mezi dvěma — proto má místo
           // sloupce cislo dvě čísla. Generátor je obě zná, ručně psaný
           // přejezd je má prázdné, dokud je někdo nedoplní.
-          predavka_od:'predavka_od', predavka_do:'predavka_do'},
+          predavka_od:'predavka_od', predavka_do:'predavka_do',
+          doba_min:'doba_min'},
     // Databáze vrací čas jako „06:30:00", políčko v tabulce chce „06:30".
     // Bez oříznutí by se řádek tvářil jako změněný hned po načtení.
     // Zámek je v databázi boolean a musí jím i zůstat — undefined by celou

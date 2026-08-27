@@ -314,6 +314,10 @@ body.mobil .mrizka tfoot tr.soucty > td{position:static}
 /* Kolik toho grupa má proti tomu, kolik chtěla. */
 .kap{display:inline-block;font-size:13px;font-weight:700;color:var(--pisek);line-height:1.15}
 .kap i{display:block;font-style:normal;font-size:10px;font-weight:600;opacity:.85}
+/* Rozpis kapacity po dnech: jeden řádek na den, čísla drobně pod sebou. */
+.denKap{display:block;font-size:11px;font-weight:600;white-space:nowrap}
+.denKap b{font-weight:800}
+.denKap.mimo{color:#8A2F38}
 .kap.sedi{color:#31501A}
 .kap.mimo{color:#8A2F38}
 
@@ -1786,8 +1790,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.43";
-const BUILD = "2026-08-27T02:20+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.44";
+const BUILD = "2026-08-27T03:03+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4352,18 +4356,21 @@ function kresliTymy(){
       napovedaSl:"Nejvíc etap trasování, které grupa zvládne ZA JEDEN DEN — přes celý víkend "
         + "jich tedy může mít víc a není to chyba. Když je maximum menší než minimum, políčko "
         + "zčervená; databáze to nehlídá, hlídá to tahle tabulka."},
-    {nadpis:"Značení teď", sirka:"98px", trida:"stred", html:(r)=>bunkaKapacity(r,'T'),
-      napovedaSl:"Kolik etap trasování má grupa právě teď v mřížce dohromady. Porovnává se ale "
-        + "den po dni: zelená znamená, že se do rozpětí vejde každý jednotlivý den, červená že "
-        + "některý den vyčnívá. Po najetí myší je rozpis po dnech. Počítá se za běhu, needituje se."},
+    {nadpis:"Značení teď", sirka:"168px", trida:"stred", html:(r)=>bunkaKapacity(r,'T'),
+      napovedaSl:"Trasování grupy rozepsané po dnech: kolikrát, kolik kilometrů a kolik "
+        + "nastoupaných metrů ten den nachodí. Kilometry a metry jsou součet úseků těch etap — "
+        + "tentýž zdroj, ze kterého se počítá doba značení. Do rozpětí se porovnává každý den "
+        + "zvlášť: zelená znamená, že se vejde každý den, vínová že některý den vyčnívá. "
+        + "Počítá se za běhu, needituje se."},
     {nadpis:"Min úklid", pole:"min_uklid", typ:"number", sirka:"95px", trida:"stred",
       napovedaSl:"Nejmíň etap úklidu značení za jeden den. Nechte prázdné, když grupa neuklízí."},
     {nadpis:"Max úklid", pole:"max_uklid", typ:"number", sirka:"95px", trida:"stred",
       napovedaSl:"Nejvíc etap úklidu značení, které grupa zvládne za jeden den. Součet přes celý "
         + "víkend může být vyšší a není to chyba."},
-    {nadpis:"Úklid teď", sirka:"92px", trida:"stred", html:(r)=>bunkaKapacity(r,'U'),
-      napovedaSl:"Kolik etap úklidu má grupa právě teď v mřížce dohromady. Do rozpětí se porovnává "
-        + "každý den zvlášť; po najetí myší je rozpis po dnech. Počítá se za běhu, needituje se."},
+    {nadpis:"Úklid teď", sirka:"168px", trida:"stred", html:(r)=>bunkaKapacity(r,'U'),
+      napovedaSl:"Úklid značení rozepsaný po dnech: kolikrát, kolik kilometrů a kolik nastoupaných "
+        + "metrů. Kilometry a metry jsou součet úseků těch etap. Do rozpětí se porovnává každý "
+        + "den zvlášť. Počítá se za běhu, needituje se."},
     {nadpis:"Barva", pole:"barva", typ:"color", sirka:"80px"},
     {nadpis:"Poznámka", pole:"poznamka", viceradkove:true, maxRadky:2}
   ], D.tymy, ()=>{kresliTymy();kresliPaletu();naplnFiltrPart();kresliPlan();
@@ -4418,20 +4425,25 @@ function bunkaKapacity(r, typ){
      by grupa byla přetížená nebo nevytížená — je to úkol, kterému ještě nikdo
      neurčil, kdy se dělá. V rozpisu jsou vidět zvlášť, ať se na ně nezapomene. */
   const poDnech = new Map();
-  let bezDne = 0;
+  let bezDne = 0, chybiUseky = 0;
   ukoly.forEach(u => {
     const d = (u.den || '').trim();
     if(DNY.indexOf(d) < 0){ bezDne++; return; }
-    poDnech.set(d, (poDnech.get(d) || 0) + 1);
+    if(!poDnech.has(d)) poDnech.set(d, {pocet: 0, km: 0, prevyseni: 0});
+    const x = poDnech.get(d);
+    x.pocet++;
+    const m = mirryEtapy(u.cislo);
+    if(m){ x.km += m.km; x.prevyseni += m.prevyseni; } else { chybiUseky++; }
   });
   const dny = [...poDnech.entries()].sort((a, b) => DNY.indexOf(a[0]) - DNY.indexOf(b[0]));
-  const nejvic = dny.reduce((a, x) => Math.max(a, x[1]), 0);
-  const nejmin = dny.length ? dny.reduce((a, x) => Math.min(a, x[1]), Infinity) : 0;
+  const nejvic = dny.reduce((a, x) => Math.max(a, x[1].pocet), 0);
+  const nejmin = dny.length ? dny.reduce((a, x) => Math.min(a, x[1].pocet), Infinity) : 0;
 
   const malo = mn != null && dny.length > 0 && nejmin < mn;
   const moc  = mx != null && nejvic > mx;
   const rozpeti = (mn == null ? '?' : mn) + '–' + (mx == null ? '?' : mx);
-  const rozpis = dny.map(x => x[0] + ' ' + x[1]).join(', ');
+  const rozpis = dny.map(x => x[0] + ' ' + x[1].pocet + '×, ' + km1(x[1].km) + ' km, '
+                             + Math.round(x[1].prevyseni) + ' m').join(' · ');
   const proc = (dny.length === 0 ? (bezDne ? 'Žádný z úkolů nemá určený den, tak se nic nehodnotí.'
                                            : 'Zatím nic nemá.')
              : malo ? ('Nejslabší den má ' + nejmin + ', minimum je ' + mn + '.')
@@ -4439,11 +4451,36 @@ function bunkaKapacity(r, typ){
              : ('Každý den sedí do rozpětí ' + rozpeti + '.'))
     + (rozpis ? ' Po dnech: ' + rozpis + '.' : '')
     + (bezDne ? ' Bez určeného dne: ' + bezDne + ' — do porovnání se nepočítá.' : '')
+    + (chybiUseky ? ' U ' + chybiUseky + ' etap nejsou úseky, kilometry a metry jsou tedy '
+                  + 'jen za ty ostatní.' : '')
     + ' Rozpětí platí na jeden den, součet přes víkend může být vyšší.';
+
+  /* Rozpis po dnech je přímo v buňce, ne jen v bublině. Kilometry a nastoupané
+     metry se sčítají z úseků etap — je to tatáž hodnota, ze které se počítá doba
+     značení, takže když někde vyjde nula, chybí úseky, ne kilometry.
+     Den, který sám o sobě vyčnívá z rozpětí, je vínově; ostatní jdou popelavě. */
+  const radekDne = ([d, x]) => {
+    const denMimo = (mx != null && x.pocet > mx) || (mn != null && x.pocet < mn);
+    return '<span class="denKap' + (denMimo ? ' mimo' : '') + '">'
+      + '<b>' + d + '</b> ' + x.pocet + '× · ' + km1(x.km) + ' km · '
+      + Math.round(x.prevyseni) + ' m</span>';
+  };
   return '<span class="kap ' + (malo || moc ? 'mimo' : 'sedi') + '" title="' + esc(proc) + '">'
-       + kolik + '<i>' + (dny.length > 1 ? ('max ' + nejvic + '/den, ') : '')
-       + 'z ' + rozpeti + '</i></span>';
+       + (dny.length ? dny.map(radekDne).join('') : String(kolik))
+       + '<i>' + (dny.length ? ('celkem ' + kolik + ', ') : '')
+       + 'z ' + rozpeti + (bezDne ? (' · ' + bezDne + '× bez dne') : '') + '</i></span>';
 }
+
+/* Kilometry a nastoupané metry etapy. Berou se z úseků — ze stejného zdroje jako
+   doba značení, ať si tabulka a výpočet neodporují. Etapa bez úseků vrátí null,
+   aby se poznal rozdíl mezi „nula kilometrů" a „nevíme". */
+function mirryEtapy(etapa){
+  const u = (D.useky || []).filter(x => +x.etapa === +etapa);
+  if(!u.length) return null;
+  return {km: u.reduce((a, x) => a + (+x.delka_m || 0), 0) / 1000,
+          prevyseni: u.reduce((a, x) => a + (+x.prevyseni_m || 0), 0)};
+}
+const km1 = n => (Math.round((+n || 0) * 10) / 10).toFixed(1).replace('.', ',');
 
 /* Maximum menší než minimum je nesmysl, ale v databázi to schválně nehlídá žádné
    pravidlo — CHECK by neumožnil vyplnit maximum dřív než minimum a shodil by celý

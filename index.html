@@ -1737,6 +1737,13 @@ const POZADI_TYPU = {
    jedno a totéž a pletlo se to: zamčené políčko v mřížce si generátor
    v podrobném plánu stejně přepsal, protože o stavu nic nevěděl. */
 const STAVY = ["plán","nepotvrzeno","potvrzeno","zrušeno"];
+/* Vybavení člověka v grupě.
+   „občas" u řidiče znamená krátké přesuny za světla — hranici drží parametry
+   obcas_ridic_km a obcas_ridic_do v Nastavení. Vozidlo je schválně jen auto:
+   přejezd mezi předávkami se jezdí vždycky autem, kolo je proto vedené zvlášť
+   a slouží k pohybu po etapě, ne mezi nimi. */
+const RIDICI = ["", "řídí", "občas", "neřídí"];
+const VOZIDLA = ["", "osobní auto", "dodávka"];
 const BARVA_STAVU = {"plán":"#66713E","nepotvrzeno":"#D08C3A",
                      "potvrzeno":"#1E7A4C","zrušeno":"#A63D4E"};
 // zůstává kvůli starším datům a hláškám; zamykání s ním už nesouvisí
@@ -1790,8 +1797,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.44";
-const BUILD = "2026-08-27T03:03+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.45";
+const BUILD = "2026-08-27T03:15+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4567,6 +4574,19 @@ function sloupceClenu(){
     // ale žádné číslo není — dotáhne je až za běhu nactiVerejnaData() přes
     // pohled verejne_clenove. Zveřejnění se tak zapíná a vypíná v databázi,
     // ne nahráváním nové verze. E-mail ani číslo účtu se nezveřejňují nikdy.
+    /* Vybavení. Stojí hned za šéfem, protože se podle něj plánují přejezdy —
+       je to provozní údaj, ne kontakt. */
+    {nadpis:"Řídí", pole:"ridic", typ:"select", moznosti:RIDICI, sirka:"106px",
+      napovedaSl:"Kdo smí vzít volant. „občas\" znamená krátké přesuny za světla — "
+        + "delší nebo noční přejezd chce plného řidiče. Hranici (kilometry a hodinu) "
+        + "nastavíte v Nastavení → Jak se co počítá."},
+    {nadpis:"Přiveze", pole:"vozidlo", typ:"select", moznosti:VOZIDLA, sirka:"128px",
+      napovedaSl:"Jaké auto ten člověk přiveze. Zapisuje se u člověka schválně: když "
+        + "někdo odřekne, zmizí s ním i jeho auto. Kolo tady není — přejezd mezi "
+        + "předávkami se jezdí vždycky autem, kolo je vedle."},
+    {nadpis:"Kolo", pole:"kolo", typ:"select", moznosti:["ne","ano"], sirka:"84px",
+      napovedaSl:"Má s sebou kolo. Nepoužije se na přejezd mezi předávkami, ale na "
+        + "pohyb po etapě — značení a úklid."},
     {nadpis:"Telefon", pole:"telefon", sirka:"150px", verejne:true,
       napovedaSl:"Telefon na člověka v grupě. O závodním víkendu je vidět i "
         + "nepřihlášeným, aby se dalo z předávky zavolat; mimo něj se veřejný "
@@ -5382,6 +5402,12 @@ const PRAVIDLA_VYCHOZI = {
   nocleh_od:      '22:00',  // ve kolik se jde spát, když se stihne
   nocleh_do:      '07:00',  // a kdy se vstává, když nic nezačíná dřív
   nocleh_po_ukolu: 60,      // minut od konce posledního úkolu na cestu a spaní
+
+  /* Kdo v grupě řídí „občas", počítá se jen na krátký přesun za světla.
+     Delší nebo pozdější přejezd chce plného řidiče — jinak se to nahlásí
+     v kontrole návazností. Plán se kvůli tomu sám nemění. */
+  obcas_ridic_km:  30,      // do kolika kilometrů se dá spolehnout na občasného řidiče
+  obcas_ridic_do: '21:00',  // a do kolika hodin
 
   /* Trasování a úklid. Tempo je v metrech za minutu, protože délky úseků jsou
      v metrech — 180 m/min je zhruba 11 km/h, 60 m/min necelé 4 km/h.
@@ -6457,6 +6483,51 @@ function rozsahUkolu(u){
 /* Kolik úkolů smí grupa dělat naráz. Tolik, kolik má členů — každý člověk může
    být na jednom místě, a grupa se na tolik čet rozdělí. Když zapsané lidi nemá,
    platí záloha z Nastavení. Odložení členové (historie) se nepočítají. */
+/* Čím a s kým se grupa může pohybovat. Sečte se z členů, ne z pole Doprava
+   u grupy — to je jediný údaj a u kombinace auto + kolo, která převažuje,
+   nutně lže.
+
+   Aut je v grupě nejvýš jedno, i kdyby jich lidé přivezli víc: tak se to
+   domluvilo 27. 8. 2026 a plánování na tom stojí. Kdo přiveze druhé, je
+   vedený, ale druhá četa z toho nevznikne. */
+function vybaveniGrupy(kod){
+  const lide = zivi().filter(c => c.kod_tymu === kod);
+  const aut = Math.min(1, lide.filter(c => (c.vozidlo || '').trim()).length);
+  return {
+    lidi: lide.length,
+    aut,
+    ridicu:    lide.filter(c => c.ridic === 'řídí').length,
+    obcasnych: lide.filter(c => c.ridic === 'občas').length,
+    kol:       lide.filter(c => c.kolo === 'ano' || c.kolo === true).length,
+    // dokud u grupy nikdo nemá vyplněné nic, nemá se co hlásit
+    vyplneno:  lide.some(c => (c.ridic || '').trim() || (c.vozidlo || '').trim()
+                           || c.kolo === 'ano' || c.kolo === true)
+  };
+}
+
+/* Zvládne grupa tenhle přejezd? Vrací důvod, proč ne, nebo null.
+
+   Přejezd se jezdí vždycky autem — kolo ani chůze mezi předávkami nepřipadají
+   v úvahu. Kdo řídí „občas", se počítá jen na krátký přesun za světla; hranici
+   drží dva parametry v Nastavení. */
+function proNeprejede(kod, km, zacatekMinuty){
+  const vyb = vybaveniGrupy(kod);
+  if(!vyb.vyplneno) return null;                 // nevyplněné se nehlásí jako chyba
+  if(!vyb.aut) return 'grupa nemá auto, a přejezd se jezdí autem';
+  if(!vyb.ridicu && !vyb.obcasnych) return 'v grupě není nikdo, kdo řídí';
+  if(vyb.ridicu) return null;                    // plný řidič zvládne všechno
+
+  const stropKm = PR('obcas_ridic_km');
+  const denCast = (zacatekMinuty == null) ? null : ((zacatekMinuty % 1440) + 1440) % 1440;
+  const pozde = denCast != null && denCast > PR('obcas_ridic_do');
+  if(km != null && km > stropKm)
+    return 'řídí jen „občas" a je to ' + km + ' km (nad hranicí ' + stropKm + ' km)';
+  if(pozde)
+    return 'řídí jen „občas" a jede se v ' + minutyNaCas(zacatekMinuty)
+         + ' (po ' + hodinaMinuta(PR('obcas_ridic_do')) + ')';
+  return null;
+}
+
 function souberGrupy(kod){
   const lidi = zivi().filter(c => c.kod_tymu === kod).length;
   return lidi || PR('soubeh_grupy');
@@ -6488,6 +6559,7 @@ function zkontrolujNavaznosti(){
   const nalezy = [];
   const neposouzeno = [];
   const preplneni = [];
+  const nemaCim = [];        // grupa na to nemá auto nebo řidiče
   D.tymy.forEach(t=>{
     const cela = radaParty(t.kod);
     const rada = cela.filter(u=>u.cislo);
@@ -6527,6 +6599,13 @@ function zkontrolujNavaznosti(){
          zvlášť, přes celou grupu; tady by to jen svádělo k tomu posouvat časy,
          které jsou správně. */
       if(kDispozici < 0) continue;
+
+      /* Čas by možná vyšel, ale má na to grupa čím jet? Kontroluje se to
+         u každé dvojice zvlášť, protože rozhoduje délka i denní doba —
+         „občas" řidič zvládne kousek za světla, ne devadesát kilometrů v noci. */
+      const proc = proNeprejede(t.kod, v.km, zacatekB);
+      if(proc) nemaCim.push({parta:t.kod, a, b, v, proc, kdy: zacatekB});
+
       if(kDispozici < v.min){
         nalezy.push({parta:t.kod, a, b, v, kDispozici, mezi,
                      schodek: v.min - kDispozici, zacatekB, konecA});
@@ -6549,8 +6628,56 @@ function zkontrolujNavaznosti(){
       preplneni.push({parta: t.kod, naraz: naraz.nej, lidi: strop, kdy: naraz.kdy,
         lidiZapsani: zivi().filter(c => c.kod_tymu === t.kod).length});
     }
+
+    /* Značení potřebuje auto aspoň na dovoz materiálu na začátek etapy.
+       Grupa bez auta tedy trasovat nemůže, ať má lidí kolik chce. Hlásí se
+       jednou za grupu, ne u každé etapy zvlášť — je to jedna a tatáž závada. */
+    const vyb = vybaveniGrupy(t.kod);
+    const trasovani = rada.filter(u => u.typ === 'T');
+    if(vyb.vyplneno && !vyb.aut && trasovani.length){
+      nemaCim.push({parta: t.kod, znaceni: trasovani,
+        proc: 'grupa nemá auto, a značení potřebuje aspoň dovoz materiálu na začátek etapy'});
+    }
   });
   const bezCasu = neposouzeno.length;
+
+  /* Grupa, které na naplánovaný pohyb nestačí vybavení. Rozhodnutí z 27. 8. 2026:
+     plán se kvůli tomu nemění, jen se to nahlásí — je to informace pro člověka,
+     ne důvod přehazovat časy. */
+  function tabulkaNemaCim(){
+    if(!nemaCim.length) return '';
+    let h = '<div class="karta"><h2>Grupa na to nemá auto nebo řidiče — ' + nemaCim.length
+      + '</h2><div class="telo">'
+      + '<p class="popisek">Čas by možná vyšel, ale grupa na ten pohyb nemá čím jet nebo kým. '
+      + 'Přejezd mezi předávkami se jezdí vždycky autem; kdo řídí „občas", počítá se jen na '
+      + 'krátký přesun za světla (hranice je v Nastavení). Plán se kvůli tomu sám nemění — '
+      + 'je to na rozhodnutí, ne na přepočet. Grupy, u kterých vybavení nikdo nevyplnil, '
+      + 'se tady neobjeví vůbec.</p>'
+      + '<div class="obal-tab"><table class="tab"><thead><tr><th style="width:110px">Grupa</th>'
+      + '<th style="width:150px">Co má</th><th>Čeho se to týká</th><th>V čem je potíž</th>'
+      + '<th style="width:86px"></th></tr></thead><tbody>';
+    nemaCim.forEach(n=>{
+      const v = vybaveniGrupy(n.parta);
+      const ceho = n.znaceni
+        ? (n.znaceni.length + '× trasování: '
+           + n.znaceni.slice(0, 6).map(x => odkazNaUkol(x, 'kdy_od')).join(', ')
+           + (n.znaceni.length > 6 ? ' …' : ''))
+        : (odkazNaUkol(n.a, 'kdy_do') + ' ' + esc(popisPredavky(n.a.cislo)) + ' → '
+           + odkazNaUkol(n.b, 'kdy_od') + ' ' + esc(popisPredavky(n.b.cislo))
+           + ' <span class="popisek">(' + n.v.km + ' km)</span>');
+      h += '<tr><td style="padding:7px 10px;font-weight:800;color:'+barva(n.parta)+'">'+esc(n.parta)+'</td>'
+        + '<td style="padding:7px 10px;font-size:12px">'
+        + (v.aut ? 'auto' : '<b style="color:var(--vinova)">bez auta</b>')
+        + ' · ' + (v.ridicu ? (v.ridicu + '× řidič') : (v.obcasnych ? (v.obcasnych + '× občas')
+                                                                   : '<b>nikdo neřídí</b>'))
+        + ' · ' + v.lidi + ' lidí' + (v.kol ? (', ' + v.kol + '× kolo') : '') + '</td>'
+        + '<td style="padding:7px 10px;font-size:12.5px">' + ceho + '</td>'
+        + '<td style="padding:7px 10px;font-size:12.5px">' + esc(n.proc) + '</td>'
+        + '<td class="stred" style="padding:7px"><button class="tl" style="padding:2px 8px;font-size:12px"'
+        + ' onclick="ukazUkolyGrupy(\''+esc(n.parta)+'\')">v plánu</button></td></tr>';
+    });
+    return h + '</tbody></table></div></div></div>';
+  }
 
   // tabulka nedoposouzených dvojic — u každé je vypsané, co přesně chybí
   function tabulkaNeposouzeno(){
@@ -6616,7 +6743,7 @@ function zkontrolujNavaznosti(){
       + (preplneni.length ? ' ' + preplneni.length
           + ' grupám ale běží víc úkolů naráz, než mají lidí — je to v tabulce níž.' : '')
       + (bezCasu ? ' ' + bezCasu + ' dvojic nešlo posoudit — proč, je v tabulce níž.' : '')
-      + '</div></div>' + tabulkaPreplneni() + tabulkaNeposouzeno();
+      + '</div></div>' + tabulkaNemaCim() + tabulkaPreplneni() + tabulkaNeposouzeno();
   } else {
     let h = '<div class="karta"><h2>Nemožné návaznosti — ' + nalezy.length + '</h2><div class="telo">'
       + '<p class="popisek">Grupa by musela být na dvou místech dřív, než tam stihne dojet. '
@@ -6677,19 +6804,20 @@ function zkontrolujNavaznosti(){
     if(bezCasu) h += '<p class="popisek" style="margin-top:10px">Dalších ' + bezCasu
       + ' dvojic nešlo posoudit — proč, je v tabulce níž.</p>';
     h += '</div></div>';
-    cil.innerHTML = h + tabulkaPreplneni() + tabulkaNeposouzeno();
+    cil.innerHTML = h + tabulkaNemaCim() + tabulkaPreplneni() + tabulkaNeposouzeno();
   }
   // Výsledek se kreslí nad tabulku podrobného plánu. Když je člověk rozkoukaný
   // někde uprostřed třiceti řádků, panel mu zůstane nad hlavou a hláška vypadá,
   // že se nedá zjistit kde. Tak se k němu stránka posune sama.
   posunNa(cil);
-  const dovetek = (preplneni.length ? (', ' + preplneni.length + ' grup má víc úkolů naráz než lidí') : '')
+  const dovetek = (nemaCim.length ? (', ' + nemaCim.length + '× nestačí auto nebo řidič') : '')
+                + (preplneni.length ? (', ' + preplneni.length + ' grup má víc úkolů naráz než lidí') : '')
                 + (bezCasu ? (', k tomu ' + bezCasu + ' neposouzených') : '');
   hlaska(nalezy.length
     ? (nalezy.length + ' nemožných návazností — rozepsané nad tabulkou' + dovetek)
     : ((preplneni.length || bezCasu) ? ('Návaznosti sedí' + dovetek + ' — nad tabulkou')
                                      : 'Návaznosti sedí'));
-  return nalezy.length + preplneni.length;
+  return nalezy.length + preplneni.length + nemaCim.length;
 }
 
 /* ---------- 9. trička ---------- */
@@ -7245,7 +7373,9 @@ const MAPA = {
     pole:{id:'id', kod_tymu:'kod_tymu', jmeno:'jmeno', telefon:'telefon', email:'email',
           nocleh_patek:'nocleh_patek', nocleh_sobota:'nocleh_sobota',
           cislo_uctu:'cislo_uctu', poznamka:'poznamka', sef:'sef', historie:'historie',
-          rocniky:'rocniky', odjezd:'odjezd'},
+          rocniky:'rocniky', odjezd:'odjezd',
+          // vybavení člověka: kdo řídí, co přiveze a jestli má kolo
+          ridic:'ridic', vozidlo:'vozidlo', kolo:'kolo'},
     // Člověk bez grupy je od v4.74 platný řádek — sedí v tabulce Nezařazení a
     // v databázi má kod_tymu prázdný (sloupec je nullable, cizí klíč se na NULL
     // neptá). Dřív se takový řádek při ukládání tiše zahazoval. Beze jména se
@@ -7254,9 +7384,10 @@ const MAPA = {
     nedodelky: r => !String(r.jmeno || '').trim()
       ? ('řádek bez jména' + (r.kod_tymu ? ' v grupě ' + r.kod_tymu : ' mezi nezařazenými')
          + ' se neuloží') : null,
-    naJs:  r => ({...r, sef: r.sef ? 'ano' : 'ne'}),
-    // historie je v databázi povinná, prázdná hodnota by shodila celou dávku
-    naDb:  r => ({...r, sef: r.sef === 'ano', historie: !!r.historie})
+    naJs:  r => ({...r, sef: r.sef ? 'ano' : 'ne', kolo: r.kolo ? 'ano' : 'ne',
+                        ridic: r.ridic || '', vozidlo: r.vozidlo || ''}),
+    // historie a kolo jsou v databázi povinné, prázdná hodnota by shodila celou dávku
+    naDb:  r => ({...r, sef: r.sef === 'ano', historie: !!r.historie, kolo: r.kolo === 'ano'})
   },
   ukoly: {
     /* Plán úkolů. Klíč v databázi je ročník + kód, proto musí být kód
@@ -8180,6 +8311,9 @@ function kresliJakSePocita(){
         pole('uklid_po_beznci', 'Úklid až po startu posledního', 'min'),
         pole('uklid_i_po_tme',  'Uklízet i po tmě (1/0)'),
         pole('soubeh_grupy',    'Souběh u grup bez zapsaných lidí')])
+    + skupina('Řidiči a auta', [
+        pole('obcas_ridic_km', 'Občasný řidič jen do', 'km'),
+        pole('obcas_ridic_do', 'a jen do')])
     + '</div>'
     + '<p class="popisek" style="margin:4px 0 0">Změna se projeví hned ve výpočtu i v popisu níž. '
     + 'Uloží se do databáze spolu se zbytkem — platí pak pro každého. '
@@ -8263,6 +8397,16 @@ function kresliJakSePocita(){
       'Grupa smí dělat naráz ' + b('tolik úkolů, kolik má členů') + ' — dělí se na čety '
       + 'a každý člověk může být na jednom místě. U grup, které zapsané lidi nemají, '
       + 'se počítá se zálohou ' + b(PR('soubeh_grupy')) + '.'])
+    + h('Auta a řidiči', [
+      'Přejezd mezi předávkami se jezdí ' + b('vždycky autem') + '. Grupa má nejvýš '
+      + b('jedno auto') + ', i kdyby ho přivezlo víc lidí — druhá četa se z toho neudělá.',
+      'Kdo řídí ' + b('„občas"') + ', se počítá jen do ' + b(PR('obcas_ridic_km') + ' km')
+      + ' a jen do ' + b(cas(PR('obcas_ridic_do'))) + '. Na delší nebo pozdější přejezd '
+      + 'je potřeba plný řidič.',
+      b('Značení potřebuje auto') + ' aspoň na dovoz materiálu na začátek etapy — grupa '
+      + 'bez auta trasovat nemůže, ať má lidí kolik chce.',
+      'Co grupa nezvládne, se ' + b('nahlásí v kontrole návazností') + ' a plán se kvůli tomu '
+      + 'sám nemění. Grupy, u kterých vybavení nikdo nevyplnil, se neposuzují.'])
     + h('Když se plán nevejde', [
       'Pravidla mají pořadí a poslední z nich ustoupí první: '
       + b(String(PR_TEXT('priorita')).split(',').map(x=>({svetlo:'světlo',

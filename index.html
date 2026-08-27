@@ -1466,11 +1466,11 @@ const D = {
   // noclehy_adresy HB26
   useky: [],
   nocMista: [
-    {kod:"HBECVA", nazev:"Horní Bečva, Kemp u přehrady", noc:"pátek", adresa:"", mapa_url:"", kapacita:16, pokoje:"celá chata č.1  4 x 4 lůžkový pokoj", kontakt:"", telefon:"", cena:"", platba:"zaplaceno", rezervace:"", poznamka:""},
-    {kod:"JABLUNKOV", nazev:"Sport resort Jablunkov", noc:"pátek", adresa:"", mapa_url:"", kapacita:16, pokoje:"16 lůžek, z toho dvoulúžák pro fotografa", kontakt:"", telefon:"", cena:"", platba:"zaplaceno", rezervace:"", poznamka:""},
-    {kod:"LUCINA", nazev:"", noc:"sobota", adresa:"", mapa_url:"", kapacita:10, pokoje:"", kontakt:"", telefon:"", cena:"", platba:"", rezervace:"", poznamka:""},
-    {kod:"PULCIN", nazev:"Penzion Pulčínské skály", noc:"sobota", adresa:"", mapa_url:"", kapacita:9, pokoje:"9 lidí ve 3 pokojích", kontakt:"", telefon:"", cena:"", platba:"zaplaceno", rezervace:"", poznamka:""},
-    {kod:"NLHOTA", nazev:"Ubytovna Nová Lhota č.p. 1", noc:"sobota", adresa:"", mapa_url:"", kapacita:28, pokoje:"1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka", kontakt:"", telefon:"", cena:"", platba:"", rezervace:"", poznamka:""}
+    {kod:"HBECVA", nazev:"Horní Bečva, Kemp u přehrady", noc:"pátek", predavka:null, adresa:"", mapa_url:"", kapacita:16, pokoje:"celá chata č.1  4 x 4 lůžkový pokoj", kontakt:"", telefon:"", cena:"", platba:"zaplaceno", rezervace:"", poznamka:""},
+    {kod:"JABLUNKOV", nazev:"Sport resort Jablunkov", noc:"pátek", predavka:null, adresa:"", mapa_url:"", kapacita:16, pokoje:"16 lůžek, z toho dvoulúžák pro fotografa", kontakt:"", telefon:"", cena:"", platba:"zaplaceno", rezervace:"", poznamka:""},
+    {kod:"LUCINA", nazev:"", noc:"sobota", predavka:23, adresa:"", mapa_url:"", kapacita:10, pokoje:"", kontakt:"", telefon:"", cena:"", platba:"", rezervace:"", poznamka:""},
+    {kod:"PULCIN", nazev:"Penzion Pulčínské skály", noc:"sobota", predavka:12, adresa:"", mapa_url:"", kapacita:9, pokoje:"9 lidí ve 3 pokojích", kontakt:"", telefon:"", cena:"", platba:"zaplaceno", rezervace:"", poznamka:""},
+    {kod:"NLHOTA", nazev:"Ubytovna Nová Lhota č.p. 1", noc:"sobota", predavka:21, adresa:"", mapa_url:"", kapacita:28, pokoje:"1× dvoulůžkový, 3× čtyřlůžkový, 1× šestilůžkový, 1× osmilůžkový; kuchyňka", kontakt:"", telefon:"", cena:"", platba:"", rezervace:"", poznamka:""}
   ],
 
   nocLide: [],
@@ -1799,8 +1799,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.48";
-const BUILD = "2026-08-27T14:41+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.49";
+const BUILD = "2026-08-27T15:10+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -5096,6 +5096,10 @@ function kresliNocMista(){
     {nadpis:"Název", pole:"nazev", sirka:sirkaZDat('nazev', 90, 260)},
     {nadpis:"Noc", pole:"noc", typ:"select", moznosti:[""].concat(NOCI), sirka:"96px",
       napovedaSl:"Na kterou noc je místo domluvené. Obsazenost se počítá jen pro ni."},
+    {nadpis:"U předávky", pole:"predavka", typ:"number", sirka:"104px", trida:"stred",
+      napovedaSl:"Číslo předávky, u které místo leží. Z něj se počítá ranní cesta "
+        + "z noclehu na etapu. Prázdné = cesta se nepočítá a ráno se začíná rovnou "
+        + "v hodinu vstávání."},
     {nadpis:"Adresa", pole:"adresa", sirka:sirkaZDat('adresa', 90, 200)},
     {nadpis:"Mapa", pole:"mapa_url", sirka:sirkaZDat('mapa_url', 110, 280)},
     {nadpis:"Kapacita", pole:"kapacita", typ:"number", sirka:"90px", trida:"stred"},
@@ -5665,6 +5669,41 @@ function poznamkaSmeru(u){
    začíná úklid, a zároveň tvrdit, že se vstává v sedm. */
 const vstavaniVNedeli = () => Math.max(0, denIndex('NE')) * 1440 + PR('nedele_vstavani');
 
+/* ---------- ranní cesta z noclehu na etapu ----------
+   Vstávání samo o sobě nestačí. Kdo spí v Nové Lhotě a uklízí etapu 12,
+   nezačne v sedm — v sedm teprve vstává a pak jede hodinu autem. Cesta se
+   počítá z týchž silničních vzdáleností jako přejezdy, jen výchozím bodem
+   není předchozí úkol, ale předávka, u které nocleh leží (sloupec
+   „U předávky" v tabulce noclehů).
+
+   Cíl je bližší konec etapy, ne natvrdo její začátek. Směr úklidu je volba
+   grupy — nabízí se oběma směry — a nemá smysl posílat ji přes celou etapu
+   na vzdálenější konec, když může začít u toho bližšího.
+
+   Když místo noclehu nemá vyplněnou předávku nebo vzdálenost neznáme,
+   nic se nedomýšlí a cesta se nepočítá. */
+const predavkaNoclehu = kodMista => {
+  const m = (D.nocMista || []).find(x => x.kod === kodMista);
+  const c = m ? +m.predavka : 0;
+  return c > 0 ? c : null;
+};
+function cestaZNoclehu(kodGrupy, etapa, znak){
+  const kdeKod = noclehGrupyHodnota(kodGrupy, znak || 'so');
+  if(!kdeKod || kdeKod === NERESI) return null;
+  const z = predavkaNoclehu(kdeKod); if(!z) return null;
+  const e = +etapa; if(!e) return null;
+  // bližší z obou konců etapy; nulová vzdálenost znamená, že už jsme na místě
+  const konce = [e, e + 1].filter(c => D_predavka(c));
+  let nej = null;
+  konce.forEach(c => {
+    if(c === z){ nej = {min:0, km:0, do:c}; return; }
+    const v = vzdal(z, c);
+    if(v && (!nej || v.min < nej.min)) nej = {min:v.min, km:v.km, do:c};
+  });
+  if(!nej) return null;
+  return {...nej, z, kdeKod, kde: (D.nocMista.find(x=>x.kod===kdeKod)||{}).nazev || kdeKod};
+}
+
 function oknoSvetla(den, jePatecniZnaceni){
   const d = Math.max(0, denIndex(den)) * 1440;
   const od = d + PR('svetlo_od') + PR('svetlo_rezerva');
@@ -5897,7 +5936,12 @@ function spocitejGenerovani(){
        Není to zákaz, je to skutečnost — nikdo nevyrazí na trať, dokud nevstal.
        Ostatních dnů se to netýká: v sobotu se uklízí za běžci a tam každá
        hodina hraje. */
-    const nedeleOd = vstavaniVNedeli();
+    /* Po vstávání se ještě jede na etapu. Ta cesta se přičítá ke vstávání,
+       ne k času úklidu — grupa vyráží ze svého noclehu, ne od poslední
+       předávky. Když nocleh nemá vyplněnou předávku, cesta je nula a platí
+       jen holá hodina vstávání jako dřív. */
+    const cesta = cestaZNoclehu(u.parta, e, 'so');
+    const nedeleOd = vstavaniVNedeli() + (cesta ? cesta.min : 0);
     const nejdrivVDni = den => (den === 'NE') ? nedeleOd : -Infinity;
 
     let zacatek = naHoru(bezci.posledni + PR('uklid_po_beznci'));
@@ -5929,8 +5973,12 @@ function spocitejGenerovani(){
     casy.push({u, text: rozsahCasu(zacatek, naHoru(zacatek + doba)),
       proc: 'úklid ' + doba + ' min, nejdřív ' + PR('uklid_po_beznci')
           + ' min po startu posledního běžce (' + minutyNaCas(bezci.posledni) + ')'
-          + (vNedeliOdlozeno ? '; v neděli se vstává nejdřív v '
-             + hodinaMinuta(PR('nedele_vstavani')) : '')});
+          + (vNedeliOdlozeno ? '; v neděli se vstává v '
+             + hodinaMinuta(PR('nedele_vstavani'))
+             + (cesta && cesta.min
+                ? ' a pak je cesta z noclehu (' + cesta.kde + ', předávka ' + cesta.z
+                  + ') na předávku ' + cesta.do + ', ' + cesta.km + ' km, ' + cesta.min + ' min'
+                : '') : '')});
   });
 
   // ---- 1) chybějící časy obsluhy, zahájení a ukončení předávky
@@ -7465,7 +7513,8 @@ const MAPA = {
     tabulka:'noclehy_adresy', klic:['kod'], konflikt:['rok','kod'], rok:true, jen:[],
     pole:{kod:'kod', nazev:'nazev', noc:'noc', adresa:'adresa', mapa_url:'mapa_url',
           kapacita:'kapacita', pokoje:'pokoje', kontakt:'kontakt', telefon:'telefon',
-          cena:'cena', platba:'platba', rezervace:'rezervace', poznamka:'poznamka'}
+          cena:'cena', platba:'platba', rezervace:'rezervace', poznamka:'poznamka',
+          predavka:'predavka'}
   },
   nocLide: {
     tabulka:'noclehy_lide', klic:['id'], konflikt:['id'], rok:true, vzdyUkladat:true, jen:[],
@@ -8406,10 +8455,13 @@ function kresliJakSePocita(){
       'Úklid trvá ' + b(PR('uklid_podil') + ' %') + ' času značení a smí začít '
       + b(PR('uklid_po_beznci') + ' minut po startu posledního běžce') + '. '
       + (PR('uklid_i_po_tme') ? 'Po tmě uklízet lze.' : b('Po tmě se neuklízí.')),
-      'V neděli se vstává nejdřív v ' + b(cas(PR('nedele_vstavani')))
-      + ' a dřív se uklízet nezačne. Touž hodinou končí i nocleh ze soboty na '
-      + 'neděli, takže si ty dvě věci neodporují. Ostatních dnů se to netýká — '
-      + 'v sobotu se uklízí za běžci a tam každá hodina hraje.',
+      'V neděli se vstává v ' + b(cas(PR('nedele_vstavani')))
+      + ' a teprve pak se jede z noclehu na etapu — ' + b('ta cesta se připočítává')
+      + ' podle silniční vzdálenosti z předávky, u které nocleh leží, na bližší '
+      + 'konec uklízené etapy. Místo bez vyplněné předávky cestu nepočítá. Touž '
+      + 'hodinou vstávání končí i nocleh ze soboty na neděli, takže si ty dvě věci '
+      + 'neodporují. Ostatních dnů se to netýká — v sobotu se uklízí za běžci '
+      + 'a tam každá hodina hraje.',
       'Grupa smí dělat naráz ' + b('tolik úkolů, kolik má členů') + ' — dělí se na čety '
       + 'a každý člověk může být na jednom místě. U grup, které zapsané lidi nemají, '
       + 'se počítá se zálohou ' + b(PR('soubeh_grupy')) + '.'])

@@ -1799,8 +1799,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.46";
-const BUILD = "2026-08-27T03:40+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.47";
+const BUILD = "2026-08-27T13:59+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -5438,6 +5438,9 @@ const PRAVIDLA_VYCHOZI = {
   trasovani_pred: 120,      // značení hotové tolik minut před prvním běžcem
   uklid_podil:     80,      // úklid trvá tolik procent času značení
   uklid_po_beznci: 15,      // uklízet se smí až tolik minut po startu posledního běžce
+  /* V neděli se úklid nezačíná dřív než v tolik. Závod dobíhá, nikam se
+     nespěchá a šestá ráno je pro dobrovolníky zbytečně brzo. */
+  uklid_nedele_od: '07:30',
   uklid_i_po_tme:   0,      // 1 = uklízet se smí i po tmě, 0 = jen za světla
   /* Kolik úkolů smí grupa dělat naráz. Platí, že tolik, kolik má členů —
      každý člověk může být na jednom místě. Tenhle parametr je jen záloha
@@ -5882,15 +5885,25 @@ function spocitejGenerovani(){
         + 'dobu úklidu nemám z čeho spočítat'});
       return;
     }
+    /* V neděli už úklid nespěchá. Závod dobíhá a nemá smysl posílat lidi na trať
+       v šest ráno jen proto, že poslední běžec někudy prošel v noci. Ostatních
+       dnů se to netýká — v sobotu se uklízí za běžci a tam každá hodina hraje. */
+    const nedeleOd = Math.max(0, denIndex('NE')) * 1440 + PR('uklid_nedele_od');
+    const nejdrivVDni = den => (den === 'NE') ? nedeleOd : -Infinity;
+
     let zacatek = naHoru(bezci.posledni + PR('uklid_po_beznci'));
+    let vNedeliOdlozeno = false;
     if(!PR('uklid_i_po_tme')){
       let sedi = false;
       for(let i = 0; i < DNY.length && !sedi; i++){
         const okno = oknoSvetla(DNY[i], false);
         if(zacatek > okno.do) continue;
-        const z = naHoru(Math.max(zacatek, okno.od));
+        const z = naHoru(Math.max(zacatek, okno.od, nejdrivVDni(DNY[i])));
         // do okna se musí vejít i zaokrouhlený konec, ne jen holá doba
-        if(naHoru(z + doba) <= okno.do){ zacatek = z; sedi = true; }
+        if(naHoru(z + doba) <= okno.do){
+          vNedeliOdlozeno = DNY[i] === 'NE' && z > naHoru(Math.max(zacatek, okno.od));
+          zacatek = z; sedi = true;
+        }
       }
       if(!sedi){
         potize.push({etapa:e, kod:u.kod,
@@ -5899,10 +5912,16 @@ function spocitejGenerovani(){
             + 'Pomohlo by povolit úklid po tmě.'});
         return;
       }
+    }else{
+      // po tmě se uklízet smí, ale nedělní hranice platí i tak
+      const den = DNY[Math.floor(zacatek / 1440)];
+      if(den === 'NE' && zacatek < nedeleOd){ zacatek = nedeleOd; vNedeliOdlozeno = true; }
     }
     casy.push({u, text: rozsahCasu(zacatek, naHoru(zacatek + doba)),
       proc: 'úklid ' + doba + ' min, nejdřív ' + PR('uklid_po_beznci')
-          + ' min po startu posledního běžce (' + minutyNaCas(bezci.posledni) + ')'});
+          + ' min po startu posledního běžce (' + minutyNaCas(bezci.posledni) + ')'
+          + (vNedeliOdlozeno ? '; v neděli se nezačíná dřív než '
+             + hodinaMinuta(PR('uklid_nedele_od')) : '')});
   });
 
   // ---- 1) chybějící časy obsluhy, zahájení a ukončení předávky
@@ -8289,6 +8308,7 @@ function kresliJakSePocita(){
         pole('trasovani_pred',  'Značení začne nejpozději před prvním běžcem', 'min'),
         pole('uklid_podil',     'Úklid trvá oproti značení', '%'),
         pole('uklid_po_beznci', 'Úklid až po startu posledního', 'min'),
+        pole('uklid_nedele_od', 'V neděli nezačínat dřív než'),
         pole('uklid_i_po_tme',  'Uklízet i po tmě (1/0)'),
         pole('soubeh_grupy',    'Souběh u grup bez zapsaných lidí')])
     + '</div>'
@@ -8371,6 +8391,9 @@ function kresliJakSePocita(){
       'Úklid trvá ' + b(PR('uklid_podil') + ' %') + ' času značení a smí začít '
       + b(PR('uklid_po_beznci') + ' minut po startu posledního běžce') + '. '
       + (PR('uklid_i_po_tme') ? 'Po tmě uklízet lze.' : b('Po tmě se neuklízí.')),
+      'V neděli se úklid nezačíná dřív než ' + b(cas(PR('uklid_nedele_od')))
+      + ' — závod dobíhá a nikam se nespěchá. Ostatních dnů se to netýká, '
+      + 'v sobotu se uklízí za běžci.',
       'Grupa smí dělat naráz ' + b('tolik úkolů, kolik má členů') + ' — dělí se na čety '
       + 'a každý člověk může být na jednom místě. U grup, které zapsané lidi nemají, '
       + 'se počítá se zálohou ' + b(PR('soubeh_grupy')) + '.'])

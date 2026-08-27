@@ -1799,8 +1799,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.47";
-const BUILD = "2026-08-27T13:59+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.48";
+const BUILD = "2026-08-27T14:41+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -5438,9 +5438,12 @@ const PRAVIDLA_VYCHOZI = {
   trasovani_pred: 120,      // značení hotové tolik minut před prvním běžcem
   uklid_podil:     80,      // úklid trvá tolik procent času značení
   uklid_po_beznci: 15,      // uklízet se smí až tolik minut po startu posledního běžce
-  /* V neděli se úklid nezačíná dřív než v tolik. Závod dobíhá, nikam se
-     nespěchá a šestá ráno je pro dobrovolníky zbytečně brzo. */
-  uklid_nedele_od: '07:30',
+  /* V neděli se vstává nejdřív v tolik. Není to zákaz práce, ale skutečnost:
+     nikdo nezačne uklízet dřív, než vstane. Řídí se tím dvojí — kdy nejdřív
+     smí začít nedělní úklid a kdy končí nocleh ze soboty na neděli. Do
+     27. 8. 2026 tu místo toho stála holá hranice `uklid_nedele_od`, která
+     ale nocleh neřešila: úkol v 6:20 ho zkrátil, i když se v tu dobu spalo. */
+  nedele_vstavani: '07:00',
   uklid_i_po_tme:   0,      // 1 = uklízet se smí i po tmě, 0 = jen za světla
   /* Kolik úkolů smí grupa dělat naráz. Platí, že tolik, kolik má členů —
      každý člověk může být na jednom místě. Tenhle parametr je jen záloha
@@ -5657,6 +5660,11 @@ function poznamkaSmeru(u){
 
 /* Okno světla daného dne v minutách od čtvrteční půlnoci. V pátek se navíc
    nezačíná svítáním — lidi se teprve sjíždějí. */
+/* Kdy se v neděli vstává. Řídí to nedělní úklid i konec sobotního noclehu,
+   ať si ty dvě věci neodporují: nemá smysl mít nocleh do 6:20, protože v 6:20
+   začíná úklid, a zároveň tvrdit, že se vstává v sedm. */
+const vstavaniVNedeli = () => Math.max(0, denIndex('NE')) * 1440 + PR('nedele_vstavani');
+
 function oknoSvetla(den, jePatecniZnaceni){
   const d = Math.max(0, denIndex(den)) * 1440;
   const od = d + PR('svetlo_od') + PR('svetlo_rezerva');
@@ -5885,10 +5893,11 @@ function spocitejGenerovani(){
         + 'dobu úklidu nemám z čeho spočítat'});
       return;
     }
-    /* V neděli už úklid nespěchá. Závod dobíhá a nemá smysl posílat lidi na trať
-       v šest ráno jen proto, že poslední běžec někudy prošel v noci. Ostatních
-       dnů se to netýká — v sobotu se uklízí za běžci a tam každá hodina hraje. */
-    const nedeleOd = Math.max(0, denIndex('NE')) * 1440 + PR('uklid_nedele_od');
+    /* V neděli se vstává nejdřív v nastavenou hodinu a dřív se uklízet nezačne.
+       Není to zákaz, je to skutečnost — nikdo nevyrazí na trať, dokud nevstal.
+       Ostatních dnů se to netýká: v sobotu se uklízí za běžci a tam každá
+       hodina hraje. */
+    const nedeleOd = vstavaniVNedeli();
     const nejdrivVDni = den => (den === 'NE') ? nedeleOd : -Infinity;
 
     let zacatek = naHoru(bezci.posledni + PR('uklid_po_beznci'));
@@ -5920,8 +5929,8 @@ function spocitejGenerovani(){
     casy.push({u, text: rozsahCasu(zacatek, naHoru(zacatek + doba)),
       proc: 'úklid ' + doba + ' min, nejdřív ' + PR('uklid_po_beznci')
           + ' min po startu posledního běžce (' + minutyNaCas(bezci.posledni) + ')'
-          + (vNedeliOdlozeno ? '; v neděli se nezačíná dřív než '
-             + hodinaMinuta(PR('uklid_nedele_od')) : '')});
+          + (vNedeliOdlozeno ? '; v neděli se vstává nejdřív v '
+             + hodinaMinuta(PR('nedele_vstavani')) : '')});
   });
 
   // ---- 1) chybějící časy obsluhy, zahájení a ukončení předávky
@@ -6097,8 +6106,14 @@ function spocitejGenerovani(){
       const denOd = Math.max(0, DNY.indexOf(odDen)), denDo = Math.max(0, DNY.indexOf(doDen));
       const od = Math.max(denOd*1440 + PR('nocleh_od'),
                           (konecMinuty == null ? -Infinity : konecMinuty + PR('nocleh_po_ukolu')));
-      const doKdy = Math.min(denDo*1440 + PR('nocleh_do'),
-                             (zacatek.m == null ? Infinity : zacatek.m));
+      /* Ráno se nocleh krátí jen tím, co opravdu začíná dřív než vstávání.
+         V neděli se ale vstává v pevnou hodinu, takže úkol naplánovaný dřív
+         nocleh nekrátí — dřív se prostě nezačne. Bez tohohle vycházel nocleh
+         „so 22:30 – ne 6:20" jen proto, že v 6:20 stál úklid. */
+      const rannihoNejdriv = (doDen === 'NE')
+        ? Math.max(zacatek.m == null ? Infinity : zacatek.m, vstavaniVNedeli())
+        : (zacatek.m == null ? Infinity : zacatek.m);
+      const doKdy = Math.min(denDo*1440 + PR('nocleh_do'), rannihoNejdriv);
       const maCas = isFinite(od) && isFinite(doKdy) && doKdy > od;
       navrhy.push({
         parta: t.kod, typ: 'N', kod: volnyKod('N-'+t.kod+'-'+znak), cislo: null,
@@ -8308,7 +8323,7 @@ function kresliJakSePocita(){
         pole('trasovani_pred',  'Značení začne nejpozději před prvním běžcem', 'min'),
         pole('uklid_podil',     'Úklid trvá oproti značení', '%'),
         pole('uklid_po_beznci', 'Úklid až po startu posledního', 'min'),
-        pole('uklid_nedele_od', 'V neděli nezačínat dřív než'),
+        pole('nedele_vstavani', 'V neděli se vstává nejdřív v'),
         pole('uklid_i_po_tme',  'Uklízet i po tmě (1/0)'),
         pole('soubeh_grupy',    'Souběh u grup bez zapsaných lidí')])
     + '</div>'
@@ -8391,9 +8406,10 @@ function kresliJakSePocita(){
       'Úklid trvá ' + b(PR('uklid_podil') + ' %') + ' času značení a smí začít '
       + b(PR('uklid_po_beznci') + ' minut po startu posledního běžce') + '. '
       + (PR('uklid_i_po_tme') ? 'Po tmě uklízet lze.' : b('Po tmě se neuklízí.')),
-      'V neděli se úklid nezačíná dřív než ' + b(cas(PR('uklid_nedele_od')))
-      + ' — závod dobíhá a nikam se nespěchá. Ostatních dnů se to netýká, '
-      + 'v sobotu se uklízí za běžci.',
+      'V neděli se vstává nejdřív v ' + b(cas(PR('nedele_vstavani')))
+      + ' a dřív se uklízet nezačne. Touž hodinou končí i nocleh ze soboty na '
+      + 'neděli, takže si ty dvě věci neodporují. Ostatních dnů se to netýká — '
+      + 'v sobotu se uklízí za běžci a tam každá hodina hraje.',
       'Grupa smí dělat naráz ' + b('tolik úkolů, kolik má členů') + ' — dělí se na čety '
       + 'a každý člověk může být na jednom místě. U grup, které zapsané lidi nemají, '
       + 'se počítá se zálohou ' + b(PR('soubeh_grupy')) + '.'])

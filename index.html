@@ -135,6 +135,14 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
 /* Kód hlavních úkolů — trasování a obsluhy předávky. Tučné je samo políčko,
    ne buňka: kód se pořád dá přepsat, jen je v dlouhém plánu vidět dřív. */
 .tab td.kodHlavni input{font-weight:800}
+/* Kód úkolu, který se dá prokliknout do podrobného plánu. */
+.jakoOdkaz{background:none;border:0;padding:0;font:inherit;font-weight:800;
+  color:var(--vinova);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.jakoOdkaz:hover{background:#FBF0DE}
+/* Řádek, na který se právě skočilo z kontroly návazností. Drží, dokud se
+   tabulka nepřekreslí — ať se po opravě pozná, kde člověk byl. */
+.tab tr.najety > td{background:#FFF3C4}
+.tab tr.najety > td:first-child{box-shadow:inset 3px 0 0 #C9A227}
 .tab td.smaz{width:34px;text-align:center}
 /* Čerstvě přidaný řádek. Seznamy se řadí, takže nový řádek nepřistane dole,
    ale někde uprostřed — bez zvýraznění ho uživatel nenajde. Žlutá drží,
@@ -1778,8 +1786,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.42";
-const BUILD = "2026-08-27T01:58+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.43";
+const BUILD = "2026-08-27T02:20+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -6336,19 +6344,62 @@ function posunNa(el){
 
 /* Zúží podrobný plán na jednu grupu. Protějšek k ukazUkolyPredavky() — používá
    to kontrola návazností, aby se od nalezené dvojice dalo skočit rovnou do plánu. */
-function ukazUkolyGrupy(kod){
+function zuzNaGrupu(kod){
   FILTRY_PODROBNY.parta.clear(); FILTRY_PODROBNY.typ.clear(); FILTRY_PODROBNY.stav.clear();
   FILTRY_PODROBNY.predavka.clear(); FILTRY_PODROBNY.parta.add(String(kod));
   if($('#filtrKod')) $('#filtrKod').value = '';
   if($('#filtrNeuplne')) $('#filtrNeuplne').checked = false;
   prepni('s-podrobny');
   kresliPodrobny();
+}
+function ukazUkolyGrupy(kod){
+  zuzNaGrupu(kod);
   /* Po přepnutí zůstane stránka odscrollovaná tam, kde byla kontrola návazností,
      takže vyfiltrovaná tabulka je mimo obraz a vypadá to, že se nic nestalo.
      Posun na ni je proto součást toho kliknutí. */
   posunNa($('#podrobny'));
   hlaska('Podrobný plán je zúžený na grupu ' + kod
     + ' — tlačítkem Zrušit filtry se vrátíte na celý plán.');
+}
+
+/* Proklik z kontroly návazností rovnou na řádek, který se má opravit.
+
+   Tlačítko „v plánu" zúží plán na celou grupu a člověk pak mezi dvaceti řádky
+   hledá ten svůj. Tohle jde o krok dál: najde přímo ten řádek, zvýrazní ho
+   a postaví kurzor do políčka, které se podle návrhu opravy mění — u dřívějšího
+   úkolu do „Do", u pozdějšího do „Od". Zúžení na grupu zůstává, ať je vidět
+   i okolí; bez něj by se opravovalo naslepo.
+
+   Políčko času jsou dvě rozbalovátka v jednom obalu, oba nesou data-p, takže
+   se kurzor postaví na hodiny — minuty jsou hned vedle. */
+function upravUkol(kod, pole){
+  const u = (D.ukoly || []).find(x => x.kod === kod);
+  if(!u){ hlaska('Úkol ' + kod + ' už v plánu není.'); return; }
+  zuzNaGrupu(u.parta);
+  const tab = $('#podrobny'); if(!tab) return;
+  const vstup = [...tab.querySelectorAll('input[data-p="kod"]')].find(el => el.value === kod);
+  if(!vstup){ posunNa(tab); hlaska('Řádek ' + kod + ' se v plánu nepodařilo najít.'); return; }
+  const radek = vstup.closest('tr');
+  tab.querySelectorAll('tr.najety').forEach(t => t.classList.remove('najety'));
+  radek.classList.add('najety');
+  posunNa(radek);
+  const cil = pole ? radek.querySelector('[data-p="' + pole + '"]') : null;
+  // Kurzor se staví hned, ne až v dalším snímku — jinak by se focus a plynulý
+  // posun praly o to, kam se stránka odroluje. preventScroll drží posun na
+  // posunNa(), který počítá s lepící se hlavičkou a lištou filtrů.
+  if(cil){ try{ cil.focus({preventScroll:true}); }catch(e){ cil.focus(); } }
+  hlaska(jeZamceny(u)
+    ? (kod + ' je zamčený — přepsat ho jde, ale je domluvený s lidmi.')
+    : ('Kurzor je na ' + kod + (pole === 'kdy_do' ? ', políčko Do.'
+       : pole === 'kdy_od' ? ', políčko Od.' : '.')));
+}
+
+/* Kód úkolu jako proklik. Vypadá jako odkaz, ale je to tlačítko — odkaz
+   s prázdným href by po kliknutí skočil na začátek stránky. */
+function odkazNaUkol(u, pole){
+  return '<button class="jakoOdkaz" onclick="upravUkol(\'' + esc(u.kod) + '\', \'' + pole + '\')"'
+    + ' title="Otevře tenhle řádek v podrobném plánu a postaví kurzor do políčka '
+    + (pole === 'kdy_do' ? 'Do' : 'Od') + '.">' + esc(u.kod) + '</button>';
 }
 
 /* Stav úkolu na jeden pohled: zámek a stav. Rozhoduje o tom, kterým z dvojice
@@ -6479,10 +6530,10 @@ function zkontrolujNavaznosti(){
       + '<th>Co chybí</th><th style="width:86px"></th></tr></thead><tbody>';
     neposouzeno.forEach(n=>{
       h += '<tr><td style="padding:7px 10px;font-weight:800;color:'+barva(n.parta)+'">'+esc(n.parta)+'</td>'
-        + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.a.kod)+' '+esc(popisPredavky(n.a.cislo))
+        + '<td style="padding:7px 10px;font-size:12.5px">'+odkazNaUkol(n.a,'kdy_od')+' '+esc(popisPredavky(n.a.cislo))
         + '<br><span style="color:var(--pisek)">'+rozsahUkolu(n.a)+'</span>'
         + '<br>'+znackaUkolu(n.a)+'</td>'
-        + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.b.kod)+' '+esc(popisPredavky(n.b.cislo))
+        + '<td style="padding:7px 10px;font-size:12.5px">'+odkazNaUkol(n.b,'kdy_od')+' '+esc(popisPredavky(n.b.cislo))
         + '<br><span style="color:var(--pisek)">'+rozsahUkolu(n.b)+'</span>'
         + '<br>'+znackaUkolu(n.b)+'</td>'
         + '<td style="padding:7px 10px;font-size:12.5px">' + n.chybi.join('<br>')
@@ -6553,18 +6604,22 @@ function zkontrolujNavaznosti(){
          stranu bezpečí: začátek pozdějšího nahoru, konec dřívějšího dolů. */
       const posunB = minutyNaCas(naDesitky(n.konecA + n.v.min, true));
       const zkratA = minutyNaCas(naDesitky(n.zacatekB - n.v.min, false));
+      const odkazA = odkazNaUkol(n.a, 'kdy_do'), odkazB = odkazNaUkol(n.b, 'kdy_od');
       const navrh = (zA && zB)
-        ? 'Oba řádky jsou zamčené — buď jeden odemkněte, nebo předávku předejte jiné grupě.'
-        : zA ? ('Posuňte začátek <b>' + esc(n.b.kod) + '</b> na <b>' + posunB + '</b>.')
-        : zB ? ('Ukončete <b>' + esc(n.a.kod) + '</b> nejpozději v <b>' + zkratA + '</b>.')
-        : ('Posuňte začátek <b>' + esc(n.b.kod) + '</b> na <b>' + posunB + '</b>, nebo ukončete <b>'
-           + esc(n.a.kod) + '</b> v <b>' + zkratA + '</b>.');
+        ? ('Oba řádky jsou zamčené — buď jeden odemkněte (' + odkazA + ', ' + odkazB
+           + '), nebo předávku předejte jiné grupě.')
+        : zA ? ('Posuňte začátek ' + odkazB + ' na <b>' + posunB + '</b>.')
+        : zB ? ('Ukončete ' + odkazA + ' nejpozději v <b>' + zkratA + '</b>.')
+        : ('Posuňte začátek ' + odkazB + ' na <b>' + posunB + '</b>, nebo ukončete '
+           + odkazA + ' v <b>' + zkratA + '</b>.');
       // malý schodek je spíš napjatý plán než nemožnost — ať se nehledí stejně
       const tesne = n.schodek <= PR('zaokrouhleni') * 2;
+      /* Kód je proklik. U dřívějšího úkolu se mění konec, u pozdějšího začátek —
+         kurzor se rovnou postaví do toho políčka, aby se nemuselo hledat. */
       h += '<tr><td style="padding:7px 10px;font-weight:800;color:'+barva(n.parta)+'">'+esc(n.parta)+'</td>'
-        + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.a.kod)+' '+esc(mA)+'<br>'
+        + '<td style="padding:7px 10px;font-size:12.5px">'+odkazNaUkol(n.a,'kdy_do')+' '+esc(mA)+'<br>'
         + '<span style="color:var(--pisek)">'+rozsahUkolu(n.a)+'</span><br>'+znackaUkolu(n.a)+'</td>'
-        + '<td style="padding:7px 10px;font-size:12.5px">'+esc(n.b.kod)+' '+esc(mB)+'<br>'
+        + '<td style="padding:7px 10px;font-size:12.5px">'+odkazNaUkol(n.b,'kdy_od')+' '+esc(mB)+'<br>'
         + '<span style="color:var(--pisek)">'+rozsahUkolu(n.b)+'</span><br>'+znackaUkolu(n.b)+'</td>'
         + '<td class="stred" style="padding:7px">' + n.kDispozici + ' min</td>'
         + '<td class="stred" style="padding:7px">'+n.v.min+' min ('+n.v.km+' km)</td>'

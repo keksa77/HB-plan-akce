@@ -131,6 +131,18 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
      roztáhl do šířky a ořezávat by nebylo co */
   white-space:normal;padding:2px 6px;max-height:36px}
 .clenoveVypis b{font-weight:800}
+/* ---------- pohled nepřihlášeného ----------
+   *Zadáno 28. 8. 2026 (v5.66).* Kdo si plán jen čte, chce vědět kdy, kde, co
+   a s kým. Plánovací pole — stav, zámek, původ, kód — mu nic neříkají, tak
+   je nedostane vůbec. Zato dostane typ úkolu slovem (dosud se dal poznat jen
+   podle barvy proužku) a u grupy VŠECHNA jména, ne jen šéfa. */
+.stitekTypu{display:inline-block;font-size:12px;font-weight:800;border-radius:6px;
+  padding:3px 8px;white-space:nowrap}
+.grupaKod{display:inline-block;border-radius:7px;padding:3px 8px;color:#fff;
+  font-weight:800;font-size:12.5px;vertical-align:middle}
+.grupaLide{display:inline-block;margin-left:8px;font-size:13px;color:var(--tmava);
+  white-space:normal;line-height:1.4}
+.grupaLide b{font-weight:800}
 .tab td.stred input{text-align:center}
 /* Kód hlavních úkolů — trasování a obsluhy předávky. Tučné je samo políčko,
    ne buňka: kód se pořád dá přepsat, jen je v dlouhém plánu vidět dřív. */
@@ -1198,6 +1210,13 @@ body.mobil.hostMobil table.podrobnyTab td[data-th="Kdy"] b { font-size: 17px; co
 body.mobil.hostMobil table.podrobnyTab td[data-th="Kde"] { font-size: 14.5px; color: var(--pisek) !important;
   margin-bottom: 4px; }
 body.mobil.hostMobil table.podrobnyTab td[data-th="Úkol"] textarea { font-size: 16.5px; }
+/* Typ vedle času, bez popisku — je to štítek, ne údaj k luštění. A jména celé
+   grupy se musí zalomit, jinak by se vešlo jen první. */
+body.mobil.hostMobil table.podrobnyTab td[data-th="Typ"] { padding: 2px 0 4px !important; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Typ"]::before { display: none; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Grupa"] { display: block; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Grupa"] .grupaLide {
+  display: block; margin: 5px 0 0; font-size: 14px; }
 body.mobil.hostMobil table.podrobnyTab td[data-th="Úkol"]::before { display: none; }
 body.mobil.hostMobil table.podrobnyTab td[data-th="Grupa"]::before { display: none; }
 body.mobil.hostMobil table.podrobnyTab td[data-th="Grupa"] { padding-top: 6px !important; }
@@ -1807,8 +1826,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.65";
-const BUILD = "2026-08-28T18:02+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.66";
+const BUILD = "2026-08-28T18:53+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4171,7 +4190,14 @@ function kresliPodrobny(){
   // vědět kdo, co a kdy. Zbytek (číslo, typ, kód, den, stav, odznak ročníku) by
   // na malém displeji jen překážel, tak se neukazuje.
   const jenCteMobil = mobil && !prihlasen;
-  const PRO_MOBIL = ['Kdy', 'Kde', 'Úkol', 'Grupa'];
+  /* Kdo není přihlášený, plán si jen čte — a je jedno, jestli na telefonu, nebo
+     na počítači. *Zadáno 28. 8. 2026 (v5.66).* Dostane pět sloupců: kdy, kde,
+     co za práci, zadání a s kým. Kód, stav, zámek, původ, doba a čísla předávek
+     u přejezdu jsou plánovací pole — čtenáři neříkají nic a jen ubírají místo
+     tomu, co si má přečíst. Do v5.66 se takhle ořezával jen telefon; na počítači
+     nepřihlášený viděl celou plánovací tabulku. */
+  const proCteni = !prihlasen;
+  const PRO_MOBIL = ['Kdy', 'Kde', 'Typ', 'Úkol', 'Grupa'];
 
   let sloupcePodrobny = [
     {nadpis:"Grupa", sirka:"215px", html:grupaSKymBunka,
@@ -4245,7 +4271,7 @@ function kresliPodrobny(){
      „Zahájení předávky, od 6:30" bez dne a bez místa se nedá použít k ničemu.
      Časy jsou obyčejný text, ne políčka na psaní: prohlížeč do prázdného
      políčka kreslí „--:-- --" a hodiny, což na kartě jen mate. */
-  if(jenCteMobil) sloupcePodrobny = [
+  if(proCteni) sloupcePodrobny = [
     {nadpis:"Kdy", jenCist:true, html:(r)=>{
       // den i čas se berou z políček, a když jsou prázdná, tak z věty „so 6:30"
       const z = rozeberCas(r.kdy_text);
@@ -4261,8 +4287,9 @@ function kresliPodrobny(){
       const m = r.cislo ? popisPredavky(r.cislo) : '';
       return m ? esc(r.cislo + ' ' + m) : '';      // prázdná buňka se na kartě neukáže
     }},
+    {nadpis:"Typ", jenCist:true, sirka:"150px", html:stitekTypuBunka},
     {nadpis:"Úkol", pole:"popis", viceradkove:true, maxRadky:3, jenCist:true},
-    {nadpis:"Grupa", jenCist:true, html:grupaSKymBunka}
+    {nadpis:"Grupa", jenCist:true, sirka:"280px", html:grupaSLidmiBunka}
   ];
 
   // Zámek je tlačítko, ne políčko — zamčená sekce ho sama nezešedne. Kdo nemá
@@ -4356,6 +4383,33 @@ function sefBunka(r){
   const jm = prvniJmeno(r.parta);
   return jm ? '<span class="grupaJmeno" style="margin-left:0;max-width:none">' + esc(jm) + '</span>' : '';
 }
+/* Grupa se VŠEMI jmény — pro toho, kdo si plán jen čte. Šéf je tučně a stojí
+   první, zbytek podle abecedy. Odložení členové (historie) se neukazují. */
+function grupaSLidmiBunka(r){
+  const t = parta(r.parta) || {};
+  const lide = zivi().filter(c => c.kod_tymu === r.parta);
+  const sefove = lide.filter(c => c.sef === 'ano' || c.sef === true);
+  const zbytek = lide.filter(c => sefove.indexOf(c) < 0)
+    .sort((a, b) => String(a.jmeno||'').localeCompare(String(b.jmeno||''), 'cs'));
+  const jmena = sefove.concat(zbytek).map(c => {
+    const jm = esc(c.jmeno || '(bez jména)');
+    return (sefove.indexOf(c) >= 0) ? '<b>' + jm + '</b>' : jm;
+  }).join('<span class="popisek"> · </span>');
+  if(!r.parta) return '<span class="popisek">bez grupy</span>';
+  return '<span class="grupaKod" style="background:' + esc(t.barva || '#8A8371') + '">'
+       + esc(r.parta) + '</span>'
+       + (jmena ? '<span class="grupaLide">' + jmena + '</span>' : '');
+}
+
+// Typ úkolu slovem a v barvě typu. Jen ke čtení — kdo smí psát, má rozbalovátko.
+function stitekTypuBunka(r){
+  const t = r.typ;
+  if(!t) return '';
+  return '<span class="stitekTypu" style="background:' + esc(POZADI_TYPU[t] || '#EEE')
+       + ';color:' + esc(BARVA_TYPU[t] || '#333') + '">'
+       + esc(NAZVY_TYPU[t] || t) + '</span>';
+}
+
 // Grupa a její šéf v jednom políčku — stejně, jako to vypadá na chipu v mřížce.
 function grupaSKymBunka(r, i){
   const jm = prvniJmeno(r.parta);
@@ -5713,6 +5767,17 @@ const PRAVIDLA_VYCHOZI = {
   nocleh_od:      '22:00',  // ve kolik se jde spát, když se stihne
   nocleh_do:      '07:00',  // a kdy se vstává, když nic nezačíná dřív
   nocleh_po_ukolu: 60,      // minut od konce posledního úkolu na cestu a spaní
+  /* Ranní přejezd z noclehu na první úkol dne. V neděli vzniká vždycky —
+     tam se z ubytovny jede uklízet a bez toho řádku by úklid začínal, jako by
+     grupa spala na trati. V sobotu se o něm rozhoduje tímhle přepínačem.
+
+     *Zadáno 28. 8. 2026 (v5.66).* Výchozí je VYPNUTO, protože plán HB26 je
+     hotový a sobotní přejezdy v něm jsou napsané ručně — zapnutím by k nim
+     přibyly ty spočítané a stály by vedle sebe. Pro nový ročník se to zapíná.
+
+     Pozor: řádek vznikne jen tam, kde je nocleh se známým místem a kde první
+     sobotní úkol začíná až po vstávání. */
+  ranni_prejezd_so: 0,      // 1 = dělat ranní přejezd i v sobotu, 0 = jen v neděli
 
   /* Trasování a úklid. Tempo je v metrech za minutu, protože délky úseků jsou
      v metrech — 180 m/min je zhruba 11 km/h, 60 m/min necelé 4 km/h.
@@ -6731,7 +6796,8 @@ function spocitejGenerovani(){
 
          Čas se nevymýšlí: od vstávání do začátku toho prvního úkolu. Ten už
          je spočítaný tak, že se do něj cesta vejde, takže se tu jen vypíše. */
-      if(doDen === 'NE' && !bezPrejezdu){
+      /* Neděle vždycky, sobota podle parametru `ranni_prejezd_so`. */
+      if((doDen === 'NE' || (doDen === 'SO' && PR('ranni_prejezd_so'))) && !bezPrejezdu){
         const c = cestaZNoclehuNaUkol(t.kod, zacatek.u, znak);
         if(c && c.min){
           const vstal = vstavaniVDni(doDen, zacatek.u.typ);
@@ -9073,7 +9139,8 @@ function kresliJakSePocita(){
     + skupina('Nocleh', [
         pole('nocleh_od',      'Spát se jde v'),
         pole('nocleh_do',      'Vstává se v'),
-        pole('nocleh_po_ukolu','Nejdřív po posledním úkolu za', 'min')])
+        pole('nocleh_po_ukolu','Nejdřív po posledním úkolu za', 'min'),
+        pole('ranni_prejezd_so','Ranní přejezd z noclehu i v sobotu (1/0)')])
     + skupina('Zaokrouhlení', [
         pole('zaokrouhleni', 'Časy zaokrouhlit na', 'min', 5)])
     + skupina('Světlo a okna', [

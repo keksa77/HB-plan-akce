@@ -1930,8 +1930,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.72";
-const BUILD = "2026-08-29T00:30+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.73";
+const BUILD = "2026-08-29T00:38+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4854,7 +4854,11 @@ function kresliPodrobny(){
        v mřížce plánu. U přejezdu jsou to dvě čísla, odkud a kam, a ta jdou
        vyplnit ručně: generované přejezdy je mají, ty psané rukou zatím ne
        a bez nich se pod žádnou předávkou neukážou. */
-    {nadpis:"PŘED", sirka:"118px", pevnaSirka:true, trida:"stred",
+    /* Od v5.69 je v téhle buňce navíc štítek mapy. U přejezdu, kde jsou dvě
+       políčka s čísly a šipka mezi nimi, se do 118 px nevešel a přetékal přes
+       sloupec Kdy. *Opraveno 28. 8. 2026 (v5.73).* Buňka se proto smí zalomit
+       a je o kus širší — štítek si v případě potřeby sedne na druhý řádek. */
+    {nadpis:"PŘED", sirka:"132px", pevnaSirka:true, trida:"stred zalom",
       naKlikNadpis: prepniRazeniPredavky,
       znacka: RAZENI_PREDAVKA === 1 ? '▲' : (RAZENI_PREDAVKA === -1 ? '▼' : '⇅'),
       napovedaSl:"Klepnutím se plán seřadí podle předávky — jednou vzestupně, podruhé "

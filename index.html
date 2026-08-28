@@ -1212,7 +1212,7 @@ body.mobil.hostMobil table.podrobnyTab td[data-th="Kde"] { font-size: 14.5px; co
 body.mobil.hostMobil table.podrobnyTab td[data-th="Úkol"] textarea { font-size: 16.5px; }
 /* Typ vedle času, bez popisku — je to štítek, ne údaj k luštění. A jména celé
    grupy se musí zalomit, jinak by se vešlo jen první. */
-body.mobil.hostMobil table.podrobnyTab td[data-th="Typ"] { padding: 2px 0 4px !important; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Typ"] { padding: 0 !important; }
 body.mobil.hostMobil table.podrobnyTab td[data-th="Typ"]::before { display: none; }
 body.mobil.hostMobil table.podrobnyTab td[data-th="Grupa"] { display: block; }
 body.mobil.hostMobil table.podrobnyTab td[data-th="Grupa"] .grupaLide {
@@ -1267,7 +1267,13 @@ body.mobil.hostMobil table.podrobnyTab tr {
 body.mobil table.podrobnyTab tr.maTyp {
   border-left: 5px solid var(--barvaTypu, var(--linka));
 }
-body.mobil.hostMobil table.podrobnyTab td[data-th="Kdy"] { order: 1; flex: 1 1 auto; width: auto; }
+body.mobil.hostMobil table.podrobnyTab td[data-th="Kdy"] { order: 1; flex: 0 1 auto; width: auto; }
+/* Rozvržení A — *vybráno 28. 8. 2026*: štítek typu sedí hned za časem, ne pod
+   ním; ušetří to na kartě celý řádek. Karta je flexbox s `order`, takže to není
+   otázka `display`, ale zařazení: stejné pořadí jako čas, a protože stojí
+   v tabulce až za ním, vykreslí se napravo od něj. Bez tohohle by štítek spadl
+   na začátek karty — `order` chybí a nula je míň než jedna. */
+body.mobil.hostMobil table.podrobnyTab td[data-th="Typ"] { order: 1; flex: 0 0 auto; width: auto; }
 body.mobil.hostMobil table.podrobnyTab td[data-th="Grupa"] {
   order: 2; flex: 0 0 auto; width: auto; padding: 0 !important; margin-left: auto;
 }
@@ -1826,8 +1832,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.66";
-const BUILD = "2026-08-28T18:53+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.67";
+const BUILD = "2026-08-28T19:22+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -1869,14 +1875,22 @@ const jmenoGrupy = k => sefGrupy(k) || prvniClen(k);
 const SPOLEK = /^(sdh|tj|sk|sbor|obec|hasic|zzs)/;
 // na štítek jde jméno a první písmeno příjmení — „Martin B.".
 // Jednoslovné jméno (přezdívka, nebo křestní bez příjmení) zůstane samo.
-const prvniJmeno = k => {
-  const cele = jmenoGrupy(k).replace(/\s*\(.*?\)\s*/g,' ').trim();
-  if(!cele) return "";
-  const c = cele.split(/\s+/);
+/* Jméno tak, jak se vejde na kartu: křestní a první písmeno příjmení —
+   „Helena Maršíková" → „Helena M.". *Zadáno 28. 8. 2026 (v5.67).*
+
+   Vytaženo z `prvniJmeno`, protože se to samé zkracování používá i u jmen
+   členů grupy na kartě u trati. Dvě kopie téhož pravidla by se dřív nebo
+   později rozešly. Spolky (SDH, TJ…) se nezkracují — tam je první slovo celé
+   jméno a „SDH H." by nedávalo smysl. */
+function zkratJmeno(cele){
+  const t = String(cele || '').replace(/\s*\(.*?\)\s*/g, ' ').trim();
+  if(!t) return '';
+  const c = t.split(/\s+/);
   if(SPOLEK.test(bezDiakritiky(c[0]))) return c[0];
   if(c.length < 2 || !c[1]) return c[0];
   return c[0] + ' ' + c[1][0].toUpperCase() + '.';
-};
+}
+const prvniJmeno = k => zkratJmeno(jmenoGrupy(k));
 // Místo holého kódu se všude ukazuje štítek grupy — vlastní pole u grupy,
 // obvykle kód a šéf („G1 Martin B."). Když štítek vyplněný není, zůstane kód.
 const popisGrupy = k => {
@@ -4391,14 +4405,19 @@ function grupaSLidmiBunka(r){
   const sefove = lide.filter(c => c.sef === 'ano' || c.sef === true);
   const zbytek = lide.filter(c => sefove.indexOf(c) < 0)
     .sort((a, b) => String(a.jmeno||'').localeCompare(String(b.jmeno||''), 'cs'));
+  /* Jména se zkracují na „Helena M." — *zadáno 28. 8. 2026*. Celé jméno by
+     u větších grup zabralo právě to místo, které má patřit úkolu. Kdo je kdo,
+     se pozná i tak; celé jméno zůstává v nápovědě. */
   const jmena = sefove.concat(zbytek).map(c => {
-    const jm = esc(c.jmeno || '(bez jména)');
+    const jm = esc(zkratJmeno(c.jmeno) || '(bez jména)');
     return (sefove.indexOf(c) >= 0) ? '<b>' + jm + '</b>' : jm;
   }).join('<span class="popisek"> · </span>');
+  const cela = sefove.concat(zbytek).map(c => c.jmeno || '(bez jména)').join(', ');
   if(!r.parta) return '<span class="popisek">bez grupy</span>';
-  return '<span class="grupaKod" style="background:' + esc(t.barva || '#8A8371') + '">'
+  return '<span class="grupaKod" style="background:' + esc(t.barva || '#8A8371') + '"'
+       + (cela ? ' title="' + esc(cela) + '"' : '') + '>'
        + esc(r.parta) + '</span>'
-       + (jmena ? '<span class="grupaLide">' + jmena + '</span>' : '');
+       + (jmena ? '<span class="grupaLide" title="' + esc(cela) + '">' + jmena + '</span>' : '');
 }
 
 // Typ úkolu slovem a v barvě typu. Jen ke čtení — kdo smí psát, má rozbalovátko.

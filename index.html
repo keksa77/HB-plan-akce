@@ -128,8 +128,18 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
 #mapaOkno .plocha svg{position:absolute;inset:0}
 #mapaOkno .zdroj{position:absolute;left:0;bottom:0;background:rgba(255,255,255,.78);
   font-size:10.5px;color:#5A5348;padding:1px 6px;border-top-right-radius:5px}
-#mapaOkno .paticka{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:11px}
-#mapaOkno .udaje{font-size:12.5px;color:#6B6357;margin-right:auto}
+#mapaOkno .paticka{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:11px}
+#mapaOkno .udaje{font-size:12.5px;color:#6B6357;flex:0 0 100%}
+#mapaOkno .odkazy{display:flex;gap:8px;flex-wrap:wrap;flex:1 1 auto}
+/* Dlaždička odkazu ven: značka, tučně co se otevře, pod tím co za to čeká. */
+.mapaOdkaz{display:flex;align-items:center;gap:9px;text-decoration:none;
+  border:1px solid #DED8CC;background:#FBFAF7;border-radius:9px;padding:6px 11px 6px 8px;
+  color:var(--tmava,#3A332C);transition:background .12s,border-color .12s}
+.mapaOdkaz:hover{background:#F3EFE7;border-color:#B9AE9B}
+.mapaOdkaz .znacka{flex:0 0 auto;display:block}
+.mapaOdkaz .text{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+.mapaOdkaz b{font-size:13px;font-weight:700;white-space:nowrap}
+.mapaOdkaz small{font-size:11px;color:#8A8371;white-space:nowrap}
 .mapaCesta{fill:none;stroke:#C9C2B4;stroke-width:2}
 .mapaZvyrazneni{fill:none;stroke:#78212E;stroke-width:4.5;stroke-linecap:round}
 .mapaBod{fill:#fff;stroke:#B0A796;stroke-width:1.5}
@@ -1930,8 +1940,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.73";
-const BUILD = "2026-08-29T00:38+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.75";
+const BUILD = "2026-08-29T01:07+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4109,15 +4119,24 @@ function osadkaZkracene(kod){
 }
 
 function naplnFiltryPodrobny(){
-  kresliVicevyber('filtrPodrobny', 'všechny grupy',
-    grupyLetos().slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))
-      .map(t=>{
-        const lide = osadkaZkracene(t.kod);
-        // v nabídce celá osádka, ve shrnutí na tlačítku jen štítek — ten se
-        // musí vejít do jednoho řádku
-        return {v:t.kod, s:popisGrupy(t.kod),
-                t:(lide ? t.kod + ' · ' + lide : popisGrupy(t.kod))};
-      }), FILTRY_PODROBNY.parta);
+  /* Úkol bez grupy se do filtru nedal vybrat — nabídka se skládá z tabulky
+     Grupy a osiřelý řádek v žádné není. Kdo takové řádky hledal, neměl je jak
+     najít; jediná cesta vedla přes kontrolu neúplných. *Doplněno 29. 8. 2026
+     (v5.74).* Položka se nabízí, jen když takové řádky opravdu existují, ať
+     v běžném stavu nepřekáží. */
+  const bezGrupy = D.ukoly.filter(u => !u.parta).length;
+  const nabidkaGrup = grupyLetos().slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99))
+    .map(t=>{
+      const lide = osadkaZkracene(t.kod);
+      // v nabídce celá osádka, ve shrnutí na tlačítku jen štítek — ten se
+      // musí vejít do jednoho řádku
+      return {v:t.kod, s:popisGrupy(t.kod),
+              t:(lide ? t.kod + ' · ' + lide : popisGrupy(t.kod))};
+    });
+  if(bezGrupy) nabidkaGrup.push({v:'', s:'bez grupy',
+    t:'— bez grupy (' + bezGrupy + ' ' + (bezGrupy === 1 ? 'úkol'
+      : (bezGrupy < 5 ? 'úkoly' : 'úkolů')) + ')'});
+  kresliVicevyber('filtrPodrobny', 'všechny grupy', nabidkaGrup, FILTRY_PODROBNY.parta);
   kresliVicevyber('filtrTyp', 'všechny typy',
     TYPY.map(t=>({v:t, t:(NAZVY_TYPU[t] || t) + ' (' + t + ')'})), FILTRY_PODROBNY.typ);
   kresliVicevyber('filtrStav', 'všechny stavy',
@@ -4461,6 +4480,19 @@ function mapaVlozka(m, sirka, vyska, posunX){
   return '<g class="mapaVlozka" transform="translate(' + posunX + ',10)">' + s + '</g>';
 }
 
+/* Značka mapy u odkazů ven — rozložený plán se třemi poli a špendlíkem.
+   Vlastní kresba, ne cizí logo. */
+const IKONA_MAPY =
+  '<svg class="znacka" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">'
+  + '<path d="M2 6.2 8.6 4v13.8L2 20V6.2Z" fill="#C9D9C2"/>'
+  + '<path d="M8.6 4 15.4 6.2V20L8.6 17.8V4Z" fill="#E3E0D4"/>'
+  + '<path d="M15.4 6.2 22 4v13.8L15.4 20V6.2Z" fill="#C9D9C2"/>'
+  + '<path d="M2 6.2 8.6 4l6.8 2.2L22 4v13.8L15.4 20l-6.8-2.2L2 20V6.2Z"'
+  + ' fill="none" stroke="#8A8371" stroke-width="1.1" stroke-linejoin="round"/>'
+  + '<path d="M8.6 4v13.8M15.4 6.2V20" stroke="#8A8371" stroke-width="1.1"/>'
+  + '<path d="M12 7.4c1.7 0 3 1.3 3 3 0 2.2-3 5.6-3 5.6s-3-3.4-3-5.6c0-1.7 1.3-3 3-3Z"'
+  + ' fill="#78212E"/><circle cx="12" cy="10.4" r="1.1" fill="#fff"/></svg>';
+
 let mapaOtevrena = null;
 function otevriMapu(u){
   const m = mapaRadku(u);
@@ -4474,20 +4506,37 @@ function otevriMapu(u){
 
   const etapyUdaj = m.etapy.map(e => { const p = bodMapy(e);
     return 'etapa ' + e + (p && p.delka ? ' · ' + p.delka + ' km' : ''); }).join('  ·  ');
+
+  /* Odkazy ven byly čtyři skoro stejné modré věty, ve kterých se „v Mapy.com"
+     opakovalo pokaždé. *Předěláno 29. 8. 2026 (v5.75).* Teď je z každého
+     dlaždička: značka mapy, tučně to podstatné (co se otevře) a pod tím
+     drobně, co za to čeká — délka etapy, silniční vzdálenost, souřadnice.
+
+     Ikona je kreslená tady v SVG, není to logo Mapy.com. Cizí značku do
+     souboru nevkládám, dokud mi ji nedáte — použití loga se řídí jejich
+     pravidly a stahovat ho odsud stejně nemůžu. */
+  const odkaz = (url, nadpis, pod) =>
+    '<a class="mapaOdkaz" target="_blank" rel="noopener" href="' + esc(url) + '">'
+    + IKONA_MAPY + '<span class="text"><b>' + esc(nadpis) + '</b>'
+    + '<small>' + esc(pod) + '</small></span></a>';
+
   const odkazy = [];
   m.etapy.forEach(e => { const p = bodMapy(e);
-    if(p && p.mapa) odkazy.push('<a class="tl" target="_blank" rel="noopener" href="'
-      + esc(p.mapa) + '">Etapa ' + e + ' v Mapy.com</a>'); });
-  if(m.odkaz) odkazy.push('<a class="tl" target="_blank" rel="noopener" href="'
-    + esc(m.odkaz) + '">Otevřít v Mapy.com</a>');
+    if(p && p.mapa) odkazy.push(odkaz(p.mapa, 'Etapa ' + e + ' ' + (p.nazev || ''),
+      (p.delka ? p.delka + ' km běhu' : 'trasa etapy') + ' · Mapy.com')); });
+  if(m.odkaz) odkazy.push(odkaz(m.odkaz, 'Místo noclehu', 'uložený bod · Mapy.com'));
   // celá trasa se hodí vždycky — kvůli orientaci, kde v závodě to je
   const celek = PR_TEXT('mapa_trasy');
-  if(celek) odkazy.push('<a class="tl" target="_blank" rel="noopener" href="'
-    + esc(celek) + '">Celá trasa v Mapy.com</a>');
+  if(celek) odkazy.push(odkaz(celek, 'Celá trasa závodu',
+    'Dolní Lomná → Mikulov · Mapy.com'));
   (m.druh === 'prejezd' ? m.body : [m.stred]).filter(Boolean).forEach(c => {
     const p = bodMapy(c);
-    if(p) odkazy.push('<a class="tl" target="_blank" rel="noopener" href="https://mapy.com/zakladni?q='
-      + p.lat + '%2C' + p.lon + '">' + esc(c + ' ' + p.nazev) + ' v Mapy.com</a>');
+    if(!p) return;
+    // u přejezdu se hodí i kilometry po silnici, ty drží tabulka vzdáleností
+    const v = (m.druh === 'prejezd') ? vzdal(m.body[0], m.body[1]) : null;
+    odkazy.push(odkaz('https://mapy.com/zakladni?q=' + p.lat + '%2C' + p.lon,
+      'Předávka ' + c + ' ' + (p.nazev || ''),
+      (v ? v.km + ' km / ' + v.min + ' min autem · ' : 'místo na mapě · ') + 'Mapy.com'));
   });
 
   const plocha = !k ? '' :
@@ -4503,8 +4552,8 @@ function otevriMapu(u){
     + plocha
     + '<div class="paticka"><span class="udaje">' + esc(etapyUdaj
         || (m.druh === 'prejezd' ? 'přejezd — čára je vzdušná spojnice, ne silnice' : ''))
-    + '</span>' + odkazy.join(' ')
-    + ' <button class="tl" onclick="zavriMapu()">Zavřít</button></div>';
+    + '</span><span class="odkazy">' + odkazy.join('') + '</span>'
+    + '<button class="tl" onclick="zavriMapu()">Zavřít</button></div>';
   $('#mapaOkno').classList.add('videt');
   $('#mapaClona').classList.add('videt');
 }
@@ -4772,11 +4821,15 @@ function kresliPodrobny(){
      i tak: jinak by se tvářila, že žádné úkoly nemá. */
   const schovane = new Set((D.tymy || [])
     .filter(t => t.v_podrobnem === 'ne').map(t => t.kod));
+  /* Prázdná grupa se ve filtru drží jako prázdný řetězec, ale v datech bývá
+     null nebo undefined. Bez tohohle srovnání by položka „bez grupy" hledala
+     `undefined` a neukázala nic. *Doplněno 29. 8. 2026 (v5.74).* */
+  const grupaUkolu = x => x.parta || '';
   const u = vsechny.filter(x =>
        // rozdělaný řádek bez grupy je vidět vždycky, jinak by po přidání zmizel
        (x._nove && !x.parta) ||
-       (!schovane.has(x.parta) || fp.has(x.parta))
-    && (!fp.size || fp.has(x.parta))
+       (!schovane.has(x.parta) || fp.has(grupaUkolu(x)))
+    && (!fp.size || fp.has(grupaUkolu(x)))
     && (!ft.size || ft.has(x.typ))
     && (!fk || String(x.kod||'').toLowerCase().indexOf(fk)>=0)
     && (!fs.size || fs.has(x.stav))

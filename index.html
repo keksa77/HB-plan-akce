@@ -1940,8 +1940,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.75";
-const BUILD = "2026-08-29T01:07+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.76";
+const BUILD = "2026-08-29T01:23+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4054,6 +4054,16 @@ function predavkyUkolu(u){
 function kresliVicevyber(id, popisVse, polozky, sada){
   const el = $('#' + id); if(!el) return;
   const bylOtevreny = el.classList.contains('otevreny');
+  /* Vybraná hodnota, která už v nabídce není, se z výběru vyhodí.
+     *Opraveno 29. 8. 2026 (v5.76).* Bez toho zůstala ve výběru neviditelně:
+     na tlačítku stálo „všechny grupy", protože se do shrnutí počítají jen
+     položky z nabídky, ale `sada` pořád nebyla prázdná — a filtr tiše
+     nepropustil vůbec nic („zobrazeno 0 z 317 úkolů" při vypnutých filtrech).
+     Spustilo to mizení volby „bez grupy": jakmile poslední osiřelý řádek dostal
+     grupu, volba z nabídky zmizela a výběr na ni osiřel. Stejně by se to chovalo
+     u smazané grupy nebo u předávky, ke které přestaly být úkoly. */
+  const nabizene = new Set(polozky.map(p => p.v));
+  [...sada].forEach(v => { if(!nabizene.has(v)) sada.delete(v); });
   const vybrane = polozky.filter(p => sada.has(p.v));
   // Do shrnutí na tlačítku patří krátký popis (p.s), když ho položka má —
   // v nabídce může stát celá osádka grupy, ale na tlačítko se nevejde.

@@ -130,15 +130,20 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
   font-size:10.5px;color:#5A5348;padding:1px 6px;border-top-right-radius:5px}
 #mapaOkno .paticka{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:11px}
 #mapaOkno .udaje{font-size:12.5px;color:#6B6357;flex:0 0 100%}
-#mapaOkno .odkazy{display:flex;gap:8px;flex-wrap:wrap;flex:1 1 auto}
-/* Dlaždička odkazu ven: značka, tučně co se otevře, pod tím co za to čeká. */
-.mapaOdkaz{display:flex;align-items:center;gap:9px;text-decoration:none;
-  border:1px solid #DED8CC;background:#FBFAF7;border-radius:9px;padding:6px 11px 6px 8px;
-  color:var(--tmava,#3A332C);transition:background .12s,border-color .12s}
+#mapaOkno .odkazy{display:flex;gap:8px;flex-wrap:wrap;flex:1 1 auto;align-items:center}
+/* Značka Mapy.com v čele řady odkazů — jednou, zato pořádně velká, ať je
+   poznat, kam odkazy vedou. Logo se nepřebarvuje ani nedeformuje. */
+#mapaOkno .znackaMapy{display:flex;flex-direction:column;align-items:center;gap:3px;
+  margin-right:4px}
+#mapaOkno .znackaMapy img{display:block;height:30px;width:auto;border-radius:4px}
+#mapaOkno .znackaMapy small{font-size:10.5px;color:#8A8371;letter-spacing:.04em}
+/* Dlaždička odkazu ven: tučně co se otevře, pod tím co za to čeká. */
+.mapaOdkaz{display:flex;flex-direction:column;justify-content:center;gap:1px;
+  text-decoration:none;border:1px solid #DED8CC;background:#FBFAF7;border-radius:9px;
+  padding:6px 12px;color:var(--tmava,#3A332C);line-height:1.25;
+  transition:background .12s,border-color .12s}
 .mapaOdkaz:hover{background:#F3EFE7;border-color:#B9AE9B}
-.mapaOdkaz .znacka{flex:0 0 auto;display:block}
-.mapaOdkaz .text{display:flex;flex-direction:column;line-height:1.2;min-width:0}
-.mapaOdkaz b{font-size:13px;font-weight:700;white-space:nowrap}
+.mapaOdkaz b{font-size:13.5px;font-weight:700;white-space:nowrap}
 .mapaOdkaz small{font-size:11px;color:#8A8371;white-space:nowrap}
 .mapaCesta{fill:none;stroke:#C9C2B4;stroke-width:2}
 .mapaZvyrazneni{fill:none;stroke:#78212E;stroke-width:4.5;stroke-linecap:round}
@@ -1940,8 +1945,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.76";
-const BUILD = "2026-08-29T01:23+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.77";
+const BUILD = "2026-08-29T01:46+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4490,18 +4495,13 @@ function mapaVlozka(m, sirka, vyska, posunX){
   return '<g class="mapaVlozka" transform="translate(' + posunX + ',10)">' + s + '</g>';
 }
 
-/* Značka mapy u odkazů ven — rozložený plán se třemi poli a špendlíkem.
-   Vlastní kresba, ne cizí logo. */
-const IKONA_MAPY =
-  '<svg class="znacka" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">'
-  + '<path d="M2 6.2 8.6 4v13.8L2 20V6.2Z" fill="#C9D9C2"/>'
-  + '<path d="M8.6 4 15.4 6.2V20L8.6 17.8V4Z" fill="#E3E0D4"/>'
-  + '<path d="M15.4 6.2 22 4v13.8L15.4 20V6.2Z" fill="#C9D9C2"/>'
-  + '<path d="M2 6.2 8.6 4l6.8 2.2L22 4v13.8L15.4 20l-6.8-2.2L2 20V6.2Z"'
-  + ' fill="none" stroke="#8A8371" stroke-width="1.1" stroke-linejoin="round"/>'
-  + '<path d="M8.6 4v13.8M15.4 6.2V20" stroke="#8A8371" stroke-width="1.1"/>'
-  + '<path d="M12 7.4c1.7 0 3 1.3 3 3 0 2.2-3 5.6-3 5.6s-3-3.4-3-5.6c0-1.7 1.3-3 3-3Z"'
-  + ' fill="#78212E"/><circle cx="12" cy="10.4" r="1.1" fill="#fff"/></svg>';
+/* Logo Mapy.com. *Vloženo 29. 8. 2026 (v5.77), stažené z o-seznam.cz.*
+   Je to chráněná typografická značka, takže se drží jejich pravidel: bílý nápis
+   smí být **jen na mapové zelené** (#1EAE00), proto se vkládá i s pozadím a nic
+   se nepřebarvuje. Nekreslí se dokola u každého odkazu — stojí jednou v čele
+   řady, aby bylo poznat, kam odkazy vedou, a nezabíralo to čtyřikrát místo.
+   Výřez drží ochrannou zónu kolem nápisu, logo se nesmí lepit na hranu. */
+const LOGO_MAPY = 'data:image/png;base64,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';
 
 let mapaOtevrena = null;
 function otevriMapu(u){
@@ -4511,7 +4511,8 @@ function otevriMapu(u){
   /* Plátno se měří podle okna, ne pevně: dlaždice se skládají v pixelech,
      takže roztahovat hotovou mapu přes CSS by ji rozmazalo. */
   const S = Math.round(Math.min(1040, window.innerWidth * 0.94) - 40);
-  const V = Math.round(Math.max(260, Math.min(520, window.innerHeight * 0.55)));
+  // náhled nemusí být přes půl obrazovky; místo je potřeba i na odkazy pod ním
+  const V = Math.round(Math.max(240, Math.min(430, window.innerHeight * 0.46)));
   const k = m.druh === 'odkaz' ? null : mapaKresli(m, S, V);
 
   const etapyUdaj = m.etapy.map(e => { const p = bodMapy(e);
@@ -4527,18 +4528,16 @@ function otevriMapu(u){
      pravidly a stahovat ho odsud stejně nemůžu. */
   const odkaz = (url, nadpis, pod) =>
     '<a class="mapaOdkaz" target="_blank" rel="noopener" href="' + esc(url) + '">'
-    + IKONA_MAPY + '<span class="text"><b>' + esc(nadpis) + '</b>'
-    + '<small>' + esc(pod) + '</small></span></a>';
+    + '<b>' + esc(nadpis) + '</b><small>' + esc(pod) + '</small></a>';
 
   const odkazy = [];
   m.etapy.forEach(e => { const p = bodMapy(e);
     if(p && p.mapa) odkazy.push(odkaz(p.mapa, 'Etapa ' + e + ' ' + (p.nazev || ''),
-      (p.delka ? p.delka + ' km běhu' : 'trasa etapy') + ' · Mapy.com')); });
-  if(m.odkaz) odkazy.push(odkaz(m.odkaz, 'Místo noclehu', 'uložený bod · Mapy.com'));
+      p.delka ? p.delka + ' km běhu' : 'trasa etapy')); });
+  if(m.odkaz) odkazy.push(odkaz(m.odkaz, 'Místo noclehu', 'uložený bod'));
   // celá trasa se hodí vždycky — kvůli orientaci, kde v závodě to je
   const celek = PR_TEXT('mapa_trasy');
-  if(celek) odkazy.push(odkaz(celek, 'Celá trasa závodu',
-    'Dolní Lomná → Mikulov · Mapy.com'));
+  if(celek) odkazy.push(odkaz(celek, 'Celá trasa závodu', 'Dolní Lomná → Mikulov'));
   (m.druh === 'prejezd' ? m.body : [m.stred]).filter(Boolean).forEach(c => {
     const p = bodMapy(c);
     if(!p) return;
@@ -4546,7 +4545,7 @@ function otevriMapu(u){
     const v = (m.druh === 'prejezd') ? vzdal(m.body[0], m.body[1]) : null;
     odkazy.push(odkaz('https://mapy.com/zakladni?q=' + p.lat + '%2C' + p.lon,
       'Předávka ' + c + ' ' + (p.nazev || ''),
-      (v ? v.km + ' km / ' + v.min + ' min autem · ' : 'místo na mapě · ') + 'Mapy.com'));
+      v ? v.km + ' km / ' + v.min + ' min autem' : 'místo na mapě'));
   });
 
   const plocha = !k ? '' :
@@ -4562,7 +4561,10 @@ function otevriMapu(u){
     + plocha
     + '<div class="paticka"><span class="udaje">' + esc(etapyUdaj
         || (m.druh === 'prejezd' ? 'přejezd — čára je vzdušná spojnice, ne silnice' : ''))
-    + '</span><span class="odkazy">' + odkazy.join('') + '</span>'
+    + '</span><span class="odkazy">'
+    + (odkazy.length ? '<span class="znackaMapy"><small>otevřít v</small>'
+        + '<img src="' + LOGO_MAPY + '" alt="Mapy.com" width="246" height="80"></span>' : '')
+    + odkazy.join('') + '</span>'
     + '<button class="tl" onclick="zavriMapu()">Zavřít</button></div>';
   $('#mapaOkno').classList.add('videt');
   $('#mapaClona').classList.add('videt');

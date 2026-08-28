@@ -1799,8 +1799,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.59";
-const BUILD = "2026-08-28T00:57+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.61";
+const BUILD = "2026-08-28T13:34+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2565,6 +2565,16 @@ function slotChip(u){
   if(!jedeLetos(u.parta)){                 // grupa letos nejede, úkol je potřeba přerozdělit
     c.style.outline = '2px dashed var(--vinova)';
     c.title += ' — POZOR: grupa letos nejede, úkol je potřeba přerozdělit';
+  }
+  /* Zamčený úkol je poznat i v mřížce, jinak se člověk diví, proč s ním nejde
+     hnout. Platí to i pro zámek zděděný po grupě. */
+  if(jeZamceny(u)){
+    const z = document.createElement('span');
+    z.textContent = '\u{1F512}';
+    z.style.marginLeft = '3px';
+    z.title = zamcenyGrupou(u) ? 'zamčeno přes celou grupu ' + u.parta : 'zamčený úkol';
+    c.appendChild(z);
+    c.draggable = false;
   }
   const x = document.createElement('span'); x.className='smaz'; x.textContent='×'; x.title='Odebere úkol z tohoto políčka. Vrátit se to nedá.';
   x.onclick = e=>{
@@ -4308,12 +4318,26 @@ function grupaBunka(r, i){
   const kody = grupyLetos().slice().sort((a,b)=>(a.poradi||99)-(b.poradi||99)).map(x=>x.kod);
   if(kody.indexOf(r.parta)<0 && r.parta) kody.unshift(r.parta);
   const nejede = r.parta && !jedeLetos(r.parta);
-  return '<span class="grupaOdznak" style="background:' + esc(t.barva||'#8A8371')
+  /* Řádek bez grupy dostane prázdnou položku — a VYBRANOU. Bez ní select
+     ukazoval první grupu v pořadí, jenže v datech bylo pořád prázdno: kdo
+     v nabídce klepl právě na tu zobrazenou, nezměnil nic, protože prohlížeč
+     žádnou změnu nezaznamenal a událost nevyvolal. Úkol se pak uložil bez
+     grupy — v databázi zůstaly A-X-01 a A-X-02 s prázdným kod_tymu, v podrobném
+     plánu spadly na konec a v mřížce nebyly vidět vůbec. Odtud „nový řádek se
+     neukládá": uložil se, jen osiřelý. *Nalezeno 28. 8. 2026 (v5.60).* */
+  const bezGrupy = !r.parta;
+  return '<span class="grupaOdznak" style="background:'
+    + esc(bezGrupy ? '#B5352F' : (t.barva||'#8A8371'))
     + (nejede ? ';outline:2px dashed var(--vinova)' : '') + '">'
-    + '<select data-i="' + i + '" data-p="parta" title="' + esc((t.nazev||r.parta)
-      + (sefGrupy(r.parta)?' — šéf '+sefGrupy(r.parta):'')
-      + (nejede ? ' — POZOR: grupa letos nejede, úkol je potřeba přerozdělit' : ''))
-      + '. Přehodí úkol jiné grupě.">'
+    + '<select data-i="' + i + '" data-p="parta" title="' + esc(bezGrupy
+      ? 'Úkol zatím nepatří žádné grupě — vyberte ji, jinak se uloží osiřelý '
+        + 'a v mřížce plánu se neukáže.'
+      : ((t.nazev||r.parta)
+         + (sefGrupy(r.parta)?' — šéf '+sefGrupy(r.parta):'')
+         + (nejede ? ' — POZOR: grupa letos nejede, úkol je potřeba přerozdělit' : '')
+         + '. Přehodí úkol jiné grupě.'))
+      + '">'
+    + (bezGrupy ? '<option value="" selected>— vyberte grupu —</option>' : '')
     + kody.map(k=>`<option${k===r.parta?' selected':''}>${esc(k)}</option>`).join('')
     + '</select></span>'
     + (nejede ? '<span class="grupaJmeno" style="color:var(--vinova)">nejede</span>' : '');
@@ -4345,6 +4369,11 @@ function kresliTymy(){
         + "V datech zůstane kvůli úkolům z minulého ročníku a úkoly, které na ní visí, "
         + "se v plánu zvýrazní."},
     {nadpis:"Název", pole:"nazev"},
+    {nadpis:"Zámek", sirka:"74px", pevnaSirka:true, trida:"stred", html:bunkaZamkuGrupy,
+      napovedaSl:"Zamčené grupě se přeplánování vyhne úplně: nepřidá jí přejezd ani "
+        + "nocleh, nesmaže jí dopočítané řádky a nepřepíše žádný čas. Je to tentýž "
+        + "zámek jako u jednotlivého úkolu, jen platí na celou grupu. Řádky s vlastním "
+        + "zámkem zůstávají zamčené i po odemčení grupy."},
     {nadpis:"V podrobném", pole:"v_podrobnem", typ:"select", moznosti:["ano","ne"], sirka:"120px",
       napovedaSl:"Má se grupa ukazovat v podrobném plánu? Volbou „ne\" se odtud "
         + "schová i se svými úkoly — hodí se u místních pořadatelů, kteří plán "
@@ -5783,7 +5812,20 @@ const rucni = () => D.ukoly.filter(u => !jeOdvozeny(u));
    řádky v databázi nežijí (počítají se při každém načtení znovu), zamknutí
    odvozeného řádku ho zároveň povýší na ruční — jinak by zámek zmizel spolu
    s ním při prvním obnovení stránky. */
-const jeZamceny = u => !!u.zamek;
+/* Zámek se dá zamknout i celé grupě. *Zadáno 28. 8. 2026 (v5.61).*
+
+   Je to tentýž zámek, jen postavený o patro výš: zamčená grupa se chová, jako by
+   byl zamčený každý její řádek. Přeplánování jí nic nepřidá, nic nesmaže a
+   žádný čas nepřepíše. Hodí se, když je program grupy domluvený s lidmi a nemá
+   se hnout, ať se kolem přepočítá cokoli.
+
+   Schválně to jde přes `jeZamceny`, a ne přes zvláštní podmínky v generátoru:
+   tak se skupinový zámek propíše všude, kde už zámek platí — do výpočtu časů,
+   do poznámek o směru, do mazání dopočítaných řádků i do tažení v mřížce. */
+const zamcenaGrupa = kod => { const t = parta(kod); return !!(t && t.zamek); };
+const jeZamceny = u => !!u.zamek || zamcenaGrupa(u.parta);
+// Zamčeno kvůli grupě, ne kvůli sobě — řádek se pak nedá odemknout jednotlivě.
+const zamcenyGrupou = u => !u.zamek && zamcenaGrupa(u.parta);
 
 /* ---------- text úkolu složený ze sloupců ----------
    *Zadáno 27. 8. 2026 (v5.58).* Ručně přidaný řádek se doteď rodil s prázdným
@@ -5911,9 +5953,51 @@ function prepniZamekUkolu(kod){
        + 'smažte ho a přegenerujte.'));
 }
 
+/* ---------- zámek celé grupy ----------
+   Tentýž zámek o patro výš. Zamčená grupa se chová, jako by byl zamčený každý
+   její řádek — viz `jeZamceny`. Řádky s vlastním zámkem tím nepřicházejí
+   o nic: odemknutím grupy zůstanou zamčené dál. */
+function prepniZamekGrupy(kod){
+  if(!smiPsat()){ hlaska('Na tohle nemáte právo — plán jde jen číst.'); return; }
+  const t = D.tymy.find(x => x.kod === kod);
+  if(!t) return;
+  t.zamek = !t.zamek;
+  zrevidovano(t);
+  const kolik = D.ukoly.filter(u => u.parta === kod).length;
+  const vlastni = D.ukoly.filter(u => u.parta === kod && u.zamek).length;
+  oznacZmenu();
+  kresliTymy(); kresliPodrobny(); kresliPlan(); kresliPaletu();
+  hlaska(t.zamek
+    ? ('Zamčena celá grupa ' + popisGrupy(kod) + ' — přeplánování se nedotkne '
+       + 'žádného z jejích ' + kolik + ' úkolů: nic jí nepřidá, nesmaže ani '
+       + 'nepřepíše čas. Jednotlivé řádky se do odemčení grupy odemknout nedají.')
+    : ('Odemčena grupa ' + popisGrupy(kod) + ' — přeplánování jí zase smí počítat.'
+       + (vlastni ? ' ' + vlastni + ' řádků má vlastní zámek a ty zůstávají zamčené.' : '')));
+}
+
+function bunkaZamkuGrupy(t){
+  const zamceno = !!t.zamek;
+  return '<button class="zamekUkolu' + (zamceno ? ' drzi' : '') + '"'
+    + ' onclick="prepniZamekGrupy(' + JSON.stringify(String(t.kod||'')).replace(/"/g,'&quot;') + ')"'
+    + ' title="' + (zamceno
+        ? 'Celá grupa je zamčená: přeplánování jí nic nepřidá, nesmaže ani '
+          + 'nepřepíše čas. Kliknutím odemknete.'
+        : 'Kliknutím zamknete celou grupu — přeplánování se pak nedotkne žádného '
+          + 'jejího úkolu. Hodí se, když je program grupy domluvený s lidmi.') + '">'
+    + (zamceno ? '&#128274;' : '&#128275;') + '</button>';
+}
+
 // buňka se zámkem: jedno tlačítko, které je vidět i zavřené i otevřené
 function bunkaZamku(r){
   const zamceno = jeZamceny(r);
+  /* Zámek zděděný po grupě se nedá sundat u jednoho řádku — sundává se u grupy.
+     Tlačítko to proto říká rovnou a kliknutí na něj jen odkáže dál. */
+  if(zamcenyGrupou(r))
+    return '<button class="zamekUkolu drzi"'
+      + ' onclick="hlaska(\'Zamčeno přes celou grupu ' + esc(String(r.parta||''))
+      + '. Odemyká se v tabulce Grupy, ve sloupci Zámek.\')"'
+      + ' title="Zamčeno přes celou grupu ' + esc(String(r.parta||''))
+      + ' — odemyká se v tabulce Grupy, ne tady.">&#128274;</button>';
   return '<button class="zamekUkolu' + (zamceno ? ' drzi' : '') + '"'
     + ' onclick="prepniZamekUkolu(' + JSON.stringify(String(r.kod||'')).replace(/"/g,'&quot;') + ')"'
     + ' title="' + (zamceno
@@ -6328,6 +6412,7 @@ function spocitejGenerovani(){
      který značení tlačil na nejpozdější možný začátek; od v5.55 se trasuje hned,
      jak je čas, a úkoly grupy se skládají za sebe podle počtu čet. */
   D.tymy.forEach(t => {
+    if(t.zamek) return;                    // zamčené grupě se čas nepřepisuje
     const r = retezGrupy(t.kod);
     if(!r) return;
     r.radky.forEach(x => {
@@ -6488,6 +6573,7 @@ function spocitejGenerovani(){
   const konecUkolu = c => c.do ? minuty(c.denDo, c.do) : minuty(c.den, c.od);
 
   D.tymy.forEach(t => {
+    if(t.zamek) return;                    // zamčené grupě se nic nepřidává
     const rada = rucni().filter(u => u.parta === t.kod)
       .map(u => ({u, m: casUkolu(u)}))
       .filter(x => x.m != null)
@@ -7943,16 +8029,19 @@ const MAPA = {
           poznamka:'poznamka', stitek:'stitek', aktivni:'aktivni',
           min_znaceni:'min_znaceni', max_znaceni:'max_znaceni',
           min_uklid:'min_uklid',     max_uklid:'max_uklid',
-          v_podrobnem:'v_podrobnem', prejezdy:'bez_prejezdu'},
+          v_podrobnem:'v_podrobnem', prejezdy:'bez_prejezdu', zamek:'zamek'},
     // Všechna tři „ano/ne" jsou v databázi boolean, v tabulce se ale píšou
     // slovem. Prázdná hodnota znamená ano — grupa se schová jen tehdy, když
     // to někdo vysloveně nastaví. U přejezdů je smysl obrácený.
     naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano',
                        v_podrobnem: r.v_podrobnem === false ? 'ne' : 'ano',
-                       prejezdy: r.prejezdy === true ? 'ne' : 'ano'}),
+                       prejezdy: r.prejezdy === true ? 'ne' : 'ano',
+                       // zámek je boolean a musí jím zůstat i cestou zpátky
+                       zamek: !!r.zamek}),
     naDb: r => ({...r, aktivni: r.aktivni !== 'ne',
                        v_podrobnem: r.v_podrobnem !== 'ne',
-                       bez_prejezdu: r.bez_prejezdu === 'ne'})
+                       bez_prejezdu: r.bez_prejezdu === 'ne',
+                       zamek: !!r.zamek})
   },
   clenove: {
     tabulka:'clenove_tymu', klic:['id'], konflikt:['id'], rok:true, jen:['zRocniku'],

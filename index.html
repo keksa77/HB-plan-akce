@@ -374,6 +374,14 @@ td.km b{color:var(--olive);font-size:12.5px}
 tr.zamcenyRadek td{background:#FDFAF2}
 body.mobil .zamekUkolu{font-size:18px;padding:6px 8px;opacity:.55}
 
+/* Vlastní bublina nápovědy. Prohlížeč u atributu title velikost písma měnit
+   nedovolí, a nápověda u zámku se špatně četla. Používá se přes atribut
+   data-nap-velky; ostatní nápovědy zůstávají v title. */
+#bublinaNap{position:fixed;z-index:9999;max-width:340px;display:none;
+  background:#2B2622;color:#fff;font-size:16px;line-height:1.45;
+  padding:9px 12px;border-radius:9px;box-shadow:0 6px 18px rgba(0,0,0,.28);
+  pointer-events:none}
+
 .navrhSkupina li{margin:1px 0;border-radius:5px}
 .navrhSkupina li:hover{background:var(--svetla)}
 .navrhVolba{display:flex;gap:8px;align-items:flex-start;cursor:pointer;padding:3px 6px}
@@ -1297,48 +1305,48 @@ const D = {
     {kod:"G6", nazev:"", poradi:8, doprava:"osobní auto", poznamka:"", stitek:"G6 Milan", aktivni:"ano", min_znaceni:2, max_znaceni:4, min_uklid:2, max_uklid:3, barva:"#4E9BA6", v_podrobnem:"ano"},
     {kod:"G7", nazev:"", poradi:9, doprava:"osobní auto", poznamka:"", stitek:"G7 Skejťák", aktivni:"ano", min_znaceni:1, max_znaceni:3, min_uklid:2, max_uklid:3, barva:"#5E8C3A", v_podrobnem:"ano"},
     {kod:"G8", nazev:"", poradi:10, doprava:"kolo", poznamka:"", stitek:"G8 Borek P.", aktivni:"ano", min_znaceni:2, max_znaceni:3, min_uklid:2, max_uklid:3, barva:"#8A6FA8", v_podrobnem:"ano"},
-    {kod:"G10", nazev:"", poradi:11, doprava:"kolo", poznamka:"", stitek:"G10 Martin H.", aktivni:"ano", min_znaceni:2, max_znaceni:3, min_uklid:2, max_uklid:2, barva:"#7A6A55", v_podrobnem:"ano"},
-    {kod:"G11", nazev:"", poradi:12, doprava:"kolo", poznamka:"", stitek:"G11 Libor K.", aktivni:"ano", min_znaceni:1, max_znaceni:1, min_uklid:0, max_uklid:0, barva:"#A63D4E", v_podrobnem:"ano"},
-    {kod:"G12", nazev:"", poradi:13, doprava:"kolo", poznamka:"", stitek:"G12 Jiří P.", aktivni:"ano", min_znaceni:1, max_znaceni:1, min_uklid:0, max_uklid:0, barva:"#8E9A3C", v_podrobnem:"ano"},
-    {kod:"G13", nazev:"", poradi:14, doprava:"", poznamka:"", stitek:"G13 Helena", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#5B4A8C", v_podrobnem:"ano"},
-    {kod:"G14", nazev:"", poradi:15, doprava:"dodávka", poznamka:"", stitek:"G14 Přema Š.", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:1, barva:"#D08C3A", v_podrobnem:"ano"},
-    {kod:"G15", nazev:"", poradi:16, doprava:"kolo", poznamka:"", stitek:"G15 Adam S.", aktivni:"ano", min_znaceni:2, max_znaceni:2, min_uklid:2, max_uklid:2, barva:"#6E8FB5", v_podrobnem:"ano"},
-    {kod:"G16", nazev:"", poradi:17, doprava:"pěšky", poznamka:"", stitek:"G16 SDH Hrozenkov", aktivni:"ano", min_znaceni:1, max_znaceni:1, min_uklid:0, max_uklid:1, barva:"#4B7A5E", v_podrobnem:"ano"},
-    {kod:"G17", nazev:"", poradi:18, doprava:"pěšky", poznamka:"", stitek:"G17 Martin V.", aktivni:"ano", min_znaceni:1, max_znaceni:2, min_uklid:1, max_uklid:2, barva:"#A8794F", v_podrobnem:"ano"},
-    {kod:"G18", nazev:"", poradi:19, doprava:"pěšky", poznamka:"", stitek:"G18 Franta D.", aktivni:"ano", min_znaceni:1, max_znaceni:2, min_uklid:1, max_uklid:2, barva:"#3E7C6B", v_podrobnem:"ano"},
-    {kod:"IT", nazev:"IT podpora", poradi:20, doprava:"místní", poznamka:"", stitek:"IT Jan H.", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#46586B", v_podrobnem:"ano"},
-    {kod:"FOTO", nazev:"Fotografové", poradi:21, doprava:"osobní auto", poznamka:"", stitek:"FOTO Tomáš M.", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C4E6B", v_podrobnem:"ano"},
-    {kod:"ZVUK", nazev:"Zvuk a moderace", poradi:22, doprava:"osobní auto", poznamka:"", stitek:"ZVUK Jerza", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#5A5A6E", v_podrobnem:"ano"},
-    {kod:"VIDEO", nazev:"Video", poradi:23, doprava:"osobní auto", poznamka:"", stitek:"VIDEO Štěpán G.", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#6B5B8C", v_podrobnem:"ano"},
-    {kod:"GASTRO", nazev:"Občerstvení", poradi:24, doprava:"osobní auto", poznamka:"", stitek:"GASTRO Rado D.", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#A2733C", v_podrobnem:"ano"},
-    {kod:"ZDRAV", nazev:"Zdravotní dohled", poradi:25, doprava:"místní", poznamka:"", stitek:"ZDRAV", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C3A3A", v_podrobnem:"ano"},
-    {kod:"P2", nazev:"Horní Lomná — místní", poradi:26, doprava:"místní", poznamka:"", stitek:"P2 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P3", nazev:"Morávka — místní", poradi:27, doprava:"místní", poznamka:"", stitek:"P3 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P6", nazev:"Bílá — místní", poradi:28, doprava:"místní", poznamka:"", stitek:"P6 domácí", aktivni:"ne", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P7", nazev:"Bumbálka — místní", poradi:29, doprava:"místní", poznamka:"", stitek:"P7 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P8", nazev:"Světlá — místní", poradi:30, doprava:"místní", poznamka:"", stitek:"P8 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P9", nazev:"Kasárne — místní", poradi:31, doprava:"místní", poznamka:"", stitek:"P9 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P10", nazev:"Kohútka — místní", poradi:32, doprava:"místní", poznamka:"", stitek:"P10 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P12", nazev:"Pulčín — místní", poradi:33, doprava:"místní", poznamka:"", stitek:"P12 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P13", nazev:"Študlov — místní", poradi:34, doprava:"místní", poznamka:"", stitek:"P13 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P14", nazev:"Návojná — místní", poradi:35, doprava:"místní", poznamka:"", stitek:"P14 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P15", nazev:"Popov — místní", poradi:36, doprava:"místní", poznamka:"", stitek:"P15 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P16", nazev:"Rokytnice — místní", poradi:37, doprava:"místní", poznamka:"", stitek:"P16 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P17", nazev:"Bojkovice — místní", poradi:38, doprava:"místní", poznamka:"", stitek:"P17 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P18", nazev:"Starý Hrozenkov — místní", poradi:39, doprava:"místní", poznamka:"", stitek:"P18 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P19", nazev:"Mikulčin vrch — místní", poradi:40, doprava:"místní", poznamka:"", stitek:"P19 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P20", nazev:"Strání — místní", poradi:41, doprava:"místní", poznamka:"", stitek:"P20 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P21", nazev:"Nová Lhota — místní", poradi:42, doprava:"místní", poznamka:"", stitek:"P21 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P22", nazev:"Velká nad Veličkou — místní", poradi:43, doprava:"místní", poznamka:"", stitek:"P22 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P23", nazev:"Lučina, koupaliště — místní", poradi:44, doprava:"místní", poznamka:"", stitek:"P23 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P24", nazev:"Sudoměřice — místní", poradi:45, doprava:"místní", poznamka:"", stitek:"P24 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P25", nazev:"Hodonín — místní", poradi:46, doprava:"místní", poznamka:"", stitek:"P25 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P26", nazev:"Týnec — místní", poradi:47, doprava:"místní", poznamka:"", stitek:"P26 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P27", nazev:"Lanžhot — místní", poradi:48, doprava:"místní", poznamka:"", stitek:"P27 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P28", nazev:"Břeclav — místní", poradi:49, doprava:"místní", poznamka:"", stitek:"P28 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P29", nazev:"Valtice — místní", poradi:50, doprava:"místní", poznamka:"", stitek:"P29 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"P30", nazev:"Hlohovec — místní", poradi:51, doprava:"místní", poznamka:"", stitek:"P30 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
-    {kod:"domácí", nazev:"Místní pořadatelé", poradi:99, doprava:"", poznamka:"", stitek:"domácí", aktivni:"ne", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#96907F", v_podrobnem:"ano"}
+    {kod:"G10", nazev:"", poradi:12, doprava:"kolo", poznamka:"", stitek:"G10 Martin H.", aktivni:"ano", min_znaceni:2, max_znaceni:3, min_uklid:2, max_uklid:2, barva:"#7A6A55", v_podrobnem:"ano"},
+    {kod:"G11", nazev:"", poradi:13, doprava:"kolo", poznamka:"", stitek:"G11 Libor K.", aktivni:"ano", min_znaceni:1, max_znaceni:1, min_uklid:0, max_uklid:0, barva:"#A63D4E", v_podrobnem:"ano"},
+    {kod:"G12", nazev:"", poradi:14, doprava:"kolo", poznamka:"", stitek:"G12 Jiří P.", aktivni:"ano", min_znaceni:1, max_znaceni:1, min_uklid:0, max_uklid:0, barva:"#8E9A3C", v_podrobnem:"ano"},
+    {kod:"G13", nazev:"", poradi:15, doprava:"", poznamka:"", stitek:"G13 Helena", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#5B4A8C", v_podrobnem:"ano"},
+    {kod:"G14", nazev:"", poradi:16, doprava:"dodávka", poznamka:"", stitek:"G14 Přema Š.", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:1, barva:"#D08C3A", v_podrobnem:"ano"},
+    {kod:"G15", nazev:"", poradi:17, doprava:"kolo", poznamka:"", stitek:"G15 Adam S.", aktivni:"ano", min_znaceni:2, max_znaceni:2, min_uklid:2, max_uklid:2, barva:"#6E8FB5", v_podrobnem:"ano"},
+    {kod:"G16", nazev:"", poradi:18, doprava:"pěšky", poznamka:"", stitek:"G16 SDH Hrozenkov", aktivni:"ano", min_znaceni:1, max_znaceni:1, min_uklid:0, max_uklid:1, barva:"#4B7A5E", v_podrobnem:"ano"},
+    {kod:"G17", nazev:"", poradi:19, doprava:"pěšky", poznamka:"", stitek:"G17 Martin V.", aktivni:"ano", min_znaceni:1, max_znaceni:2, min_uklid:1, max_uklid:2, barva:"#A8794F", v_podrobnem:"ano"},
+    {kod:"G9", nazev:"", poradi:11, doprava:"pěšky", poznamka:"", stitek:"G9 Franta D.", aktivni:"ano", min_znaceni:1, max_znaceni:2, min_uklid:1, max_uklid:2, barva:"#3E7C6B", v_podrobnem:"ano"},
+    {kod:"IT", nazev:"IT podpora", poradi:21, doprava:"místní", poznamka:"", stitek:"IT Jan H.", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#46586B", v_podrobnem:"ano"},
+    {kod:"FOTO", nazev:"Fotografové", poradi:22, doprava:"osobní auto", poznamka:"", stitek:"FOTO Tomáš M.", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C4E6B", v_podrobnem:"ano"},
+    {kod:"ZVUK", nazev:"Zvuk a moderace", poradi:23, doprava:"osobní auto", poznamka:"", stitek:"ZVUK Jerza", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#5A5A6E", v_podrobnem:"ano"},
+    {kod:"VIDEO", nazev:"Video", poradi:24, doprava:"osobní auto", poznamka:"", stitek:"VIDEO Štěpán G.", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#6B5B8C", v_podrobnem:"ano"},
+    {kod:"GASTRO", nazev:"Občerstvení", poradi:25, doprava:"osobní auto", poznamka:"", stitek:"GASTRO Rado D.", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#A2733C", v_podrobnem:"ano"},
+    {kod:"ZDRAV", nazev:"Zdravotní dohled", poradi:26, doprava:"místní", poznamka:"", stitek:"ZDRAV", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C3A3A", v_podrobnem:"ano"},
+    {kod:"P2", nazev:"Horní Lomná — místní", poradi:27, doprava:"místní", poznamka:"", stitek:"P2 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P3", nazev:"Morávka — místní", poradi:28, doprava:"místní", poznamka:"", stitek:"P3 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P6", nazev:"Bílá — místní", poradi:29, doprava:"místní", poznamka:"", stitek:"P6 domácí", aktivni:"ne", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P7", nazev:"Bumbálka — místní", poradi:30, doprava:"místní", poznamka:"", stitek:"P7 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P8", nazev:"Světlá — místní", poradi:31, doprava:"místní", poznamka:"", stitek:"P8 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P9", nazev:"Kasárne — místní", poradi:32, doprava:"místní", poznamka:"", stitek:"P9 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P10", nazev:"Kohútka — místní", poradi:33, doprava:"místní", poznamka:"", stitek:"P10 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P12", nazev:"Pulčín — místní", poradi:34, doprava:"místní", poznamka:"", stitek:"P12 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P13", nazev:"Študlov — místní", poradi:35, doprava:"místní", poznamka:"", stitek:"P13 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P14", nazev:"Návojná — místní", poradi:36, doprava:"místní", poznamka:"", stitek:"P14 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P15", nazev:"Popov — místní", poradi:37, doprava:"místní", poznamka:"", stitek:"P15 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P16", nazev:"Rokytnice — místní", poradi:38, doprava:"místní", poznamka:"", stitek:"P16 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P17", nazev:"Bojkovice — místní", poradi:39, doprava:"místní", poznamka:"", stitek:"P17 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P18", nazev:"Starý Hrozenkov — místní", poradi:40, doprava:"místní", poznamka:"", stitek:"P18 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P19", nazev:"Mikulčin vrch — místní", poradi:41, doprava:"místní", poznamka:"", stitek:"P19 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P20", nazev:"Strání — místní", poradi:42, doprava:"místní", poznamka:"", stitek:"P20 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P21", nazev:"Nová Lhota — místní", poradi:43, doprava:"místní", poznamka:"", stitek:"P21 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P22", nazev:"Velká nad Veličkou — místní", poradi:44, doprava:"místní", poznamka:"", stitek:"P22 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P23", nazev:"Lučina, koupaliště — místní", poradi:45, doprava:"místní", poznamka:"", stitek:"P23 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P24", nazev:"Sudoměřice — místní", poradi:46, doprava:"místní", poznamka:"", stitek:"P24 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P25", nazev:"Hodonín — místní", poradi:47, doprava:"místní", poznamka:"", stitek:"P25 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P26", nazev:"Týnec — místní", poradi:48, doprava:"místní", poznamka:"", stitek:"P26 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P27", nazev:"Lanžhot — místní", poradi:49, doprava:"místní", poznamka:"", stitek:"P27 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P28", nazev:"Břeclav — místní", poradi:50, doprava:"místní", poznamka:"", stitek:"P28 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P29", nazev:"Valtice — místní", poradi:51, doprava:"místní", poznamka:"", stitek:"P29 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"P30", nazev:"Hlohovec — místní", poradi:52, doprava:"místní", poznamka:"", stitek:"P30 domácí", aktivni:"ano", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#8C7A63", v_podrobnem:"ano", prejezdy:"ne"},
+    {kod:"domácí", nazev:"Místní pořadatelé", poradi:100, doprava:"", poznamka:"", stitek:"domácí", aktivni:"ne", min_znaceni:0, max_znaceni:0, min_uklid:0, max_uklid:0, barva:"#96907F", v_podrobnem:"ano"}
   ],
 
   // clenove_tymu (HB25)
@@ -1355,7 +1363,7 @@ const D = {
     {id:98, kod_tymu:"GASTRO", jmeno:"Rado Drahoš", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
     {id:198, kod_tymu:"P26", jmeno:"Petr Sláma", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB24, HB25", odjezd:""},
     {id:86, kod_tymu:"G16", jmeno:"Radim", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
-    {id:217, kod_tymu:"G18", jmeno:"Frantův kámoš", telefon:"", email:"", nocleh_patek:"NLHOTA", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
+    {id:217, kod_tymu:"G9", jmeno:"Frantův kámoš", telefon:"", email:"", nocleh_patek:"NLHOTA", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:""},
     {id:212, kod_tymu:"G8", jmeno:"Borek Pihar", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
     {id:50, kod_tymu:"G0A", jmeno:"Keksa", telefon:"", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 10:00"},
     {id:51, kod_tymu:"G0A", jmeno:"Pospec", telefon:"", email:"", nocleh_patek:"JABLUNKOV", nocleh_sobota:"NLHOTA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"pátek 17:00"},
@@ -1396,7 +1404,7 @@ const D = {
     {id:173, kod_tymu:"P8", jmeno:"pan Evžen", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB25", odjezd:""},
     {id:76, kod_tymu:"G10", jmeno:"Albert Hynek", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"sobota"},
     {id:75, kod_tymu:"G10", jmeno:"Oliver Hynek", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"", odjezd:"sobota"},
-    {id:89, kod_tymu:"G18", jmeno:"Franta Dvořák", telefon:"", email:"", nocleh_patek:"NLHOTA", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
+    {id:89, kod_tymu:"G9", jmeno:"Franta Dvořák", telefon:"", email:"", nocleh_patek:"NLHOTA", nocleh_sobota:"LUCINA", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"", odjezd:""},
     {id:174, kod_tymu:"P9", jmeno:"Viktorie Vrabliková", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"HB25", odjezd:""},
     {id:175, kod_tymu:"P9", jmeno:"Tereza Černá", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ne", historie:false, rocniky:"HB25", odjezd:""},
     {id:176, kod_tymu:"P10", jmeno:"Bedřich Vráblík", telefon:"", email:"", nocleh_patek:"neřeší se", nocleh_sobota:"neřeší se", cislo_uctu:"", poznamka:"", sef:"ano", historie:false, rocniky:"HB20, HB21, HB22, HB23, HB24, HB25", odjezd:""},
@@ -1553,7 +1561,7 @@ const D = {
     {kod:"PZ24", parta:"G0B", typ:"PZ", cislo:24, den:"NE", kdy_od:"04:40", kdy_do:"04:50", kdy_text:"ne 4:40 – 4:50", popis:"Zahájení předávky 24 Sudoměřice", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"PZ25", parta:"G0A", typ:"PZ", cislo:25, den:"NE", kdy_od:"05:40", kdy_do:"05:50", kdy_text:"ne 5:40 – 5:50", popis:"Zahájení předávky 25 Hodonín", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"A-G2-02", parta:"G2", typ:"A", cislo:null, den:"NE", kdy_od:"07:30", kdy_do:"09:00", kdy_text:"ne 7:30 - 9:00", popis:"Přejezd 21 Nová Lhota → 31 Mikulov", stav:"plán", zdroj:"podrobný"},
-    {kod:"T22", parta:"G18", typ:"T", cislo:22, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 22 Velká nad Veličkou", stav:"potvrzeno", zdroj:"ručně", zamek:true},
+    {kod:"T22", parta:"G9", typ:"T", cislo:22, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 22 Velká nad Veličkou", stav:"potvrzeno", zdroj:"ručně", zamek:true},
     {kod:"T24", parta:"G10", typ:"T", cislo:24, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 24 Sudoměřice", stav:"potvrzeno", zdroj:"ručně", zamek:true},
     {kod:"T23", parta:"G2", typ:"T", cislo:23, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 23 Lučina", stav:"potvrzeno", zdroj:"ručně", zamek:true},
     {kod:"P15", parta:"P15", typ:"P", cislo:15, den:"SO", kdy_od:"19:00", kdy_do:"00:30", kdy_text:"so 19:00 – ne 0:30", popis:"Obsluha předávky 15 Popov", stav:"potvrzeno", zdroj:"ručně"},
@@ -1639,7 +1647,7 @@ const D = {
     {kod:"U6", parta:"G14", typ:"U", cislo:6, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"S-FOTO-1", parta:"FOTO", typ:"S", cislo:1, den:"SO", kdy_od:"05:40", kdy_do:"08:00", kdy_text:"so 5:40 – 8:00", popis:"Foto na startu", stav:"plán", zdroj:"podrobný"},
     {kod:"AK-FOTO-03", parta:"FOTO", typ:"AK", cislo:null, den:"", kdy_od:"11:30", kdy_do:"", kdy_text:"cca 11:30", popis:"Příjezd do cíle", stav:"plán", zdroj:"podrobný"},
-    {kod:"A-G18-01", parta:"G18", typ:"A", cislo:null, den:"", kdy_od:"10:30", kdy_do:"11:30", kdy_text:"10:30 - 11:30", popis:"Přejezd 24 Sudoměřice → 31 Mikulov", stav:"plán", zdroj:"podrobný"},
+    {kod:"A-G9-01", parta:"G9", typ:"A", cislo:null, den:"", kdy_od:"10:30", kdy_do:"11:30", kdy_text:"10:30 - 11:30", popis:"Přejezd 24 Sudoměřice → 31 Mikulov", stav:"plán", zdroj:"podrobný"},
     {kod:"T13", parta:"G1", typ:"T", cislo:13, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně", zamek:true},
     {kod:"T10", parta:"G1", typ:"T", cislo:10, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"potvrzeno", zdroj:"ručně", zamek:true},
     {kod:"S-IT-1", parta:"IT", typ:"S", cislo:null, den:"SO", kdy_od:"08:00", kdy_do:"22:00", kdy_text:"so 08–22, ne 08–18", popis:"IT podpora, Jan Hermann", stav:"plán", zdroj:"podrobný"},
@@ -1649,7 +1657,7 @@ const D = {
     {kod:"A-G5-01", parta:"G5", typ:"A", cislo:null, den:"SO", kdy_od:"13:00", kdy_do:"14:00", kdy_text:"so 13:00 - 14:00", popis:"Přejezd 10_Kohútka - 19 Mikulčin vrch", stav:"plán", zdroj:"podrobný"},
     {kod:"N-FOTO-so", parta:"FOTO", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"", stav:"plán", zdroj:"podrobný"},
     {kod:"N-FOTO-p", parta:"FOTO", typ:"N", cislo:null, den:"PÁ", kdy_od:"05:00", kdy_do:"", kdy_text:"pá - so 5:00", popis:"Sport resort Jablunkov · Jablunkov 298 · https://mapy.com/s/gavarerato · 16 lůžek, z toho dvoulúžák pro fotografa", stav:"plán", zdroj:"podrobný"},
-    {kod:"N-G18-so", parta:"G18", typ:"N", cislo:null, den:"", kdy_od:"07:00", kdy_do:"", kdy_text:"vstát v 7:00", popis:"Lučina · https://mapy.com/s/jovunerope", stav:"plán", zdroj:"podrobný"},
+    {kod:"N-G9-so", parta:"G9", typ:"N", cislo:null, den:"", kdy_od:"07:00", kdy_do:"", kdy_text:"vstát v 7:00", popis:"Lučina · https://mapy.com/s/jovunerope", stav:"plán", zdroj:"podrobný"},
     {kod:"N-G8-so", parta:"G8", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Lučina · https://mapy.com/s/jovunerope", stav:"plán", zdroj:"podrobný"},
     {kod:"N-G5-p", parta:"G5", typ:"N", cislo:null, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Horní Bečva, Kemp u přehrady · Horní Bečva · https://mapy.com/s/gobomafeku · celá chata č.1  4 x 4 lůžkový pokoj", stav:"plán", zdroj:"podrobný"},
     {kod:"A-G3-02", parta:"G3", typ:"A", cislo:null, den:"SO", kdy_od:"12:30", kdy_do:"14:00", kdy_text:"so 12:30-14:00", popis:"Přejezd ze startu do 11 Huslenky", stav:"plán", zdroj:"podrobný"},
@@ -1665,7 +1673,7 @@ const D = {
     {kod:"PZ19", parta:"G0A", typ:"PZ", cislo:19, den:"SO", kdy_od:"23:30", kdy_do:"", kdy_text:"so 23:30", popis:"Zahájení předávky 19 Mikulčin vrch", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"PZ20", parta:"G0A", typ:"PZ", cislo:20, den:"NE", kdy_od:"00:52", kdy_do:"", kdy_text:"ne 0:52", popis:"Zahájení předávky 20 Strání", stav:"potvrzeno", zdroj:"ručně"},
     {kod:"S-G0B-1", parta:"G0B", typ:"S", cislo:1, den:"PÁ", kdy_od:"19:00", kdy_do:"22:00", kdy_text:"pá 19-22", popis:"Práce na startu,prezence týmů", stav:"plán", zdroj:"podrobný"},
-    {kod:"T21", parta:"G18", typ:"T", cislo:21, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 21 Nová Lhota", stav:"potvrzeno", zdroj:"ručně", zamek:true},
+    {kod:"T21", parta:"G9", typ:"T", cislo:21, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Trasování etapy 21 Nová Lhota", stav:"potvrzeno", zdroj:"ručně", zamek:true},
     {kod:"P30", parta:"P30", typ:"P", cislo:30, den:"NE", kdy_od:"10:00", kdy_do:"17:00", kdy_text:"ne 10:00 – 17:00", popis:"Obsluha předávky 30 Hlohovec", stav:"potvrzeno", zdroj:"hrubý"},
     {kod:"U3", parta:"G15", typ:"U", cislo:3, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Úklid značení etapy 03 Morávka", stav:"potvrzeno", zdroj:"hrubý"},
     {kod:"U4", parta:"G15", typ:"U", cislo:4, den:"", kdy_od:"", kdy_do:"", kdy_text:"", popis:"Úklid značení etapy 04 Visalaje", stav:"potvrzeno", zdroj:"hrubý"},
@@ -1799,8 +1807,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.61";
-const BUILD = "2026-08-28T13:34+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.64";
+const BUILD = "2026-08-28T15:02+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -5455,7 +5463,7 @@ function retezGrupy(kod){
      Příznak `auto` u čety zůstává jen jako údaj o vybavení; na to, kdo smí
      značit, NEMÁ vliv. *Zrušeno 27. 8. 2026.* Od v5.53 do v5.55 tu stálo, že
      na kole se trasovat nedá, a nikdo to nikdy nezadal — vzniklo to omylem při
-     stavbě řetězu. G8, G15 i G18 mají u dopravy napsáno kolo nebo pěšky a etapy
+     stavbě řetězu. G8, G15 i G9 mají u dopravy napsáno kolo nebo pěšky a etapy
      značí; to pravidlo jim značení znemožnilo úplně.
 
      Každá četa si nese SLED už zabraných kusů dne, ne jedno „volná od".
@@ -5979,13 +5987,55 @@ function bunkaZamkuGrupy(t){
   const zamceno = !!t.zamek;
   return '<button class="zamekUkolu' + (zamceno ? ' drzi' : '') + '"'
     + ' onclick="prepniZamekGrupy(' + JSON.stringify(String(t.kod||'')).replace(/"/g,'&quot;') + ')"'
-    + ' title="' + (zamceno
-        ? 'Celá grupa je zamčená: přeplánování jí nic nepřidá, nesmaže ani '
-          + 'nepřepíše čas. Kliknutím odemknete.'
-        : 'Kliknutím zamknete celou grupu — přeplánování se pak nedotkne žádného '
-          + 'jejího úkolu. Hodí se, když je program grupy domluvený s lidmi.') + '">'
+    + ' data-nap-velky="' + (zamceno
+        ? 'Celá grupa je zamčená. Přeplánování jí nic nepřidá ani nepřepíše. Kliknutím odemknete.'
+        : 'Zamknout celou grupu. Přeplánování se pak nedotkne žádného jejího úkolu.') + '">'
     + (zamceno ? '&#128274;' : '&#128275;') + '</button>';
 }
+
+/* ---------- bublina nápovědy ----------
+   Nápověda v atributu `title` se nedá zvětšit — prohlížeč si velikost řídí sám.
+   U zámku to vadilo: text je důležitý (od v5.58 zamknutí i dopisuje Úkol a Kdy)
+   a šlo o nejmenší písmo na stránce. Prvky s `data-nap-velky` proto dostanou
+   vlastní bublinu. Zbytek stránky zůstává na `title`, ať se nezavádí dvojí
+   způsob všude. */
+function bublinaNapovedy(){
+  let el = document.getElementById('bublinaNap');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'bublinaNap';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function ukazBublinu(cil){
+  const text = cil.getAttribute('data-nap-velky');
+  if(!text) return;
+  const el = bublinaNapovedy();
+  el.textContent = text;
+  el.style.display = 'block';
+  const r = cil.getBoundingClientRect();
+  const b = el.getBoundingClientRect();
+  // pod prvkem; když se to nevejde, nad něj. Vodorovně se drží v okně.
+  const dole = r.bottom + 8 + b.height <= window.innerHeight;
+  el.style.top = (dole ? r.bottom + 8 : Math.max(6, r.top - 8 - b.height)) + 'px';
+  el.style.left = Math.max(6, Math.min(window.innerWidth - b.width - 6,
+                                       r.left + r.width/2 - b.width/2)) + 'px';
+}
+function skryjBublinu(){ const el = document.getElementById('bublinaNap'); if(el) el.style.display = 'none'; }
+document.addEventListener('mouseover', e => {
+  const cil = e.target.closest && e.target.closest('[data-nap-velky]');
+  if(cil) ukazBublinu(cil);
+});
+document.addEventListener('mouseout', e => {
+  if(e.target.closest && e.target.closest('[data-nap-velky]')) skryjBublinu();
+});
+document.addEventListener('focusin',  e => {
+  const cil = e.target.closest && e.target.closest('[data-nap-velky]');
+  if(cil) ukazBublinu(cil);
+});
+document.addEventListener('focusout', skryjBublinu);
+document.addEventListener('click', skryjBublinu);
 
 // buňka se zámkem: jedno tlačítko, které je vidět i zavřené i otevřené
 function bunkaZamku(r){
@@ -5996,16 +6046,16 @@ function bunkaZamku(r){
     return '<button class="zamekUkolu drzi"'
       + ' onclick="hlaska(\'Zamčeno přes celou grupu ' + esc(String(r.parta||''))
       + '. Odemyká se v tabulce Grupy, ve sloupci Zámek.\')"'
-      + ' title="Zamčeno přes celou grupu ' + esc(String(r.parta||''))
-      + ' — odemyká se v tabulce Grupy, ne tady.">&#128274;</button>';
+      + ' data-nap-velky="Zamčeno přes grupu ' + esc(String(r.parta||''))
+      + '. Odemyká se v tabulce Grupy.">&#128274;</button>';
   return '<button class="zamekUkolu' + (zamceno ? ' drzi' : '') + '"'
     + ' onclick="prepniZamekUkolu(' + JSON.stringify(String(r.kod||'')).replace(/"/g,'&quot;') + ')"'
-    + ' title="' + (zamceno
-        ? 'Zamčeno: přegenerování řádek nesmaže ani mu nepřepíše čas a v mřížce '
-          + 'plánu se nedá přetáhnout. Kliknutím odemknete.'
-        : 'Kliknutím zamknete — přegenerování pak řádek nechá být a v mřížce '
-          + 'plánu se nepůjde přetáhnout. Zároveň se doplní, co jde složit ze '
-          + 'sloupců: text úkolu a poznámka Kdy. Co je vyplněné, se nepřepisuje.') + '">'
+    /* Nápověda jde do vlastní bubliny, ne do `title` — potřebuje být čitelná
+       a stručná. Hlavní věc, kterou musí říct, je ta nenápadná: zamknutí
+       zároveň dopíše prázdný Úkol a Kdy. */
+    + ' data-nap-velky="' + (zamceno
+        ? 'Zamčeno. Přegenerování řádek nesmaže ani mu nepřepíše čas. Kliknutím odemknete.'
+        : 'Zamknout — přeplánování řádek nechá být. Přegeneruje text v polích Úkol a Kdy, pokud jsou prázdná.') + '">'
     + (zamceno ? '&#128274;' : '&#128275;') + '</button>';
 }
 
@@ -6635,9 +6685,30 @@ function spocitejGenerovani(){
        Takový řádek se proto znovu nenavrhuje, nepřepisuje ani nemaže.
        Bez tohohle mizel G17 páteční nocleh v Horní Bečvě jen proto, že grupě
        po přepočtu nezbyl v pátek žádný úkol, mezi který by se dal vložit. */
-    const maNocleh = noc => D.ukoly.some(u =>
-      u.typ === 'N' && u.parta === t.kod && String(u.kod||'').endsWith('-' + noc)
-      && (!jeOdvozeny(u) || jeZamceny(u) || noclehSMistem(u)));
+    /* Má ta grupa tuhle noc nocleh už zapsaný?
+
+       Do 28. 8. 2026 se to poznávalo podle KÓDU — musel končit na „-p" nebo
+       „-so". Jenže kód je jen jméno řádku: nocleh G7 na sobotu se jmenuje
+       `N-G7-01`, nocleh G0B `A-G0B-08`, a oběma tedy generátor sobotní nocleh
+       nabízel znovu při každém přeplánování, i když v plánu dávno byl. Odtud
+       „proč se generuje sobotní nocleh pro G7, když už tam je".
+
+       Noc se proto odvozuje z ČASU, ne z kódu. Spánek, který začne po půlnoci,
+       patří noci předchozího dne — proto se před dělením na dny odečte deset
+       hodin: nocleh v neděli ve 3:00 tak vyjde jako sobotní, ne nedělní. */
+    const nocUkolu = u => {
+      const m = minuty(casUkoluCely(u).den, u.kdy_od);
+      if(m == null) return null;
+      const den = Math.floor((m - 10*60) / 1440);       // ČT 0, PÁ 1, SO 2, NE 3
+      return den === 1 ? 'p' : (den === 2 ? 'so' : null);
+    };
+    const maNocleh = noc => D.ukoly.some(u => {
+      if(u.typ !== 'N' || u.parta !== t.kod) return false;
+      if(jeOdvozeny(u) && !jeZamceny(u) && !noclehSMistem(u)) return false;
+      const n = nocUkolu(u);
+      // Bez času se noc odvodit nedá; tam zůstává jediné vodítko kód.
+      return (n != null) ? (n === noc) : String(u.kod||'').endsWith('-' + noc);
+    });
     [['PÁ','SO','p'], ['SO','NE','so']].forEach(([odDen, doDen, znak]) => {
       // Když má grupa u té noci „neřeší se", není co plánovat — řádek nevznikne.
       // Platí to stejně pro pátek i pro sobotu.
@@ -6738,7 +6809,7 @@ function spocitejGenerovani(){
   /* Grupa přepnutá na „bez přejezdů" — co s tím, co v plánu už je.
 
      Do 26. 8. 2026 se mazaly jen řádky, které vyrobil generátor (mají příznak
-     odvozeno). Jenže přejezdy G10, G8 a G18 nikdo negeneroval, jsou psané
+     odvozeno). Jenže přejezdy G10, G8 a G9 nikdo negeneroval, jsou psané
      rukou — a ty generátor neviděl, takže přepnutí přepínače na nich nic
      nezměnilo. Odtud „nemažou se".
 
@@ -7157,7 +7228,7 @@ function vybaveniGrupy(kod){
 
    Stála na dvou domněnkách, které nikdo nezadal a které neodpovídají skutečnosti:
    že se přejezd mezi předávkami jezdí vždycky autem, a že značení potřebuje auto
-   aspoň na dovoz materiálu. G8 má u dopravy napsáno *kolo*, G16 a G18 *pěšky* —
+   aspoň na dovoz materiálu. G8 má u dopravy napsáno *kolo*, G16 a G9 *pěšky* —
    a všechny tři se mezi předávkami přesouvají a značí. Kontrola tedy hlásila
    patnáct závad tam, kde žádné nebyly.
 

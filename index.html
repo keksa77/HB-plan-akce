@@ -156,15 +156,18 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
 .listGrupy .lgPas .lgVpravo{margin-left:auto;font-size:.85em;opacity:.85;text-align:right}
 .listGrupy .lgLide{margin:7px 1px 10px;font-size:.95em;color:#3A332C}
 .listGrupy .lgLide b{font-weight:800;color:#78212E}
-.listGrupy .lgOsa{margin:0 1px 11px;padding:8px 10px 6px;background:#FBFAF7;
+.listGrupy .lgOsa{margin:0 1px 8px;padding:5px 10px 3px;background:#FBFAF7;
   border:1px solid #E9E3D7;border-radius:5px}
 .listGrupy .lgOsa .lgNadpisek{font-size:.75em;text-transform:uppercase;letter-spacing:.09em;
   color:#8A8371;font-weight:700;margin-bottom:5px}
-.listGrupy .lgOsa svg{display:block;width:100%;height:34px}
+/* Osa má od v5.72 svislá jména, takže výška není pevná — řídí ji viewBox.
+   A `preserveAspectRatio` musí zůstat výchozí: s „none" by se otočená jména
+   roztáhla do nečitelna, protože x a y by se škálovaly každé jinak. */
+.listGrupy .lgOsa svg{display:block;width:100%;height:auto}
 .listGrupy .lgDen{font-size:.85em;font-weight:800;letter-spacing:.11em;text-transform:uppercase;
-  color:#8A8371;margin:9px 1px 5px;padding-bottom:2px;border-bottom:1px solid #E0DACE}
+  color:#8A8371;margin:7px 1px 4px;padding-bottom:2px;border-bottom:1px solid #E0DACE}
 .listGrupy .lgKarta{display:flex;gap:9px;border-left:4px solid var(--b);background:#FCFBF8;
-  border-radius:0 5px 5px 0;padding:5px 8px;margin:0 1px 4px;align-items:flex-start;
+  border-radius:0 5px 5px 0;padding:5px 8px;margin:0 1px 3px;align-items:flex-start;
   break-inside:avoid;page-break-inside:avoid}
 .listGrupy .lgKarta .lgCas{font-size:1.1em;font-weight:800;font-variant-numeric:tabular-nums;
   white-space:nowrap;min-width:78px;color:#241F1A}
@@ -1927,8 +1930,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.71";
-const BUILD = "2026-08-29T00:15+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.72";
+const BUILD = "2026-08-29T00:30+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4566,17 +4569,38 @@ function osaTrasy(ukoly){
   });
   const n = (D.predavky || []).length || 31;
   if(n < 2) return '';
+
+  /* Jména předávek se píšou svisle. Vodorovně to nejde: na 190 mm šířky vychází
+     na jedno místo něco přes šest milimetrů a „Velká nad Veličkou" se tam
+     nevejde ani zdaleka. *Zadáno 28. 8. 2026 (v5.72).*
+
+     Písmo se dopočítá z nejdelšího jména, ne nastaví natvrdo — jinak by se buď
+     nejdelší název ořízl, nebo by osa zabrala půl stránky. Výška obrázku se
+     dopočítá stejně, aby pod jmény nezůstávalo prázdno. */
+  const jmenaMist = [];
+  for(let c = 1; c <= n; c++) jmenaMist.push(c + ' ' + (popisPredavky(c) || ''));
+  const nejdelsi = jmenaMist.reduce((a, b) => a.length >= b.length ? a : b, '');
+  const STROP = 120;                       // víc už je na listu moc
+  let pismo = 11;
+  // 0,55 em na znak je u bezpatkového písma poctivý odhad šířky
+  while(pismo > 6 && 28 + nejdelsi.length * pismo * 0.55 > STROP) pismo -= 0.5;
+  const vyska = Math.min(STROP, Math.ceil(28 + nejdelsi.length * pismo * 0.55));
+
   let kus = '<line x1="14" y1="15" x2="986" y2="15" stroke="#D5CEC0" stroke-width="2"/>';
   for(let c = 1; c <= n; c++){
     const x = 14 + (c - 1) * 972 / (n - 1);
     const je = moje.has(c);
     kus += '<circle cx="' + x.toFixed(1) + '" cy="15" r="' + (je ? 6 : 3.2)
          + '" fill="' + (je ? '#78212E' : '#C3BBAC') + '" stroke="#fff" stroke-width="1.5"/>';
-    if(je) kus += '<text x="' + x.toFixed(1) + '" y="32" text-anchor="middle" font-size="10"'
-                + ' font-weight="700" fill="#78212E">' + c + '</text>';
+    // místa, kde grupa něco má, jsou tučná a vínová; ostatní slabě, jen pro orientaci
+    kus += '<text transform="rotate(90 ' + x.toFixed(1) + ' 26)" x="' + x.toFixed(1)
+         + '" y="' + (26 + pismo * 0.35).toFixed(1) + '" text-anchor="start"'
+         + ' font-size="' + pismo + '" font-weight="' + (je ? 700 : 400) + '"'
+         + ' fill="' + (je ? '#78212E' : '#A79E8E') + '">' + esc(jmenaMist[c-1]) + '</text>';
   }
-  return '<div class="lgOsa"><div class="lgNadpisek">Kde grupa je — předávky 1 až ' + n + '</div>'
-       + '<svg viewBox="0 0 1000 38" preserveAspectRatio="none">' + kus + '</svg></div>';
+  /* Popisek „Kde grupa je" tu byl, dokud na ose stála jen čísla. Se jmény se
+     osa vysvětlí sama a řádek navíc jen ubíral místo úkolům. */
+  return '<div class="lgOsa"><svg viewBox="0 0 1000 ' + vyska + '">' + kus + '</svg></div>';
 }
 
 // jeden list jedné grupy jako HTML

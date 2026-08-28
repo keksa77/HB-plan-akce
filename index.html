@@ -1807,8 +1807,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.64";
-const BUILD = "2026-08-28T15:02+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.65";
+const BUILD = "2026-08-28T18:02+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -8151,6 +8151,22 @@ const MAPA = {
     tabulka:'ukoly', klic:['kod'], konflikt:['rok','kod'], rok:true,
     jen:['zRocniku','auto','odhad'],
     filtr: r => !r.auto,
+    /* Úkol smí ukazovat jen na grupu, která opravdu existuje. Prázdná grupa
+       projde — osiřelý řádek databáze dovolí, cizí klíč se na NULL neptá. */
+    predKontrola: radky => {
+      const znam = new Set((D.tymy || []).map(t => t.kod));
+      const spatne = radky.filter(r => r.parta && !znam.has(r.parta));
+      if(!spatne.length) return null;
+      const kolik = new Map();
+      spatne.forEach(r => kolik.set(r.parta, (kolik.get(r.parta) || 0) + 1));
+      return 'Úkoly ukazují na grupu, která v tabulce Grupy není: '
+        + [...kolik].map(([k, n]) => '„' + k + '" (' + n + '×)').join(', ')
+        + '. Nic se z úkolů neuložilo. Obvykle to znamená otevřenou starší '
+        + 'záložku — načtěte stránku znovu (Ctrl+F5). Jinak tu grupu založte, '
+        + 'nebo těm úkolům přiřaďte jinou. Kódy: '
+        + spatne.slice(0, 8).map(r => r.kod).join(', ')
+        + (spatne.length > 8 ? ' a další' : '') + '.';
+    },
     pole:{kod:'kod', parta:'kod_tymu', typ:'typ', cislo:'cislo', den:'den',
           kdy_od:'kdy_od', kdy_do:'kdy_do', kdy_text:'kdy_text', popis:'popis',
           stav:'stav', zdroj:'zdroj', zamek:'zamek', odvozeno:'odvozeno',
@@ -8857,6 +8873,27 @@ async function ulozDoDatabaze(volby){
     if(m.nedodelky) (D[sada] || []).forEach(r => {
       const co = m.nedodelky(r); if(co) nedodelky.push(sada + ': ' + co);
     });
+
+    /* ---------- co se nesmí ani zkusit zapsat ----------
+       *Zadáno 28. 8. 2026 (v5.65).* Databáze hlídá, že úkol ukazuje na
+       existující grupu, a když ne, odmítne CELOU dávku hláškou
+       „Key is not present in table tymy_org". Ta věta nikomu neřekne, který
+       řádek to je, a stalo se to dvakrát po sobě: v prohlížeči zůstala grupa
+       G18, kterou už databáze neznala.
+
+       Kontrola se proto dělá tady, PŘED zápisem — a jmenuje viníka. Nesahá do
+       dat: sadu jen přeskočí, zbytek se uloží normálně. */
+    if(m.predKontrola){
+      const potiz = m.predKontrola(radky);
+      if(potiz){ potize.push(NAZVY_SAD[sada] || sada); nedodelky.push(potiz); continue; }
+    }
+    /* Úkoly visí na grupách. Když se nepovedlo uložit grupy, nemá smysl
+       zkoušet úkoly — spadly by na tomtéž cizím klíči a hláška by mátla. */
+    if(sada === 'ukoly' && potize.indexOf(NAZVY_SAD['tymy'] || 'tymy') >= 0){
+      nedodelky.push('Úkoly se ukládat nezkoušely — nejdřív se musí povést grupy, '
+                   + 'protože na nich úkoly visí.');
+      continue;
+    }
     try{
       // 1) zápis — nové řádky zvlášť, ať se vrátí jejich id
       const sKlicem = radky.filter(r => m.klic.every(k => r[k] !== undefined && r[k] !== null && r[k] !== ''));

@@ -1947,8 +1947,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.78";
-const BUILD = "2026-08-29T02:04+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.79";
+const BUILD = "2026-08-29T02:33+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2446,6 +2446,11 @@ function slozCasZObalu(el){
 
 function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat){
   const t = (typeof cil==='string') ? $(cil) : cil;
+  /* Ořez sloupců pro telefon sedí tady, ne u každé tabulky zvlášť: tabulka ví,
+     ve které sekci visí, a rozhodnutí je pak na jediném místě (MOBIL_POLE).
+     *Zavedeno 29. 8. 2026 (v5.79).* */
+  const sekce = t && t.closest ? t.closest('.sekce') : null;
+  sloupce = mobilSloupce(sekce && sekce.id, sloupce);
   // odznak ročníku (HB25/HB26) je buď vlevo, nebo — s odznaky:'konec' — až za daty
   const maOdznak = odznaky !== false;
   const odznakVzadu = odznaky === 'konec';
@@ -10434,7 +10439,52 @@ function schovejNacitani(text, jak){
 }
 
 const MOBIL_KLIC = 'hb_mobil';
-const MOBIL_ZALOZKY = ['s-todo','s-podrobny'];
+
+/* ---- co zůstává na telefonu ----------------------------------------------
+   *Rozhodnuto 29. 8. 2026 (v5.79), Keksa prošel všech 145 polí.* Jedno místo
+   pro celé rozhodnutí: klíč je sekce, hodnota seznam popisků sloupců, které
+   na telefonu zůstanou. Sekce, která tu není, se na telefonu nenabízí vůbec.
+
+   Proč zrovna tohle: na telefonu se aplikace čte u trati a cestou. Zůstává
+   kdy, kde, co dělat, s kým a jak na koho zavolat. Odpadá plánování (parametry,
+   zámky, stavy, kontrolní součty, původ řádku) a administrativa (ceny, čísla
+   účtů, objednávky triček, přístupy).
+
+   Není to zámek: tlačítko „+ vše" v liště pořád ukáže i zbylé záložky. Ořez
+   sloupců ale platí i pak — jinak by se tabulka na displej stejně nevešla. */
+const MOBIL_POLE = {
+  's-podrobny': ['Kdy','Kde','PŘED','Typ','Úkol','Grupa'],
+  's-ukoly':    null,        // mřížka plánu celá, Keksa ji na telefonu chce
+  's-todo':     ['Co se má udělat','Termín','Kdo','Stav','Grupa'],
+  's-tymy':     ['Kód','Štítek','Členové','Doprava','Poznámka'],
+  's-clenove':  ['Grupa','Jméno','Šéf grupy','Telefon','Nocleh pátek','Nocleh sobota'],
+  's-predavky': ['#','Název místa','První běžec','Poslední běžec','Mapa etapy','Poznámka'],
+  /* Noclehy mají dvě tabulky — místa a souhrn obsazení; sloupce obou jsou
+     v jednom seznamu. Keksa u nich poznamenal, že celá stránka chce na telefon
+     vlastní rozvržení, ne jen užší tabulku — zatím se jen ořezává. */
+  's-noclehy-mista': ['Název','Noc','U předávky','Adresa','Mapa','Telefon','Pokoje',
+                      'Kapacita','Kontakt','Místo','Lůžek','Obsazeno','Kdo tam spí'],
+  's-noclehy-lide':  ['Noc','Místo','Jméno','Grupa']
+};
+// Na telefonu se nabízejí jen záložky, které v MOBIL_POLE jsou.
+const MOBIL_ZALOZKY = Object.keys(MOBIL_POLE);
+
+/* Sloupce, které na telefonu v dané sekci zůstávají. `null` = všechny.
+   Popisek se hledá i podle druhého jména („Kde" v pohledu pro čtení je totéž
+   co „PŘED" v plánovací tabulce), proto je v seznamu obojí. */
+function mobilSloupce(sekceId, sloupce){
+  if(!mobil || !sekceId) return sloupce;
+  if(!(sekceId in MOBIL_POLE)) return sloupce;      // sekce mimo seznam se neořezává
+  const nechat = MOBIL_POLE[sekceId];
+  if(!nechat) return sloupce;
+  /* Pořadí se řídí seznamem, ne původní tabulkou: na telefonu má stát vepředu
+     to nejdůležitější (čas, místo), kdežto v plánovací tabulce na počítači
+     začíná grupa a kód. Sloupce mimo seznam vypadnou. */
+  return sloupce
+    .filter(s => !s.nadpis || nechat.indexOf(s.nadpis) >= 0)
+    .sort((a, b) => (a.nadpis ? nechat.indexOf(a.nadpis) : -1)
+                  - (b.nadpis ? nechat.indexOf(b.nadpis) : -1));
+}
 let mobil = false, mobilVse = false;
 
 const uzkyDisplej = () => window.matchMedia('(max-width: 820px)').matches;

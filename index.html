@@ -1947,8 +1947,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.82";
-const BUILD = "2026-08-29T03:23+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.83";
+const BUILD = "2026-08-29T03:36+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2173,12 +2173,14 @@ function zalozkyKVideni(){
     });
   const doMobilu = z.filter(x => MOBIL_ZALOZKY.indexOf(x.id) >= 0);
   if(mobil && !mobilVse && doMobilu.length) z = doMobilu;
-  /* Po načtení stránky je v liště jen podrobný plán — *od v5.81*. U trati je
-     to jediná obrazovka, kterou člověk potřebuje, a lišta plná záložek se na
-     displej stejně nevejde. Zbytek je jedno klepnutí na „+ vše" daleko a od té
-     chvíle je lišta celá; zamčené to není, jen se tak začíná. */
+  /* Na telefonu je po načtení v liště jen podrobný plán — *od v5.81, upřesněno
+     29. 8. 2026 (v5.83)*. U trati je to jediná obrazovka, kterou člověk
+     potřebuje, a lišta plná záložek se na displej stejně nevejde. **Na počítači
+     se lišta načítá celá**, tam se plánuje a přeskakuje mezi obrazovkami.
+     Zamčené to není: „+ víc" ukáže záložky vybrané pro telefon, druhé klepnutí
+     („+ vše") i zbytek. */
   const plan = z.filter(x => x.id === 's-podrobny');
-  if(jenPlan && !mobilVse && plan.length) z = plan;
+  if(jenPlan && mobil && plan.length) z = plan;
   return z;
 }
 
@@ -2200,13 +2202,23 @@ function hlidejOtevrenou(){
   if(!z.some(x=>x.id===rozhoduje)) otevriVhodnou('s-podrobny');
 }
 
+/* Odemykání lišty má na telefonu dva stupně: nejdřív se z holého plánu vyklopí
+   záložky vybrané pro telefon (`MOBIL_POLE`, H4d), teprve pak i zbytek. Kdyby
+   to bylo jedním krokem, ten pečlivě vybraný seznam by se přeskočil. */
+function odemykaciTlacitko(){
+  const tl = (txt, popis) => '<button class="odd" title="' + popis + '"'
+    + ' onclick="odemkniVse()" style="border:0;background:none;cursor:pointer">'
+    + txt + '</button>';
+  if(jenPlan && mobil) return tl('+ víc', 'Ukáže záložky vybrané pro telefon — grupy, předávky, noclehy.');
+  if(mobil && !mobilVse) return tl('+ vše', 'Ukáže i zbylé záložky. Na telefonu se v nich hůř pracuje.');
+  return '';
+}
+
 function kresliNav(){
   const n = $('#nav');
   const videt = zalozkyKVideni();
   n.innerHTML = videt.map(z=>`<button data-id="${z.id}" title="${z.napoveda||''}" onclick="prepni('${z.id}')">${z.nazev}</button>`).join('')
-    + (((mobil || jenPlan) && !mobilVse)
-        ? `<button class="odd" title="Ukáže i ostatní záložky — grupy, předávky, noclehy, nastavení." onclick="odemkniVse()" style="border:0;background:none;cursor:pointer">+ vše</button>`
-        : `<span class="odd">skryté: vzdálenosti · historie plánů · fotky</span>`);
+    + (odemykaciTlacitko() || `<span class="odd">skryté: vzdálenosti · historie plánů · fotky</span>`);
 }
 function prepni(id){
   VSECHNY_SEKCE().forEach(z=>{
@@ -10517,8 +10529,9 @@ function mobilSloupce(sekceId, sloupce){
                   - (b.nadpis ? nechat.indexOf(b.nadpis) : -1));
 }
 let mobil = false, mobilVse = false;
-/* Po každém načtení se začíná jen podrobným plánem (v5.81). Nepamatuje se to
-   schválně — „při načtení" znamená pokaždé; kdo chce zbytek, klepne na „+ vše". */
+/* Na telefonu se po každém načtení začíná jen podrobným plánem (v5.81; na
+   počítači se od v5.83 lišta načítá celá). Nepamatuje se to schválně — „při
+   načtení" znamená pokaždé; kdo chce zbytek, klepne na „+ víc". */
 let jenPlan = true;
 
 const uzkyDisplej = () => window.matchMedia('(max-width: 820px)').matches;
@@ -10532,6 +10545,9 @@ function nactiVolbuZobrazeni(){
 
 function nastavZobrazeni(chciMobil){
   if(mobil === chciMobil) return;
+  /* Přepnutí zobrazení je vědomý krok uživatele, ne načtení stránky — úvodní
+     omezení na samotný plán se tím ruší, ať se lišta nesbalí pod rukama. */
+  jenPlan = false;
   mobil = chciMobil;
   try{ localStorage.setItem(MOBIL_KLIC, mobil ? '1' : '0'); }catch(e){}
   document.body.classList.toggle('mobil', mobil);
@@ -10543,9 +10559,11 @@ function nastavZobrazeni(chciMobil){
 function prepniZobrazeni(){ nastavZobrazeni(!mobil); }
 
 function odemkniVse(){
-  mobilVse = true; jenPlan = false;
+  // jeden krok po druhém: nejdřív pryč s úvodním omezením, teprve pak s mobilním
+  const prvni = jenPlan && mobil;
+  if(prvni) jenPlan = false; else { jenPlan = false; mobilVse = true; }
   kresliNav(); kresliStavPrihlaseni(); zmerHlavicku();
-  hlaska('Odemčeny všechny záložky');
+  hlaska(prvni ? 'Záložky pro telefon' : 'Odemčeny všechny záložky');
 }
 
 /* ---------- start ---------- */

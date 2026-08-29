@@ -109,10 +109,13 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
    knihovna ani dlaždice z internetu, aby fungovala i bez signálu u trati. */
 /* Buňka s vlastním obsahem má jinak nowrap; tyhle se zalamovat smějí. */
 .tab td.zalom{white-space:normal !important}
-.mapaTl{display:inline-block;border:1px solid #D8D2C6;background:#F6F3EE;border-radius:6px;
-  padding:0 5px;margin-left:6px;font-size:12px;line-height:18px;cursor:pointer;
-  color:var(--vinova,#78212E);vertical-align:middle;white-space:nowrap}
+.mapaTl{display:inline-flex;align-items:center;gap:4px;border:1px solid #D8D2C6;
+  background:#F6F3EE;border-radius:6px;padding:2px 5px;margin-left:6px;
+  line-height:1;cursor:pointer;color:var(--vinova,#78212E);
+  vertical-align:middle;white-space:nowrap}
 .mapaTl:hover{background:#EFE8DC;border-color:#B9AE9B}
+.mapaTl img{display:block;height:12px;width:auto;border-radius:2px}
+.mapaTl .cislo{font-size:12px;font-weight:700}
 #mapaClona{position:fixed;inset:0;background:rgba(30,26,20,.55);z-index:80;display:none}
 #mapaClona.videt{display:block}
 #mapaOkno{position:fixed;z-index:81;left:50%;top:50%;transform:translate(-50%,-50%);
@@ -129,22 +132,21 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
 #mapaOkno .zdroj{position:absolute;left:0;bottom:0;background:rgba(255,255,255,.78);
   font-size:10.5px;color:#5A5348;padding:1px 6px;border-top-right-radius:5px}
 #mapaOkno .paticka{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:11px}
-#mapaOkno .udaje{font-size:12.5px;color:#6B6357;flex:0 0 100%}
+#mapaOkno .udaje{font-size:12.5px;color:#6B6357;flex:0 0 100%;margin-bottom:2px}
 #mapaOkno .odkazy{display:flex;gap:8px;flex-wrap:wrap;flex:1 1 auto;align-items:center}
 /* Značka Mapy.com v čele řady odkazů — jednou, zato pořádně velká, ať je
    poznat, kam odkazy vedou. Logo se nepřebarvuje ani nedeformuje. */
-#mapaOkno .znackaMapy{display:flex;flex-direction:column;align-items:center;gap:3px;
-  margin-right:4px}
-#mapaOkno .znackaMapy img{display:block;height:30px;width:auto;border-radius:4px}
-#mapaOkno .znackaMapy small{font-size:10.5px;color:#8A8371;letter-spacing:.04em}
-/* Dlaždička odkazu ven: tučně co se otevře, pod tím co za to čeká. */
-.mapaOdkaz{display:flex;flex-direction:column;justify-content:center;gap:1px;
-  text-decoration:none;border:1px solid #DED8CC;background:#FBFAF7;border-radius:9px;
-  padding:6px 12px;color:var(--tmava,#3A332C);line-height:1.25;
+#mapaOkno .znackaMapy{display:inline-flex;align-items:center;gap:7px;margin-right:2px}
+#mapaOkno .znackaMapy img{display:block;height:26px;width:auto;border-radius:4px}
+#mapaOkno .znackaMapy small{font-size:12px;color:#6B6357}
+/* Odkaz ven je krátké tlačítko — jedno slovo a číslo. Delší popisy se ukázaly
+   jako opakování nadpisu a řada dvouřádkových karet vypadala jako plocha,
+   ve které se nedalo poznat, co je co. */
+.mapaOdkaz{display:inline-flex;align-items:center;text-decoration:none;
+  border:1px solid #CFC6B4;background:#fff;border-radius:8px;padding:7px 14px;
+  color:var(--tmava,#3A332C);font-size:13.5px;font-weight:700;white-space:nowrap;
   transition:background .12s,border-color .12s}
-.mapaOdkaz:hover{background:#F3EFE7;border-color:#B9AE9B}
-.mapaOdkaz b{font-size:13.5px;font-weight:700;white-space:nowrap}
-.mapaOdkaz small{font-size:11px;color:#8A8371;white-space:nowrap}
+.mapaOdkaz:hover{background:#F3EFE7;border-color:#8A8371}
 .mapaCesta{fill:none;stroke:#C9C2B4;stroke-width:2}
 .mapaZvyrazneni{fill:none;stroke:#78212E;stroke-width:4.5;stroke-linecap:round}
 .mapaBod{fill:#fff;stroke:#B0A796;stroke-width:1.5}
@@ -1945,8 +1947,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.77";
-const BUILD = "2026-08-29T01:46+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.78";
+const BUILD = "2026-08-29T02:04+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4347,8 +4349,13 @@ function mapaStitek(u, i){
              : m.druh === 'predavka' ? (m.etapy.join('–') || String(m.stred))
              : m.druh === 'prejezd' ? (m.body[0] + '→' + m.body[1])
              : 'mapa';        // nocleh — číslo etapy nemá, tak aspoň slovo
+  /* Na řádku je od v5.78 rovnou logo Mapy.com místo obecného emoji — je hned
+     poznat, co se po klepnutí otevře. Logo se nepřebarvuje ani nedeformuje,
+     jen zmenšuje; ochranná zóna je součástí obrázku. */
   return '<span class="mapaTl" data-mapa="' + i + '" title="' + esc(m.popis)
-       + ' — klepnutím se otevře mapa.">&#128506;' + (znak ? ' ' + esc(znak) : '') + '</span>';
+       + ' — klepnutím se otevře mapa.">'
+       + '<img src="' + LOGO_MAPY + '" alt="Mapy.com" width="246" height="80">'
+       + (znak ? '<span class="cislo">' + esc(znak) + '</span>' : '') + '</span>';
 }
 
 /* Vykreslení. Mapa je složená ze dvou vrstev: dole dlaždice z OpenStreetMap
@@ -4515,8 +4522,12 @@ function otevriMapu(u){
   const V = Math.round(Math.max(240, Math.min(430, window.innerHeight * 0.46)));
   const k = m.druh === 'odkaz' ? null : mapaKresli(m, S, V);
 
-  const etapyUdaj = m.etapy.map(e => { const p = bodMapy(e);
-    return 'etapa ' + e + (p && p.delka ? ' · ' + p.delka + ' km' : ''); }).join('  ·  ');
+  /* Řádek s údaji doplňuje nadpis, neopakuje ho: délky etap, u přejezdu
+     kilometry a minuty po silnici z tabulky vzdáleností. */
+  const vzd = (m.druh === 'prejezd') ? vzdal(m.body[0], m.body[1]) : null;
+  const etapyUdaj = vzd ? (vzd.km + ' km / ' + vzd.min + ' min autem')
+    : m.etapy.map(e => { const p = bodMapy(e);
+        return 'etapa ' + e + (p && p.delka ? ' · ' + p.delka + ' km' : ''); }).join('  ·  ');
 
   /* Odkazy ven byly čtyři skoro stejné modré věty, ve kterých se „v Mapy.com"
      opakovalo pokaždé. *Předěláno 29. 8. 2026 (v5.75).* Teď je z každého
@@ -4526,26 +4537,25 @@ function otevriMapu(u){
      Ikona je kreslená tady v SVG, není to logo Mapy.com. Cizí značku do
      souboru nevkládám, dokud mi ji nedáte — použití loga se řídí jejich
      pravidly a stahovat ho odsud stejně nemůžu. */
-  const odkaz = (url, nadpis, pod) =>
+  /* Krátké názvy. *Zkráceno 29. 8. 2026 (v5.78).* „Etapa 1 Dolní Lomná
+     10.6 km běhu" na tlačítku opakovalo nadpis okna i řádek nad tlačítky —
+     třikrát totéž. Na tlačítku zůstává jen to, čím se liší od sousedního. */
+  const odkaz = (url, nadpis) =>
     '<a class="mapaOdkaz" target="_blank" rel="noopener" href="' + esc(url) + '">'
-    + '<b>' + esc(nadpis) + '</b><small>' + esc(pod) + '</small></a>';
+    + esc(nadpis) + '</a>';
 
   const odkazy = [];
   m.etapy.forEach(e => { const p = bodMapy(e);
-    if(p && p.mapa) odkazy.push(odkaz(p.mapa, 'Etapa ' + e + ' ' + (p.nazev || ''),
-      p.delka ? p.delka + ' km běhu' : 'trasa etapy')); });
-  if(m.odkaz) odkazy.push(odkaz(m.odkaz, 'Místo noclehu', 'uložený bod'));
+    if(p && p.mapa) odkazy.push(odkaz(p.mapa, 'Etapa ' + e)); });
+  if(m.odkaz) odkazy.push(odkaz(m.odkaz, 'Nocleh'));
   // celá trasa se hodí vždycky — kvůli orientaci, kde v závodě to je
   const celek = PR_TEXT('mapa_trasy');
-  if(celek) odkazy.push(odkaz(celek, 'Celá trasa závodu', 'Dolní Lomná → Mikulov'));
+  if(celek) odkazy.push(odkaz(celek, 'Celá trasa'));
   (m.druh === 'prejezd' ? m.body : [m.stred]).filter(Boolean).forEach(c => {
     const p = bodMapy(c);
     if(!p) return;
-    // u přejezdu se hodí i kilometry po silnici, ty drží tabulka vzdáleností
-    const v = (m.druh === 'prejezd') ? vzdal(m.body[0], m.body[1]) : null;
     odkazy.push(odkaz('https://mapy.com/zakladni?q=' + p.lat + '%2C' + p.lon,
-      'Předávka ' + c + ' ' + (p.nazev || ''),
-      v ? v.km + ' km / ' + v.min + ' min autem' : 'místo na mapě'));
+      'Předávka ' + c));
   });
 
   const plocha = !k ? '' :

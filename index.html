@@ -1947,8 +1947,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.79";
-const BUILD = "2026-08-29T02:33+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.81";
+const BUILD = "2026-08-29T03:11+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2173,6 +2173,12 @@ function zalozkyKVideni(){
     });
   const doMobilu = z.filter(x => MOBIL_ZALOZKY.indexOf(x.id) >= 0);
   if(mobil && !mobilVse && doMobilu.length) z = doMobilu;
+  /* Po načtení stránky je v liště jen podrobný plán — *od v5.81*. U trati je
+     to jediná obrazovka, kterou člověk potřebuje, a lišta plná záložek se na
+     displej stejně nevejde. Zbytek je jedno klepnutí na „+ vše" daleko a od té
+     chvíle je lišta celá; zamčené to není, jen se tak začíná. */
+  const plan = z.filter(x => x.id === 's-podrobny');
+  if(jenPlan && !mobilVse && plan.length) z = plan;
   return z;
 }
 
@@ -2198,8 +2204,8 @@ function kresliNav(){
   const n = $('#nav');
   const videt = zalozkyKVideni();
   n.innerHTML = videt.map(z=>`<button data-id="${z.id}" title="${z.napoveda||''}" onclick="prepni('${z.id}')">${z.nazev}</button>`).join('')
-    + ((mobil && !mobilVse)
-        ? `<button class="odd" title="Ukáže i zbylé záložky. Na mobilu se v nich hůř pracuje." onclick="odemkniVse()" style="border:0;background:none;cursor:pointer">+ vše</button>`
+    + (((mobil || jenPlan) && !mobilVse)
+        ? `<button class="odd" title="Ukáže i ostatní záložky — grupy, předávky, noclehy, nastavení." onclick="odemkniVse()" style="border:0;background:none;cursor:pointer">+ vše</button>`
         : `<span class="odd">skryté: vzdálenosti · historie plánů · fotky</span>`);
 }
 function prepni(id){
@@ -4383,11 +4389,21 @@ const merc = (lat, lon, z) => {
 /* Přiblížení se vybírá největší takové, aby se zajímavý kus ještě vešel do
    plátna i s okrajem. Víc než 15 nemá smysl — dál už dlaždice nemají obsah
    pro celou republiku. */
-function mapaZoom(body, sirka, vyska){
+function mapaZoom(body, sirka, vyska, naBod){
   for(let z = 15; z >= 6; z--){
     const b = body.map(p => merc(p.lat, p.lon, z));
-    const w = Math.max(...b.map(v=>v.x)) - Math.min(...b.map(v=>v.x));
-    const h = Math.max(...b.map(v=>v.y)) - Math.min(...b.map(v=>v.y));
+    let w, h;
+    if(naBod){
+      /* Když je mapa vycentrovaná na jeden bod, nerozhoduje šířka okolí, ale
+         vzdálenost nejvzdálenějšího souseda od středu — a ta se počítá na obě
+         strany. Jinak by okolní předávky vypadly z výřezu. */
+      const s = merc(naBod.lat, naBod.lon, z);
+      w = 2 * Math.max(...b.map(v => Math.abs(v.x - s.x)));
+      h = 2 * Math.max(...b.map(v => Math.abs(v.y - s.y)));
+    } else {
+      w = Math.max(...b.map(v=>v.x)) - Math.min(...b.map(v=>v.x));
+      h = Math.max(...b.map(v=>v.y)) - Math.min(...b.map(v=>v.y));
+    }
     if(w <= sirka * 0.72 && h <= vyska * 0.72) return z;
   }
   return 6;
@@ -4421,10 +4437,16 @@ function mapaKresli(m, sirka, vyska){
   const vybrane = vse.filter(p => p.cislo >= zajem[0] && p.cislo <= zajem[zajem.length-1]);
   const ohnisko = vybrane.length ? vybrane : vse;
 
-  const z = mapaZoom(ohnisko, sirka, vyska);
+  /* Předávka se ukazuje uprostřed mapy, ne uprostřed svého okolí — *od v5.81*.
+     Dřív se střed počítal jako polovina obdélníku bodů c-1, c, c+1, jenže
+     předávka mezi nimi neleží v půlce (etapy jsou různě dlouhé), takže bod,
+     kvůli kterému se mapa otevírá, seděl klidně u kraje. */
+  const naBod = m.druh === 'predavka' ? bodMapy(m.stred) : null;
+  const z = mapaZoom(ohnisko, sirka, vyska, naBod);
   const b = ohnisko.map(p => merc(p.lat, p.lon, z));
-  const stred = {x: (Math.min(...b.map(v=>v.x)) + Math.max(...b.map(v=>v.x))) / 2,
-                 y: (Math.min(...b.map(v=>v.y)) + Math.max(...b.map(v=>v.y))) / 2};
+  const stred = naBod ? merc(naBod.lat, naBod.lon, z)
+    : {x: (Math.min(...b.map(v=>v.x)) + Math.max(...b.map(v=>v.x))) / 2,
+       y: (Math.min(...b.map(v=>v.y)) + Math.max(...b.map(v=>v.y))) / 2};
   const P = p => { const v = merc(p.lat, p.lon, z);
     return [v.x - stred.x + sirka/2, v.y - stred.y + vyska/2]; };
   const cara = pole => pole.map(p => P(p).map(v=>v.toFixed(1)).join(',')).join(' ');
@@ -4556,6 +4578,8 @@ function otevriMapu(u){
   // celá trasa se hodí vždycky — kvůli orientaci, kde v závodě to je
   const celek = PR_TEXT('mapa_trasy');
   if(celek) odkazy.push(odkaz(celek, 'Celá trasa'));
+  const sada = PR_TEXT('mapa_predavky');
+  if(sada) odkazy.push(odkaz(sada, 'Všechny předávky'));
   (m.druh === 'prejezd' ? m.body : [m.stred]).filter(Boolean).forEach(c => {
     const p = bodMapy(c);
     if(!p) return;
@@ -6584,7 +6608,11 @@ const PRAVIDLA_VYCHOZI = {
   /* Odkaz na naplánovanou trasu celého závodu v Mapy.com. *Doplněno 28. 8. 2026
      (v5.71).* Mapy jednotlivých etap jsou u předávek v poli `mapa`; tenhle je
      na celek a nabízí se v okně mapy vedle nich. */
-  mapa_trasy: 'https://mapy.com/s/bulacanota'
+  mapa_trasy: 'https://mapy.com/s/bulacanota',
+  /* Uložená sada všech 31 předávek v Mapy.com. *Doplněno 29. 8. 2026 (v5.80).*
+     Slouží i jako druhý zdroj souřadnic — porovnáním s ní se 29. 8. našel rozpor
+     u předávky 23 Lučina (289 m mezi databází a sadou). */
+  mapa_predavky: 'https://mapy.com/s/dezolenegu'
 };
 // Textová pravidla (například pořadí priority) se přes PR() číst nedají —
 // ta vrací minuty nebo čísla. Tohle vrátí řetězec tak, jak je.
@@ -9904,7 +9932,10 @@ function kresliJakSePocita(){
     + skupina('Odkazy', [
         poleText('mapa_trasy', 'Mapa celé trasy v Mapy.com',
           'Nabízí se v okně mapy u každého řádku. Mapy jednotlivých etap se berou '
-          + 'z tabulky Předávky, sloupec mapa_url — tenhle odkaz je na celek.')])
+          + 'z tabulky Předávky, sloupec mapa_url — tenhle odkaz je na celek.'),
+        poleText('mapa_predavky', 'Sada všech předávek v Mapy.com',
+          'Uložená sada 31 míst. Nabízí se v okně mapy vedle celé trasy a hodí se '
+          + 'i na kontrolu souřadnic proti databázi.')])
     + skupina('Světlo a okna', [
         pole('svetlo_od',      'Světlo od'),
         pole('svetlo_do',      'Světlo do'),
@@ -10486,6 +10517,9 @@ function mobilSloupce(sekceId, sloupce){
                   - (b.nadpis ? nechat.indexOf(b.nadpis) : -1));
 }
 let mobil = false, mobilVse = false;
+/* Po každém načtení se začíná jen podrobným plánem (v5.81). Nepamatuje se to
+   schválně — „při načtení" znamená pokaždé; kdo chce zbytek, klepne na „+ vše". */
+let jenPlan = true;
 
 const uzkyDisplej = () => window.matchMedia('(max-width: 820px)').matches;
 
@@ -10509,7 +10543,8 @@ function nastavZobrazeni(chciMobil){
 function prepniZobrazeni(){ nastavZobrazeni(!mobil); }
 
 function odemkniVse(){
-  mobilVse = true; kresliNav(); kresliStavPrihlaseni(); zmerHlavicku();
+  mobilVse = true; jenPlan = false;
+  kresliNav(); kresliStavPrihlaseni(); zmerHlavicku();
   hlaska('Odemčeny všechny záložky');
 }
 

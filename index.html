@@ -1947,8 +1947,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.81";
-const BUILD = "2026-08-29T03:11+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.82";
+const BUILD = "2026-08-29T03:23+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4580,12 +4580,12 @@ function otevriMapu(u){
   if(celek) odkazy.push(odkaz(celek, 'Celá trasa'));
   const sada = PR_TEXT('mapa_predavky');
   if(sada) odkazy.push(odkaz(sada, 'Všechny předávky'));
-  (m.druh === 'prejezd' ? m.body : [m.stred]).filter(Boolean).forEach(c => {
-    const p = bodMapy(c);
-    if(!p) return;
-    odkazy.push(odkaz('https://mapy.com/zakladni?q=' + p.lat + '%2C' + p.lon,
-      'Předávka ' + c));
-  });
+  /* Odkaz „Předávka N" na souřadnice (`mapy.com/zakladni?q=lat,lon`) je pryč
+     — *zrušeno 29. 8. 2026 (v5.82)*. Mapy.com na takovou adresu neotevřou mapu
+     vycentrovanou na ten bod, takže odkaz sliboval něco, co neudělal. Místo
+     něj stačí všude odkaz na uloženou sadu všech předávek (výše): ta se otevře
+     se všemi body najednou a je v ní vidět i okolí. Souřadnice zůstávají
+     v tabulce Předávky, kdo je potřebuje, najde je tam. */
 
   const plocha = !k ? '' :
     '<div class="plocha" id="mapaPlocha" style="width:' + S + 'px;height:' + V + 'px">'

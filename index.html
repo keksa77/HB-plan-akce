@@ -192,6 +192,11 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
 .listGrupy .lgKarta .lgRadka{display:flex;gap:7px;align-items:baseline;margin-bottom:1px}
 .listGrupy .lgKarta .lgKde{font-size:.9em;font-weight:700;color:#5A5348}
 .listGrupy .lgKarta .lgZadani{font-size:.95em;line-height:1.24}
+.listGrupy .lgZadani .odkazVTextu{color:inherit;text-decoration:underline}
+/* Adresa uvnitř textu: poznat, že se dá otevřít, ale nekřičet — v buňce plné
+   textu by sytě modrý odkaz přebil to podstatné. */
+.odkazVTextu{color:var(--vinova);text-decoration:underline;text-underline-offset:2px}
+.odkazVTextu:hover{text-decoration-thickness:2px}
 .listGrupy .lgStitek{display:inline-block;border-radius:9px;padding:1px 7px;font-size:.8em;
   font-weight:700;white-space:nowrap}
 .listGrupy .lgPata{margin-top:9px;padding-top:5px;border-top:1px solid #DED8CC;
@@ -1947,8 +1952,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.83";
-const BUILD = "2026-08-29T03:36+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.84";
+const BUILD = "2026-08-30T11:35+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2497,14 +2502,19 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
       if(s.html){
         h += `<td class="${trida}"${lbl} style="padding:5px 8px;white-space:nowrap">${s.html(r,i)}</td>`;
       } else if(s.jenCist){
-        h += `<td class="${trida}"${lbl} style="padding:7px 8px;font-size:13px;color:var(--pisek)">${esc(v)}</td>`;
+        // buňka jen ke čtení: adresy v textu jsou rovnou klikací (v5.84)
+        h += `<td class="${trida}"${lbl} style="padding:7px 8px;font-size:13px;color:var(--pisek)">${textSOdkazy(v)}</td>`;
       } else if(s.typ==='napoveda'){
         // Volný text s nabídkou obvyklých hodnot. Používá se u popisných polí,
         // kde databáze nic nehlídá — dá se vybrat ze seznamu i napsat vlastní.
         const moznosti = (typeof s.moznosti==='function'? s.moznosti(r) : s.moznosti) || [];
         const id = 'nap-' + s.pole + '-' + Math.abs(String(s.nadpis).length*37 + i);
+        const ikonyN = ikonyOdkazu(v);
         h += `<td class="${trida}"${lbl}>`
-          + `<input type="text" list="${id}" data-i="${i}" data-p="${s.pole}" value="${esc(v)}">`
+          + (ikonyN ? '<span style="display:flex;align-items:center;gap:2px">' : '')
+          + `<input type="text" list="${id}" data-i="${i}" data-p="${s.pole}" value="${esc(v)}"`
+          + (ikonyN ? ' style="flex:1;min-width:0"' : '') + '>'
+          + ikonyN + (ikonyN ? '</span>' : '')
           + `<datalist id="${id}">`
           + moznosti.filter(x=>x!=='').map(m=>`<option value="${esc(m)}"></option>`).join('')
           + '</datalist></td>';
@@ -2528,16 +2538,19 @@ function tabulka(cil, sloupce, radky, poZmene, mazatelne, odznaky, zdroj, smazat
         // a při psaní se pole samo roztáhne
         const strop = s.maxRadky ? ` data-max="${s.maxRadky}"` : '';
         const cely  = (s.maxRadky && v) ? ` title="${esc(v)}"` : '';
-        h += `<td class="${trida}"${lbl}><textarea rows="1" data-i="${i}" data-p="${s.pole}"${strop}${cely}
-                 style="overflow:hidden;resize:none;white-space:pre-wrap">${esc(v)}</textarea></td>`;
+        /* Adresu uvnitř políčka na psaní proklikat nejde, tak se vedle ní ukáže
+           ikonka — stejně jako u jednořádkových polí. *Doplněno v5.84*: popis
+           noclehu je víceřádkový a odkaz na mapu v něm do té doby nešel otevřít. */
+        const ikonyV = ikonyOdkazu(v);
+        h += `<td class="${trida}"${lbl}>`
+          + (ikonyV ? '<span style="display:flex;align-items:flex-start;gap:2px">' : '')
+          + `<textarea rows="1" data-i="${i}" data-p="${s.pole}"${strop}${cely}
+                 style="overflow:hidden;resize:none;white-space:pre-wrap`
+          + (ikonyV ? ';flex:1;min-width:0' : '') + `">${esc(v)}</textarea>`
+          + ikonyV + (ikonyV ? '</span>' : '') + '</td>';
       } else {
         // Adresa v poli se nedá proklikat, tak se vedle ní ukáže ikonka.
-        const odkazy = (s.typ && s.typ !== 'text') ? [] : najdiOdkazy(v);
-        const ikony = odkazy.map(o=>' <a href="' + esc(o.url) + '" target="_blank" rel="noopener noreferrer"'
-          + ' title="' + (o.telefon ? ('Zavolat na ' + esc(o.popis))
-                                    : ('Otevřít ' + esc(o.popis) + ' v nové záložce'))
-          + '" style="text-decoration:none;font-size:14px">'
-          + (o.telefon ? '&#9742;' : (o.mail ? '&#9993;' : '&#128279;')) + '</a>').join('');
+        const ikony = (s.typ && s.typ !== 'text') ? '' : ikonyOdkazu(v);
         h += `<td class="${trida}"${lbl}>`
           + (ikony ? '<span style="display:flex;align-items:center;gap:2px">' : '')
           + `<input type="${s.typ||'text'}" data-i="${i}" data-p="${s.pole}" value="${esc(v)}"`
@@ -3109,7 +3122,7 @@ function napisJakDiktovat(){
   if(naSouboru){
     el.innerHTML = '<b>Mikrofon tady nefunguje</b>, protože je stránka otevřená jako '
       + 'soubor z disku — prohlížeč v tomhle režimu mikrofon nepouští. Otevřete '
-      + '<a href="https://keksa77.github.io/hb-planovani/" target="_blank" rel="noopener">'
+      + '<a href="https://keksa77.github.io/HB-plan-akce/" target="_blank" rel="noopener">'
       + 'verzi na webu</a>, nebo diktujte do pole systémem: ve Windows <b>Win + H</b>, '
       + 'na telefonu mikrofonem na klávesnici.';
   } else if(jeApple()){
@@ -3962,12 +3975,9 @@ function kresliTodo(){
       moznosti:(r)=>volbyGrup(true,false,r&&r.grupa)},
     {nadpis:"Priorita", pole:"priorita", typ:"select", sirka:"105px", moznosti:["běžná","vysoká"]},
     {nadpis:"Stav", pole:"stav", typ:"select", sirka:"120px", moznosti:TODO_STAVY},
-    {nadpis:"Odkaz", sirka:"78px", trida:"stred",
-      napovedaSl:"Odkazy nalezené v textu úkolu. Klepnutím se otevřou v nové záložce.",
-      html:(r)=>najdiOdkazy(r.text).map(o=>
-        '<a href="' + esc(o.url) + '" target="_blank" rel="noopener noreferrer"'
-        + ' title="' + esc(o.popis) + '" style="text-decoration:none;font-size:15px">'
-        + (o.mail ? '&#9993;' : '&#128279;') + '</a>').join(' ')},
+    /* Samostatný sloupec „Odkaz" tu byl do v5.84. Zrušen: od té verze se ikonka
+       na proklik ukazuje rovnou u textu úkolu, tak jako u ostatních polí, a
+       vlastní sloupec na druhém konci řádku už jen zdvojoval totéž. */
     {nadpis:"Do plánu", sirka:"120px", html:(r,i)=>
       '<button class="tl" style="padding:3px 9px;font-size:11.5px" data-doplanu="'+i+'"'
       + ' title="Udělá z téhle položky úkol v závodním plánu u vybrané grupy.">→ úkol</button>'}
@@ -4006,23 +4016,83 @@ function najdiTelefony(text){
   });
 }
 
+/* Co v textu udělat klikatelným. Vrací {url, popis, mail?, telefon?}.
+
+   *Opraveno 29. 8. 2026 (v5.84).* Dřív tu stálo `if(tel.length) return tel;`
+   s poznámkou „číslo není adresa, dál se nehledá" — jenže popis noclehu bývá
+   „Penzion · telefon · odkaz na mapu" a v takovém řádku se kvůli tomu odkaz
+   vůbec nenabídl. Teď se vrací obojí, telefony napřed. */
+function odkazZTextu(cisty){
+  const mail = cisty.indexOf('@') >= 0 && cisty.indexOf('/') < 0;
+  const url = mail ? ('mailto:' + cisty)
+            : (/^https?:\/\//i.test(cisty) ? cisty : 'https://' + cisty);
+  return {url, popis: cisty, mail};
+}
+
 function najdiOdkazy(text){
   if(text === null || text === undefined || text === '') return [];
   const tel = najdiTelefony(text);
-  if(tel.length) return tel;                 // číslo není adresa, dál se nehledá
   const vzor = PRAV && PRAV.rozdeleni && PRAV.rozdeleni.odkaz_vzor;
-  if(!vzor) return [];
-  const nalez = String(text||'').match(new RegExp(vzor, 'gi')) || [];
+  const nalez = vzor ? (String(text||'').match(new RegExp(vzor, 'gi')) || []) : [];
   const hotovo = [];
-  return nalez.filter(x=>{ const k=x.toLowerCase();
+  const adresy = nalez
+    .map(x => x.replace(/[.,;:)]+$/, ''))       // tečka na konci věty do odkazu nepatří
+    .filter(x=>{ const k=x.toLowerCase();
       if(hotovo.indexOf(k)>=0) return false; hotovo.push(k); return true; })
-    .map(x=>{
-      const cisty = x.replace(/[.,;:)]+$/, '');          // tečka na konci věty do odkazu nepatří
-      const mail = cisty.indexOf('@') >= 0 && cisty.indexOf('/') < 0;
-      const url = mail ? ('mailto:' + cisty)
-                : (/^https?:\/\//i.test(cisty) ? cisty : 'https://' + cisty);
-      return {url, popis: cisty, mail};
+    .map(odkazZTextu);
+  return tel.concat(adresy);
+}
+
+const POPIS_ODKAZU = o => o.telefon ? ('Zavolat na ' + o.popis)
+  : o.mail ? ('Napsat na ' + o.popis)
+           : ('Otevřít ' + o.popis + ' v nové záložce');
+const ZNAK_ODKAZU = o => o.telefon ? '&#9742;' : (o.mail ? '&#9993;' : '&#128279;');
+
+/* Ikonky na proklik vedle políčka, do kterého se píše. Vytaženo z `tabulka()`,
+   ať je to stejné u jednořádkových, víceřádkových i našeptávaných polí —
+   *29. 8. 2026 (v5.84)*, kdy se ukázalo, že odkaz v popisu noclehu (víceřádkové
+   pole v podrobném plánu) proklikat nešel. */
+function ikonyOdkazu(v){
+  return najdiOdkazy(v).map(o => ' <a href="' + esc(o.url) + '"'
+    + ' target="_blank" rel="noopener noreferrer" title="' + esc(POPIS_ODKAZU(o)) + '"'
+    + ' style="text-decoration:none;font-size:14px">' + ZNAK_ODKAZU(o) + '</a>').join('');
+}
+
+/* Text pro buňku jen ke čtení, ve které jsou adresy rovnou klikací. Do políčka
+   na psaní tohle nejde — tam se dávají ikonky vedle. */
+function textSOdkazy(v){
+  const text = String(v == null ? '' : v);
+  if(!text) return '';
+  const vzor = PRAV && PRAV.rozdeleni && PRAV.rozdeleni.odkaz_vzor;
+  /* Jeden průchod textem zleva doprava dvěma vzory najednou: co se najde dřív,
+     to se ukousne. Kdyby se nahrazovalo po jednom vzoru zvlášť, druhý průchod
+     by mohl trefit adresu uvnitř už hotového `href` a rozsekat ho. */
+  const vzory = [];
+  vzory.push({re: new RegExp(VZOR_TELEFONU.source, 'g'), telefon: true});
+  if(vzor) vzory.push({re: new RegExp(vzor, 'gi'), telefon: false});
+  let out = '', posl = 0;
+  for(;;){
+    let nej = null;
+    vzory.forEach(v2 => {
+      v2.re.lastIndex = posl;
+      const m = v2.re.exec(text);
+      if(m && m[0] && (!nej || m.index < nej.index))
+        nej = {index: m.index, syrovy: m[0], telefon: v2.telefon};
     });
+    if(!nej) break;
+    const cisty = nej.telefon ? nej.syrovy.trim() : nej.syrovy.replace(/[.,;:)]+$/, '');
+    if(!cisty){ posl = nej.index + nej.syrovy.length; continue; }
+    const zac = nej.index + nej.syrovy.indexOf(cisty);
+    const o = nej.telefon
+      ? {url: 'tel:' + cisty.replace(/[\s ]/g, ''), popis: cisty, telefon: true}
+      : odkazZTextu(cisty);
+    out += esc(text.slice(posl, zac))
+      + '<a class="odkazVTextu" href="' + esc(o.url) + '"'
+      + ' target="_blank" rel="noopener noreferrer" title="' + esc(POPIS_ODKAZU(o)) + '">'
+      + esc(cisty) + '</a>';
+    posl = zac + cisty.length;
+  }
+  return out + esc(text.slice(posl));
 }
 
 /* ---------- 1b. podrobný plán ---------- */
@@ -4752,7 +4822,10 @@ function listGrupy(kod, ukoly, rok){
         + esc(POZADI_TYPU[u.typ] || '#EEE') + ';color:' + esc(BARVA_TYPU[u.typ] || '#333') + '">'
         + esc(NAZVY_TYPU[u.typ] || u.typ || '') + '</span>'
       + (mi ? '<span class="lgKde">' + esc(mi.trim()) + '</span>' : '') + '</div>'
-      + '<div class="lgZadani">' + esc(String(u.popis || '').trim()) + '</div>'
+      /* Adresy v zadání jsou odkazy i tady — list se posílá mailem jako PDF
+         a v prohlížeči PDF se na ně dá klepnout. Na papíře jsou černé, barevný
+         odkaz by v tisku jen zešedl. *Doplněno v5.84.* */
+      + '<div class="lgZadani">' + textSOdkazy(String(u.popis || '').trim()) + '</div>'
       + '</div></div>';
   });
 
@@ -8431,10 +8504,15 @@ function poleCislo(popis, klic, krok){
 }
 
 function poleText(popis, klic){
+  // adresu v políčku nejde proklikat, tak se vedle ní ukáže ikonka (v5.84)
+  const hodnota = tr()[klic] || '';
+  const ikony = ikonyOdkazu(hodnota);
   return '<div style="flex:1;min-width:150px">'
     + '<label class="popisek" style="display:block;margin-bottom:3px"'+nap(popis)+'>'+popis+'</label>'
-    + '<input type="text"'+nap(popis)+' data-t="'+klic+'" value="'+esc(tr()[klic]||'')+'" '
-    + 'style="width:100%;padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit"></div>';
+    + '<span style="display:flex;align-items:center;gap:4px">'
+    + '<input type="text"'+nap(popis)+' data-t="'+klic+'" value="'+esc(hodnota)+'" '
+    + 'style="flex:1;min-width:0;padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit">'
+    + ikony + '</span></div>';
 }
 
 function kresliTricka(){
@@ -9903,14 +9981,19 @@ function kresliJakSePocita(){
   /* Textové pravidlo — dnes jediné je odkaz na mapu celé trasy. `pole()` na to
      nestačí: umí jen čísla a časy a URL by převedlo na NaN. *Přidáno 28. 8. 2026
      (v5.71).* */
+  /* Vedle políčka s adresou je ikonka na proklik — *doplněno v5.84*. Do políčka
+     na psaní odkaz udělat nejde, a uložený odkaz na mapu se hodí umět otevřít
+     a ověřit, aniž by se musel kopírovat jinam. */
   const poleText = (klic, popis, napovedaText) =>
     '<label style="display:block;margin:0">'
     + '<span style="display:block;font-size:12.5px;margin-bottom:4px">' + popis + '</span>'
+    + '<span style="display:flex;align-items:center;gap:4px">'
     + '<input type="text" value="' + esc(PR_TEXT(klic) || '') + '"' + (smi ? '' : ' disabled')
     + ' title="' + esc(napovedaText || '') + '" placeholder="https://mapy.com/s/…"'
     + ' onchange="zmenPravidlo(\'' + klic + '\', this.value.trim())"'
-    + ' style="width:100%;padding:5px 7px;border:1px solid var(--linka);'
-    + 'border-radius:7px;font:inherit;box-sizing:border-box"></label>';
+    + ' style="flex:1;min-width:0;padding:5px 7px;border:1px solid var(--linka);'
+    + 'border-radius:7px;font:inherit;box-sizing:border-box">'
+    + ikonyOdkazu(PR_TEXT(klic) || '') + '</span></label>';
 
   const skupina = (nadpis, radky) =>
     '<div style="background:#FAF8F4;border:1px solid var(--linka);border-radius:10px;'
@@ -10405,7 +10488,12 @@ function ukazFoto(f, tlacitko){
    Verze a čas buildu jsou v souboru, poslední commit se doptá GitHubu. Bez klíče,
    veřejné API; když se to nepovede (offline, limit dotazů), řekne se to a nic
    dalšího se nerozbije. */
-const REPO = 'keksa77/hb-planovani';
+/* *Opraveno 29. 8. 2026 (v5.84).* Stálo tu jméno dávno přejmenovaného
+   repozitáře, který dnes neexistuje — plánovač bydlí v `keksa77/HB-plan-akce`.
+   Dotaz na poslední commit tedy nemohl uspět a hlásil jen, že se to nepovedlo.
+   Stejná stará adresa byla i v hlášce o mikrofonu, kde vedla na mrtvou stránku.
+   Hlídá to `t_odkazy_klikatelne.mjs`, aby se sem stará adresa nevrátila. */
+const REPO = 'keksa77/HB-plan-akce';
 let commitNacten = false;
 
 const cesky = t => {

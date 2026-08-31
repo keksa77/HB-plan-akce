@@ -653,6 +653,53 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
   -webkit-appearance:none;-moz-appearance:none;appearance:none}
 .zamceno select:disabled{background-image:none;padding-right:8px}
 .zamceno .grupaOdznak select:disabled{color:#fff;-webkit-text-fill-color:#fff}
+
+/* ---------- vzkazy z trati (v5.86) ----------
+   Pruh pod lištou záložek musí být vidět hned po načtení, na telefonu stejně
+   jako na počítači, a taky nepřihlášenému — vzkaz smí poslat kdokoli, kdo zná
+   odkaz. Proto sedí v hlavičce, ne v některé záložce. */
+.vzkazLista{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  background:var(--vinova);margin:0 -22px;padding:8px 22px}
+.vzkazLista .co{font-size:12.5px;color:#fff;opacity:.9}
+.vzkazLista .co b{opacity:1}
+.tlVzkaz{background:#fff;color:var(--vinova);border:0;border-radius:22px;
+  padding:8px 20px;font:800 14px Nunito,sans-serif;cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,0,0,.18);white-space:nowrap}
+.tlVzkaz:hover{background:#FFF3F4}
+.vzkazLista .cekaji{background:#fff3;color:#fff;border-radius:20px;
+  padding:3px 11px;font-size:12px;font-weight:700}
+
+#oknoVzkaz{display:none;position:fixed;inset:0;z-index:70;
+  background:rgba(43,38,32,.55);align-items:center;justify-content:center;padding:14px}
+#oknoVzkaz.videt{display:flex}
+.vzkazPanel{background:#fff;border-radius:14px;padding:20px 22px;width:440px;
+  max-width:100%;max-height:94vh;overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.28)}
+.vzkazPanel h2{margin:0 0 3px;font-size:19px}
+.vzkazPanel label.pole{display:block;margin:0 0 10px;font-size:12.5px;color:var(--pisek)}
+.vzkazPanel label.pole input,.vzkazPanel label.pole select,
+.vzkazPanel label.pole textarea{width:100%;margin-top:3px;padding:7px 9px;
+  border:1px solid var(--linka);border-radius:8px;font:14px Nunito,sans-serif;color:var(--tmava)}
+.vzkazPanel textarea{min-height:96px;resize:vertical}
+.nahravatko{display:flex;align-items:center;gap:12px;background:#FAF6F2;
+  border:1px solid var(--linka);border-radius:12px;padding:12px;margin:0 0 12px}
+.tlNahrat{background:var(--vinova);color:#fff;border:0;border-radius:50%;
+  width:56px;height:56px;font-size:23px;cursor:pointer;flex:none}
+.tlNahrat.bezi{animation:tepe 1.1s infinite}
+@keyframes tepe{50%{box-shadow:0 0 0 9px rgba(120,33,46,.20)}}
+.nahravatko .cas{font:800 19px Nunito,sans-serif;font-variant-numeric:tabular-nums}
+.nahravatko .jak{font-size:12px;color:var(--pisek)}
+.vzkazPin{display:flex;gap:8px;flex-wrap:wrap}
+.vzkazPin label.pole{flex:1;min-width:120px}
+
+.vzkazKarta{border:1px solid var(--linka);border-radius:12px;padding:12px 14px;
+  margin:0 0 10px;background:#fff}
+.vzkazKarta.novy{border-left:4px solid var(--vinova)}
+.vzkazKarta .radka{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:12.5px;color:var(--pisek)}
+.vzkazKarta .kdo{font-weight:800;color:var(--tmava);font-size:14px}
+.vzkazKarta .prepis{margin:7px 0 0;white-space:pre-wrap;line-height:1.5}
+.vzkazKarta audio{width:100%;margin-top:8px;height:34px}
+.vzkazKarta .znak{background:#F1EDE5;border-radius:20px;padding:2px 9px;font-size:11.5px;font-weight:700}
+.vzkazKarta.vyrizeny{opacity:.62}
 </style>
 </head>
 <body data-build="verejna">
@@ -666,7 +713,56 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     <span id="stavPrihlaseni" style="margin-left:auto;display:flex;align-items:center;gap:8px"></span>
   </div>
   <nav id="nav"></nav>
+  <!-- Vzkaz smí poslat kdokoli, kdo zná odkaz — proto je tlačítko v hlavičce
+       a ne v záložce. Na telefonu je vidět hned po načtení, i když je lišta
+       záložek zúžená na podrobný plán. -->
+  <div class="vzkazLista">
+    <button class="tlVzkaz" id="tlVzkaz" onclick="otevriVzkaz()"
+      title="Nahraje vzkaz mikrofonem a rovnou ho i přepíše. Pošle se organizátorům do plánovače.">🎤 Nahrát vzkaz</button>
+    <span class="co"><b>Něco se na trati změnilo?</b> Řekněte to sem, ať to nemusíte psát.</span>
+    <span class="cekaji" id="vzkazCekaji" style="display:none"></span>
+  </div>
 </header>
+
+<!-- ---------- okno pro nahrání vzkazu ---------- -->
+<div id="oknoVzkaz" onclick="if(event.target===this) zavriVzkaz()">
+  <div class="vzkazPanel">
+    <h2>Vzkaz z trati</h2>
+    <p class="popisek" style="margin:0 0 14px">Zmáčkněte mikrofon a mluvte. Nahraje se zvuk
+      a zároveň se pořizuje přepis — organizátoři uvidí obojí. Psát jde i rovnou do pole.</p>
+
+    <div class="nahravatko">
+      <button class="tlNahrat" id="tlNahrat" onclick="prepniNahravani()"
+        title="Spustí a zastaví nahrávání. Poprvé se prohlížeč zeptá na povolení mikrofonu.">🎤</button>
+      <div>
+        <div class="cas" id="vzkazCas">0:00</div>
+        <div class="jak" id="vzkazJak">nenahrává se</div>
+      </div>
+      <audio id="vzkazPrehled" controls style="display:none;margin-left:auto;max-width:170px;height:34px"></audio>
+    </div>
+
+    <label class="pole">Kdo píše
+      <input id="vzkazKdo" maxlength="60" placeholder="jméno, ať víme, komu volat zpátky"></label>
+
+    <label class="pole">Přepis — než odešlete, můžete ho opravit
+      <textarea id="vzkazText" placeholder="Tady se objeví, co jste řekl. Nebo napište rovnou."></textarea></label>
+
+    <div class="vzkazPin">
+      <label class="pole">Předávka
+        <select id="vzkazPredavka"><option value="">— netýká se —</option></select></label>
+      <label class="pole">Grupa
+        <select id="vzkazGrupa"><option value="">— netýká se —</option></select></label>
+      <label class="pole">Úkol
+        <input id="vzkazUkol" maxlength="20" placeholder="kód, třeba P7"></label>
+    </div>
+
+    <div class="popisek" id="vzkazStav" style="min-height:18px"></div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="tl hlavni" id="tlPoslatVzkaz" onclick="poslivzkaz()">Odeslat</button>
+      <button class="tl" onclick="zavriVzkaz()">Zpět</button>
+    </div>
+  </div>
+</div>
 
 <div id="prihlaseni" style="display:none;position:fixed;inset:0;z-index:60;
      background:rgba(43,38,32,.55);align-items:center;justify-content:center">
@@ -1069,6 +1165,30 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
         </div>
 
         <div id="fotoMrizka" class="fotoMrizka"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sekce" id="s-vzkazy">
+    <div class="karta">
+      <h2>Vzkazy z trati — tabulka vzkazy</h2>
+      <div class="telo">
+        <p class="popisek">Co kdo nahrál tlačítkem v hlavičce. U každého vzkazu je přepis
+          i zvuk — přepis se dá prohledávat, zvuk je pojistka, když rozpoznávání řeči
+          v hluku selhalo. Poslat vzkaz smí kdokoli, kdo zná odkaz; číst je jen přihlášený.</p>
+        <div class="nastroje lista">
+          <label class="popisek" style="margin:0">Stav:
+            <select id="vzkazyStav" onchange="kresliVzkazy()">
+              <option value="nový">jen nové</option>
+              <option value="">všechny</option>
+              <option value="vyřízený">jen vyřízené</option>
+            </select></label>
+          <input id="vzkazyHledej" placeholder="hledat v přepisu" oninput="kresliVzkazy()"
+                 style="padding:6px 10px;border:1px solid var(--linka);border-radius:8px;font:13px Nunito,sans-serif">
+          <button class="tl" onclick="nactiVzkazy()" title="Znovu se zeptá databáze — vzkazy chodí průběžně.">Načíst znovu</button>
+          <span class="stav" id="stavVzkazy"></span>
+        </div>
+        <div id="vzkazySeznam"></div>
       </div>
     </div>
   </section>
@@ -1981,8 +2101,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.85";
-const BUILD = "2026-08-31T03:40+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.86";
+const BUILD = "2026-08-31T17:48+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2179,7 +2299,13 @@ const ZALOZKY = [
   {id:"s-tricka",        nazev:"Trička",             napoveda:"Odhad potřeby triček podle velikostí, sklad a objednávky po vlnách."},
   {id:"s-pristupy",      nazev:"Přístupy",           napoveda:"Tři úrovně přístupu k webu, co která smí, a seznam uživatelů."},
   {id:"s-nastaveni",     nazev:"Nastavení",          napoveda:"Aktivní ročník, datum závodu a další nastavení plánovače."},
-  {id:"s-fotky",         nazev:"Fotoarchiv",         napoveda:"Fotky ze všech ročníků s hodnocením a nápady na popisky. Jen ke čtení, načítá se po ročnících."}
+  {id:"s-fotky",         nazev:"Fotoarchiv",         napoveda:"Fotky ze všech ročníků s hodnocením a nápady na popisky. Jen ke čtení, načítá se po ročnících."},
+  /* Vzkazy z trati. Poslat je smí kdokoli, kdo zná odkaz — číst je smí jen
+     přihlášený, proto se záložka nepřihlášenému vůbec nenabízí. Není to jen
+     kosmetika: databáze mu je stejně nevydá (policy vzkazy_prihlaseny), a
+     prázdná záložka by vypadala jako závada. */
+  {id:"s-vzkazy",        nazev:"Vzkazy",             jenPrihlasenym:true,
+   napoveda:"Nahrané vzkazy z trati — přepis i zvuk, se stavem nový a vyřízený."}
 ];
 
 /* Podstránky: obrazovky, které nemají vlastní tlačítko v liště a otevírají se odjinud.
@@ -2201,6 +2327,7 @@ function zalozkyKVideni(){
   const schovat = (prihlasen && mojeUroven === 'SPRAVCE') ? [] : SKRYT_VEREJNE;
   let z = ZALOZKY
     .filter(x => schovat.indexOf(x.id) < 0)
+    .filter(x => !x.jenPrihlasenym || prihlasen)             // co bez přihlášení nemá obsah
     .filter(x => {                                          // a co nedovolí úroveň
       const o = OBLASTI.find(y => y.sekce.indexOf(x.id) >= 0);
       return !o || pravo(u, o.kod) !== "žádné";
@@ -2278,6 +2405,7 @@ function prepni(id){
   if(id==="s-pristupy") kresliPristupy();
   if(id==="s-nastaveni"){ kresliVerzi(); kresliJakSePocita(); }
   if(id==="s-fotky")     nactiFotky();
+  if(id==="s-vzkazy")    nactiVzkazy();
   if(id==="s-tricka") kresliTricka();
   if(id==="s-noclehy-lide") kresliNocLide();
   if(id==="s-clenove") kresliClenove();
@@ -9185,10 +9313,20 @@ const MAPA = {
     // v databázi má kod_tymu prázdný (sloupec je nullable, cizí klíč se na NULL
     // neptá). Dřív se takový řádek při ukládání tiše zahazoval. Beze jména se
     // ale uložit nedá, jméno je povinné.
-    filtr: r => !!String(r.jmeno || '').trim(),
-    nedodelky: r => !String(r.jmeno || '').trim()
-      ? ('řádek bez jména' + (r.kod_tymu ? ' v grupě ' + r.kod_tymu : ' mezi nezařazenými')
-         + ' se neuloží') : null,
+    filtr: r => !!String(r.jmeno || '').trim() && !dvojnikClena(r),
+    nedodelky: r => {
+      if(!String(r.jmeno || '').trim())
+        return 'řádek bez jména' + (r.kod_tymu ? ' v grupě ' + r.kod_tymu : ' mezi nezařazenými')
+             + ' se neuloží';
+      const d = dvojnikClena(r);
+      if(!d) return null;
+      return d.odlozeny
+        ? ('„' + d.jmeno + '" v grupě ' + d.grupa + ' už v databázi je — jen je odložený '
+           + 'mezi historií a v tabulce ho nevidíte. Smažte tenhle řádek a vyvolejte ho '
+           + 'zpátky vyhledávacím polem pod tabulkou; přijde i s kontakty.')
+        : ('„' + d.jmeno + '" je v grupě ' + d.grupa + ' dvakrát. V jedné grupě smí být '
+           + 'každé jméno jen jednou.');
+    },
     naJs:  r => ({...r, sef: r.sef ? 'ano' : 'ne', kolo: r.kolo ? 'ano' : 'ne',
                         ridic: r.ridic || '', vozidlo: r.vozidlo || ''}),
     // historie a kolo jsou v databázi povinné, prázdná hodnota by shodila celou dávku
@@ -9408,6 +9546,53 @@ async function sbVse(cesta, davka){
     if(od > 100000) break;             // pojistka proti nekonečnu
   }
   return vse;
+}
+
+/* ---------- dvojník člena grupy ---------- *(v5.86, 31. 8. 2026)*
+
+   Databáze má na `clenove_tymu` jedinečný index (rok, kod_tymu, jmeno) a
+   **počítá i s odloženými členy**: křížek u člověka řádek nemaže, jen mu dá
+   `historie = true`. Takový člověk z tabulky zmizí, ale v databázi zůstane —
+   a když se pak založí znovu, celá dávka spadne na hlášce
+   „duplicate key value violates unique constraint", u které není poznat ani
+   koho se týká, ani proč, když v tabulce žádný dvojník není.
+
+   Tady se to pozná dřív, než se dávka odešle. Řádek se do zápisu nepustí
+   (`filtr`) a zůstane v prohlížeči s vysvětlením (`nedodelky`), takže se
+   zbytek uloží normálně. Přednost dostane ten, kdo v databázi už je; mezi
+   dvěma novými řádky ten dřívější. */
+function dvojnikClena(r){
+  const jm = String(r.jmeno || '').trim();
+  if(!jm) return null;
+  const grupa = String(r.kod_tymu || '').trim();
+  const vsichni = D.clenove || [];
+  const klic = s => String(s || '').trim().toLocaleLowerCase('cs');
+  const ulozeny = x => x.id !== undefined && x.id !== null;
+  const mojePoradi = vsichni.indexOf(r);
+  const prednejsi = vsichni.filter(x => x !== r
+    && klic(x.jmeno) === klic(jm)
+    && String(x.kod_tymu || '').trim() === grupa
+    && (ulozeny(x) !== ulozeny(r) ? ulozeny(x)
+                                  : vsichni.indexOf(x) < mojePoradi));
+  if(!prednejsi.length) return null;
+  return {jmeno: jm, grupa: grupa || 'mezi nezařazenými',
+          odlozeny: !!prednejsi[0].historie};
+}
+
+/* Databáze mluví anglicky a kódem. Kde je zřejmé, co se stalo, řekneme to
+   česky — původní hlášení zůstává pod tím, ať se dá poslat dál. */
+function srozumitelneOdmitnuti(zprava){
+  const t = String(zprava || '');
+  if(/clenove_tymu_rok_kod_tymu_jmeno_key/.test(t))
+    return 'V jedné grupě je stejné jméno dvakrát. Počítají se i odložení členové, '
+         + 'které křížek jen schoval — takového člověka vyvolejte zpátky vyhledávacím '
+         + 'polem pod tabulkou místo zakládání nového řádku.';
+  if(/ukoly_rok_kod_key|ukoly_pkey/.test(t))
+    return 'Dva úkoly mají stejný kód. Kód musí být v ročníku jedinečný.';
+  if(/violates foreign key constraint/.test(t))
+    return 'Řádek odkazuje na něco, co v databázi není — nejspíš na grupu nebo '
+         + 'předávku, která se ještě neuložila.';
+  return null;
 }
 
 /* ---------- převod mezi tvarem v prohlížeči a v databázi ---------- */
@@ -10006,7 +10191,9 @@ async function ulozDoDatabaze(volby){
 
       hotovo.push(sada + ' (' + radky.length + ')');
     }catch(e){
-      potize.push(sada + ': ' + e.message);
+      const cesky = srozumitelneOdmitnuti(e.message);
+      potize.push((NAZVY_SAD[sada] || sada) + ': '
+        + (cesky ? cesky + '\n\n(hlášení databáze: ' + e.message + ')' : e.message));
     }
   }
 
@@ -10864,6 +11051,383 @@ function dorovnejListu(){
 window.addEventListener('resize', ()=>{ zmerHlavicku(); dorovnejPaletu(); dorovnejListu(); });
 window.addEventListener('scroll', dorovnejPaletu, {passive:true});
 
+/* ---------- VZKAZY Z TRATI ---------- *(v5.86, 31. 8. 2026)*
+
+   Zadání: organizátor u trati má mít možnost nahrát vzkaz, aniž by se
+   přihlašoval a aniž by musel psát. Ukládá se **zvuk i přepis zároveň**:
+   přepis proto, že se v něm dá hledat a dá se přečíst za pochodu; zvuk proto,
+   že rozpoznávání řeči ve větru a v hluku aut spolehlivé není a na iPhonu
+   v prohlížeči vůbec není. Kdyby se ukládal jen jeden z nich, půlka vzkazů
+   by dorazila nepoužitelná.
+
+   Kdo smí co: **poslat smí kdokoli, kdo zná odkaz** — formulář jede bez
+   přihlášení a databáze má pro anonyma jen `insert`. **Číst a odbavovat smí
+   jen přihlášený** (policy `vzkazy_prihlaseny`). Nahrávky leží v neveřejném
+   úložišti `vzkazy-zvuk` a přehrávají se přes podepsaný odkaz na hodinu.
+
+   Bez signálu se vzkaz neztratí: zůstane v telefonu v IndexedDB (na Blob se
+   localStorage nehodí) a odešle se sám, jakmile je připojení zpátky. */
+
+const VZKAZ_BUCKET = 'vzkazy-zvuk';
+const VZKAZ_MAX_S  = 300;          // pět minut; databáze pustí nejvýš dvacet
+let vzkazMedia = null, vzkazStream = null, vzkazKusy = [], vzkazBlob = null;
+let vzkazDelka = 0, vzkazTiky = null, vzkazUsi = null, vzkazNahravame = false;
+let vzkazyData = [];
+
+/* Dotaz do databáze BEZ přihlášení. Nejde použít sbDotaz — ten si vyžádá token
+   a nepřihlášenému rovnou spadne na „nepřihlášeno". Přihlášený organizátor
+   svůj token přiloží, ať se vzkaz uloží pod jeho rolí. */
+async function sbVerejnyZapis(cesta, telo){
+  const hlavicky = {'apikey': SB.klic, 'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'};
+  if(relace && relace.token) hlavicky['Authorization'] = 'Bearer ' + relace.token;
+  else hlavicky['Authorization'] = 'Bearer ' + SB.klic;
+  const o = await fetch(SB.url + '/rest/v1/' + cesta,
+                        {method:'POST', headers:hlavicky, body: JSON.stringify(telo)});
+  if(!o.ok) throw new Error('databáze vzkaz nepřijala (' + o.status + '): '
+                            + (await o.text()).slice(0,200));
+}
+
+/* Který formát zvuku prohlížeč umí nahrát. Chrome a Android dají webm/opus,
+   Safari mp4 — a `MediaRecorder` bez podporovaného typu mlčky vyrobí prázdno,
+   tak se vybírá z toho, co sám přizná. */
+function vzkazTypZvuku(){
+  if(!window.MediaRecorder) return null;
+  const kandidati = ['audio/webm;codecs=opus','audio/webm','audio/mp4',
+                     'audio/ogg;codecs=opus','audio/ogg'];
+  if(!MediaRecorder.isTypeSupported) return '';
+  return kandidati.find(t => MediaRecorder.isTypeSupported(t)) ?? '';
+}
+const vzkazPripona = typ => /mp4/.test(typ) ? 'mp4' : (/ogg/.test(typ) ? 'ogg' : 'webm');
+
+function vzkazCasText(s){
+  const m = Math.floor(s/60);
+  return m + ':' + String(s % 60).padStart(2,'0');
+}
+
+/* ---------- okno ---------- */
+function otevriVzkaz(){
+  const p = $('#vzkazPredavka');
+  if(p && p.options.length < 2){
+    (D.predavky||[]).slice().sort((a,b)=>+a.cislo - +b.cislo).forEach(x=>{
+      const o = document.createElement('option');
+      o.value = x.cislo; o.textContent = x.cislo + ' ' + (x.nazev || '');
+      p.appendChild(o);
+    });
+  }
+  const g = $('#vzkazGrupa');
+  if(g && g.options.length < 2){
+    grupyLetos().forEach(t=>{
+      const o = document.createElement('option');
+      o.value = t.kod; o.textContent = t.kod + ' ' + (t.nazev || '');
+      g.appendChild(o);
+    });
+  }
+  // Jméno si stránka pamatuje — u trati ho nikdo nechce psát podruhé.
+  try{ $('#vzkazKdo').value = localStorage.getItem('hb_vzkaz_kdo') || ''; }catch(e){}
+  $('#vzkazStav').textContent = '';
+  $('#oknoVzkaz').classList.add('videt');
+}
+function zavriVzkaz(){
+  if(vzkazNahravame) zastavNahravani();
+  $('#oknoVzkaz').classList.remove('videt');
+}
+function vyprazdniVzkaz(){
+  vzkazBlob = null; vzkazKusy = []; vzkazDelka = 0;
+  $('#vzkazText').value = '';
+  $('#vzkazUkol').value = '';
+  $('#vzkazPredavka').value = ''; $('#vzkazGrupa').value = '';
+  $('#vzkazCas').textContent = '0:00';
+  $('#vzkazJak').textContent = 'nenahrává se';
+  const a = $('#vzkazPrehled'); a.style.display = 'none'; a.removeAttribute('src');
+}
+
+/* ---------- nahrávání ---------- */
+function prepniNahravani(){
+  if(vzkazNahravame) zastavNahravani(); else spustNahravani();
+}
+
+async function spustNahravani(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    $('#vzkazJak').textContent = 'mikrofon tenhle prohlížeč nepustí — napište to do pole';
+    return;
+  }
+  if(location.protocol === 'file:'){
+    $('#vzkazJak').textContent = 'ze souboru na disku mikrofon nejede — otevřete verzi na webu';
+    return;
+  }
+  try{
+    vzkazStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  }catch(e){
+    $('#vzkazJak').textContent = 'mikrofon je zakázaný — povolte ho u ikonky zámku';
+    return;
+  }
+  const typ = vzkazTypZvuku();
+  try{
+    vzkazMedia = typ ? new MediaRecorder(vzkazStream, {mimeType: typ})
+                     : new MediaRecorder(vzkazStream);
+  }catch(e){
+    vzkazMedia = new MediaRecorder(vzkazStream);
+  }
+  vzkazKusy = []; vzkazBlob = null; vzkazDelka = 0;
+  vzkazMedia.ondataavailable = e => { if(e.data && e.data.size) vzkazKusy.push(e.data); };
+  vzkazMedia.onstop = () => {
+    vzkazBlob = new Blob(vzkazKusy, {type: (vzkazMedia.mimeType || 'audio/webm')});
+    const a = $('#vzkazPrehled');
+    a.src = URL.createObjectURL(vzkazBlob); a.style.display = '';
+  };
+  vzkazMedia.start();
+  vzkazNahravame = true;
+  const tl = $('#tlNahrat'); tl.textContent = '⏹'; tl.classList.add('bezi');
+  $('#vzkazJak').textContent = 'nahrávám… zmáčkněte znovu, až domluvíte';
+  vzkazTiky = setInterval(()=>{
+    vzkazDelka++;
+    $('#vzkazCas').textContent = vzkazCasText(vzkazDelka);
+    if(vzkazDelka >= VZKAZ_MAX_S) zastavNahravani();
+  }, 1000);
+  spustPrepis();
+}
+
+/* Přepis běží vedle nahrávání, ne místo něj. Když ho prohlížeč neumí (Safari,
+   Firefox), nahrávání to nesmí shodit — vzkaz dorazí jen jako zvuk. */
+function spustPrepis(){
+  if(!RozpoznavaniReci) return;
+  try{
+    vzkazUsi = new RozpoznavaniReci();
+    vzkazUsi.lang = 'cs-CZ'; vzkazUsi.continuous = true; vzkazUsi.interimResults = true;
+    const pole = $('#vzkazText');
+    const zaklad = pole.value ? pole.value.replace(/\s+$/,'') + ' ' : '';
+    vzkazUsi.onresult = e => {
+      let hotovo = '', rozdelane = '';
+      for(let i=0;i<e.results.length;i++){
+        const kus = e.results[i][0].transcript;
+        if(e.results[i].isFinal) hotovo += kus + ' '; else rozdelane += kus;
+      }
+      pole.value = zaklad + hotovo + rozdelane;
+    };
+    vzkazUsi.onerror = () => {};      // přepis je bonus, zvuk je jistota
+    vzkazUsi.start();
+  }catch(e){ vzkazUsi = null; }
+}
+
+function zastavNahravani(){
+  vzkazNahravame = false;
+  clearInterval(vzkazTiky); vzkazTiky = null;
+  try{ vzkazMedia && vzkazMedia.state !== 'inactive' && vzkazMedia.stop(); }catch(e){}
+  try{ vzkazStream && vzkazStream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  try{ vzkazUsi && vzkazUsi.stop(); }catch(e){}
+  vzkazUsi = null; vzkazStream = null;
+  const tl = $('#tlNahrat'); tl.textContent = '🎤'; tl.classList.remove('bezi');
+  $('#vzkazJak').textContent = vzkazDelka
+    ? ('nahráno ' + vzkazCasText(vzkazDelka) + ' — můžete odeslat')
+    : 'nenahrává se';
+}
+
+/* ---------- odeslání ---------- */
+function vzkazZeStranky(){
+  const cist = id => String(($('#'+id) || {}).value || '').trim();
+  return {
+    rok: D.nastaveni.aktivni_rok,
+    kdo: cist('vzkazKdo') || null,
+    text: cist('vzkazText') || null,
+    delka: vzkazDelka || null,
+    predavka: cist('vzkazPredavka') ? +cist('vzkazPredavka') : null,
+    grupa: cist('vzkazGrupa') || null,
+    ukol: cist('vzkazUkol') || null,
+    zarizeni: (navigator.userAgent || '').slice(0,180)
+  };
+}
+
+async function poslivzkaz(){
+  if(vzkazNahravame) zastavNahravani();
+  const z = vzkazZeStranky();
+  if(!z.text && !vzkazBlob){
+    $('#vzkazStav').textContent = 'Zatím tu není co poslat — nahrajte vzkaz nebo ho napište.';
+    return;
+  }
+  try{ if(z.kdo) localStorage.setItem('hb_vzkaz_kdo', z.kdo); }catch(e){}
+  const tl = $('#tlPoslatVzkaz'); tl.disabled = true;
+  $('#vzkazStav').textContent = 'odesílám…';
+  try{
+    await odesliJedenVzkaz(z, vzkazBlob);
+    $('#vzkazStav').textContent = '';
+    hlaska('Vzkaz odeslán, díky');
+    vyprazdniVzkaz(); zavriVzkaz();
+  }catch(e){
+    // Nepovedlo se — vzkaz se nezahazuje, počká v telefonu na signál.
+    try{
+      await frontaPridej(z, vzkazBlob);
+      $('#vzkazStav').textContent = '';
+      hlaska('Není signál — vzkaz počká v telefonu a odešle se sám');
+      vyprazdniVzkaz(); zavriVzkaz();
+      ukazFrontu();
+    }catch(e2){
+      $('#vzkazStav').textContent = 'Vzkaz se nepodařilo ani odeslat, ani odložit: ' + e2.message;
+    }
+  }finally{ tl.disabled = false; }
+}
+
+async function odesliJedenVzkaz(z, blob){
+  const telo = Object.assign({}, z);
+  if(blob && blob.size){
+    const typ = (blob.type || 'audio/webm').split(';')[0];
+    const d = new Date();
+    const dv = n => String(n).padStart(2,'0');
+    const jmeno = d.getFullYear() + dv(d.getMonth()+1) + dv(d.getDate()) + '_'
+      + dv(d.getHours()) + dv(d.getMinutes()) + dv(d.getSeconds()) + '_'
+      + Math.random().toString(36).slice(2,8) + '.' + vzkazPripona(typ);
+    const cesta = (z.rok || 'HB26') + '/' + jmeno;
+    const hlavicky = {'apikey': SB.klic, 'Content-Type': typ,
+                      'Authorization': 'Bearer ' + ((relace && relace.token) || SB.klic)};
+    const o = await fetch(SB.url + '/storage/v1/object/' + VZKAZ_BUCKET + '/' + cesta,
+                          {method:'POST', headers:hlavicky, body: blob});
+    if(!o.ok) throw new Error('nahrávka se neuložila (' + o.status + '): '
+                              + (await o.text()).slice(0,160));
+    telo.zvuk = cesta;
+  }
+  await sbVerejnyZapis('vzkazy', telo);
+}
+
+/* ---------- fronta pro chvíle bez signálu ----------
+   Blob se do localStorage nevejde a base64 by ho nafoukl o třetinu, tak
+   IndexedDB. Odesílá se při návratu signálu a při každém načtení stránky. */
+function vzkazDb(){
+  return new Promise((ano, ne)=>{
+    const p = indexedDB.open('hb_vzkazy', 1);
+    p.onupgradeneeded = () => {
+      if(!p.result.objectStoreNames.contains('fronta'))
+        p.result.createObjectStore('fronta', {keyPath:'id', autoIncrement:true});
+    };
+    p.onsuccess = () => ano(p.result);
+    p.onerror   = () => ne(p.error || new Error('IndexedDB se neotevřela'));
+  });
+}
+function vzkazTah(rezim, prace){
+  return vzkazDb().then(db => new Promise((ano, ne)=>{
+    const t = db.transaction('fronta', rezim);
+    const zadost = prace(t.objectStore('fronta'));
+    zadost.onsuccess = () => ano(zadost.result);
+    zadost.onerror   = () => ne(zadost.error);
+  }));
+}
+const frontaPridej = (z, blob) => vzkazTah('readwrite', s => s.add({z:z, blob:blob || null}));
+const frontaVse    = ()        => vzkazTah('readonly',  s => s.getAll());
+const frontaSmaz   = id        => vzkazTah('readwrite', s => s.delete(id));
+
+async function ukazFrontu(){
+  const el = $('#vzkazCekaji'); if(!el) return;
+  let n = 0;
+  try{ n = (await frontaVse()).length; }catch(e){ return; }
+  el.style.display = n ? '' : 'none';
+  el.textContent = n === 1 ? '1 vzkaz čeká na signál' : (n + ' vzkazy čekají na signál');
+  el.title = 'Odešlou se samy, jakmile bude připojení.';
+}
+
+async function odesliFrontu(){
+  let cekajici = [];
+  try{ cekajici = await frontaVse(); }catch(e){ return; }
+  for(const p of cekajici){
+    try{ await odesliJedenVzkaz(p.z, p.blob); await frontaSmaz(p.id); }
+    catch(e){ break; }              // pořád není signál, zkusí se příště
+  }
+  ukazFrontu();
+}
+
+/* ---------- seznam pro organizátory ---------- */
+async function nactiVzkazy(){
+  const stav = $('#stavVzkazy'); if(!stav) return;
+  if(!prihlasen){
+    vzkazyData = [];
+    stav.textContent = 'Vzkazy vidí jen přihlášený.';
+    $('#vzkazySeznam').innerHTML = '';
+    return;
+  }
+  stav.textContent = 'načítám…';
+  try{
+    vzkazyData = await sbDotaz('vzkazy?rok=eq.'
+      + encodeURIComponent(D.nastaveni.aktivni_rok) + '&order=kdy.desc&select=*');
+    kresliVzkazy();
+  }catch(e){
+    stav.textContent = '';
+    chyba(e.message, 'Vzkazy se nenačetly');
+  }
+}
+
+function kresliVzkazy(){
+  const cil = $('#vzkazySeznam'); if(!cil) return;
+  const chtenyStav = ($('#vzkazyStav') || {}).value ?? 'nový';
+  const hledat = String((($('#vzkazyHledej') || {}).value || '')).trim().toLowerCase();
+  const vidno = vzkazyData.filter(v =>
+    (!chtenyStav || v.stav === chtenyStav) &&
+    (!hledat || ((v.text || '') + ' ' + (v.kdo || '')).toLowerCase().indexOf(hledat) >= 0));
+  const novych = vzkazyData.filter(v => v.stav === 'nový').length;
+  $('#stavVzkazy').textContent = 'zobrazeno ' + vidno.length + ' z ' + vzkazyData.length
+    + ' · nových ' + novych;
+
+  if(!vidno.length){
+    cil.innerHTML = '<p class="popisek">Zatím tu nic není.</p>';
+    return;
+  }
+  cil.innerHTML = vidno.map(v => {
+    const kdy = new Date(v.kdy);
+    const dv = n => String(n).padStart(2,'0');
+    const kdyText = dv(kdy.getDate()) + '. ' + (kdy.getMonth()+1) + '. '
+      + dv(kdy.getHours()) + ':' + dv(kdy.getMinutes());
+    const znaky = [];
+    if(v.predavka) znaky.push(esc(popisPredavky(v.predavka)));
+    if(v.grupa)    znaky.push(esc(v.grupa));
+    if(v.ukol)     znaky.push(esc(v.ukol));
+    if(v.delka)    znaky.push(vzkazCasText(v.delka));
+    const novy = v.stav === 'nový';
+    return '<div class="vzkazKarta ' + (novy ? 'novy' : 'vyrizeny') + '">'
+      + '<div class="radka"><span class="kdo">' + esc(v.kdo || 'bez jména') + '</span>'
+      + '<span>' + kdyText + '</span>'
+      + znaky.map(z => '<span class="znak">' + z + '</span>').join('')
+      + '<button class="tl" style="margin-left:auto" onclick="prepniStavVzkazu(' + v.id + ')" '
+      + 'title="Přepne mezi nový a vyřízený.">'
+      + (novy ? 'Označit vyřízený' : 'Vrátit mezi nové') + '</button></div>'
+      + (v.text ? '<p class="prepis">' + esc(v.text) + '</p>'
+                : '<p class="prepis popisek">Bez přepisu — jen zvuk.</p>')
+      + (v.zvuk ? '<div data-zvuk="' + esc(v.zvuk) + '">'
+          + '<button class="tl" onclick="prehrajVzkaz(this)">▶ Přehrát nahrávku</button></div>' : '')
+      + '</div>';
+  }).join('');
+}
+
+async function prepniStavVzkazu(id){
+  const v = vzkazyData.find(x => x.id === id); if(!v) return;
+  const novy = v.stav === 'nový' ? 'vyřízený' : 'nový';
+  try{
+    await sbDotaz('vzkazy?id=eq.' + id,
+      {method:'PATCH', headers:{'Prefer':'return=minimal'}, body: JSON.stringify({stav: novy})});
+    v.stav = novy; kresliVzkazy();
+  }catch(e){ chyba(e.message, 'Stav vzkazu se nezměnil'); }
+}
+
+/* Nahrávky leží v neveřejném úložišti, takže se nedají dát rovnou do src —
+   odkaz se musí nechat podepsat a platí hodinu. */
+async function prehrajVzkaz(tl){
+  const obal = tl.parentNode, cesta = obal.getAttribute('data-zvuk');
+  tl.disabled = true; tl.textContent = 'otevírám…';
+  try{
+    const token = await sbPlatnyToken();
+    const o = await fetch(SB.url + '/storage/v1/object/sign/' + VZKAZ_BUCKET + '/' + cesta, {
+      method:'POST',
+      headers:{'apikey':SB.klic,'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body: JSON.stringify({expiresIn: 3600})
+    });
+    const v = await o.json();
+    if(!o.ok || !v.signedURL) throw new Error(v.message || 'úložiště nahrávku nevydalo');
+    obal.innerHTML = '<audio controls autoplay src="'
+      + esc(SB.url + '/storage/v1' + v.signedURL) + '"></audio>';
+  }catch(e){
+    tl.disabled = false; tl.textContent = '▶ Přehrát nahrávku';
+    chyba(e.message, 'Nahrávka se nepřehrála');
+  }
+}
+
+window.addEventListener('online', odesliFrontu);
+
 doplnCasyBezcu();
 PRAV = slozPravidla('HB');
 nactiVolbuZobrazeni();
@@ -10875,6 +11439,8 @@ spustPripominku();
 // s ostatními daty a veřejný pohled se nemá o co pokoušet.
 obnovRelaci().then(nactiVerejnaData);
 napisJakDiktovat();
+ukazFrontu();
+odesliFrontu();
 otevriVhodnou('s-ukoly');
 zmerHlavicku();
 dorovnejPaletu();

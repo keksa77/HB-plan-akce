@@ -752,7 +752,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     <div class="vzkazPin">
       <label class="pole">Předávka
         <select id="vzkazPredavka"><option value="">— netýká se —</option></select></label>
-      <label class="pole">Grupa
+      <label class="pole" title="Trasérská grupa — ta, která na tom úseku značí trasu nebo sbírá fáborky. Vyberte ji, když se vzkaz týká práce grupy, ne místa předávky.">Trasérská grupa
         <select id="vzkazGrupa"><option value="">— netýká se —</option></select></label>
       <label class="pole">Úkol
         <input id="vzkazUkol" maxlength="20" placeholder="kód, třeba P7"></label>
@@ -2106,7 +2106,7 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
 const VERZE = "v5.86";
-const BUILD = "2026-08-31T18:25+02:00";                              // vyplní se ve veřejném buildu
+const BUILD = "2026-08-31T19:48+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.

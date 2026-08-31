@@ -173,6 +173,9 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
 .listGrupy .lgPas .lgVpravo{margin-left:auto;font-size:.85em;opacity:.85;text-align:right}
 .listGrupy .lgLide{margin:7px 1px 10px;font-size:.95em;color:#3A332C}
 .listGrupy .lgLide b{font-weight:800;color:#78212E}
+/* Telefon šéfa grupy stojí hned za jménem, drobněji — je to údaj pro nouzi,
+   ne pro čtení. Číslice nezalamovat, jinak se číslo rozpadne přes konec řádku. */
+.listGrupy .lgLide .lgTel{margin-left:5px;font-size:.86em;color:#5A5348;white-space:nowrap}
 .listGrupy .lgOsa{margin:0 1px 8px;padding:5px 10px 3px;background:#FBFAF7;
   border:1px solid #E9E3D7;border-radius:5px}
 .listGrupy .lgOsa .lgNadpisek{font-size:.75em;text-transform:uppercase;letter-spacing:.09em;
@@ -196,6 +199,30 @@ button.tl.cerv:hover{background:#F5D8DC;border-color:#A4444E}
 /* Adresa uvnitř textu: poznat, že se dá otevřít, ale nekřičet — v buňce plné
    textu by sytě modrý odkaz přebil to podstatné. */
 .odkazVTextu{color:var(--vinova);text-decoration:underline;text-underline-offset:2px}
+
+/* Noclehy na telefonu. *Předěláno 30. 8. 2026 (v5.85).* Osmnáct sloupců se do
+   displeje nevejde ani po ořezu — u těchhle dvou stránek nestačí užší tabulka,
+   potřebují vlastní rozvržení. Na telefonu se proto místo tabulky kreslí karty
+   a tabulka se schová; na počítači je to obráceně. Karta je ke čtení, ne k psaní
+   — opravuje se na počítači, u trati se do toho jen kouká. */
+#kartyNocMista, #kartyNocLide{display:none}
+body.mobil #kartyNocMista, body.mobil #kartyNocLide{display:block}
+body.mobil #s-noclehy-mista .obal-tab, body.mobil #s-noclehy-lide .obal-tab{display:none}
+.nocKarta{background:var(--bila,#fff);border:1px solid var(--linka);border-radius:11px;
+  padding:11px 13px;margin-bottom:10px;box-shadow:var(--stin)}
+.nocKarta h4{margin:0 0 2px;font-size:15px;line-height:1.25}
+.nocKarta .nocPodnadpis{color:var(--pisek);font-size:12.5px;margin-bottom:8px}
+.nocKarta .nocRadek{display:flex;gap:8px;font-size:13.5px;padding:3px 0;
+  border-top:1px solid #F1ECE3}
+.nocKarta .nocRadek:first-of-type{border-top:0}
+.nocKarta .nocCo{color:var(--pisek);flex:none;width:86px}
+.nocKarta .nocHodnota{flex:1;min-width:0;word-break:break-word}
+.nocKarta .nocPruh{margin-top:7px}
+.nocStitek{display:inline-block;font-size:11.5px;font-weight:700;border-radius:5px;
+  padding:1px 7px;background:#F3EFE8;color:#5A5348}
+.nocStitek.plno{background:#F6E9EB;color:var(--vinova)}
+.nocNoc{font-size:13px;font-weight:800;color:var(--vinova);margin:14px 0 7px}
+.nocPoznamkaKUprave{color:var(--pisek);font-size:12.5px;margin:0 0 12px}
 .odkazVTextu:hover{text-decoration-thickness:2px}
 .listGrupy .lgStitek{display:inline-block;border-radius:9px;padding:1px 7px;font-size:.8em;
   font-weight:700;white-space:nowrap}
@@ -1094,6 +1121,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     <div class="karta">
       <h2>Noclehy — místa</h2>
       <div class="telo">
+        <div id="kartyNocMista"></div>
         <div class="obal-tab"><table class="tab" id="tabNocMista"></table></div>
         <div id="souhrnNoclehu" style="margin-top:12px"></div>
         <button class="tl" style="margin-top:10px" title="Přidá prázdný řádek pro další místo noclehu." onclick="pridej('nocMista')">+ Přidat nocleh</button>
@@ -1109,6 +1137,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
         <p class="popisek">Kdo kde spí kterou noc. Prázdné místo znamená vlastní nocleh — doma nebo
           v dodávce. Volba „neřeší se" je pro lidi, u kterých nocleh vůbec neřešíme.</p>
         <div id="obsazenost" style="margin-bottom:14px"></div>
+        <div id="kartyNocLide"></div>
         <div class="obal-tab"><table class="tab" id="tabNocLide"></table></div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="tl" title="Přidá prázdný řádek pro dalšího nocležníka." onclick="pridej('nocLide')">+ Přidat nocležníka</button>
@@ -1952,8 +1981,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.84";
-const BUILD = "2026-08-30T11:35+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.85";
+const BUILD = "2026-08-31T02:04+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4792,10 +4821,17 @@ function listGrupy(kod, ukoly, rok){
   const sefove = lide.filter(c => c.sef === 'ano' || c.sef === true);
   const zbytek = lide.filter(c => sefove.indexOf(c) < 0)
     .sort((a,b)=>String(a.jmeno||'').localeCompare(String(b.jmeno||''), 'cs'));
-  // na papíře celá jména, ne zkratky jako na kartě u trati
+  /* Na papíře celá jména, ne zkratky jako na kartě u trati. Telefon jen u šéfa
+     grupy — *rozhodnuto 30. 8. 2026 (v5.85)*. Když se list posílá mailem, má
+     být na koho zavolat, ale rozdávat čísla všech členů na papír, který obchází
+     grupu, není potřeba. Ve veřejném buildu je telefon vyprázdněný sanitizérem,
+     takže tam se nevykreslí nic a `lgTel` zůstane prázdné. */
   const jmena = sefove.concat(zbytek).map(c => {
     const jm = esc(c.jmeno || '(bez jména)');
-    return (sefove.indexOf(c) >= 0) ? '<b>' + jm + '</b>' : jm;
+    if(sefove.indexOf(c) < 0) return jm;
+    const tel = String(c.telefon || '').trim();
+    return '<b>' + jm + '</b>'
+      + (tel ? '<span class="lgTel">' + esc(tel) + '</span>' : '');
   }).join(' · ');
 
   /* Štítek grupy obvykle začíná jejím kódem („G5 Olda K."). Vypisovat pak
@@ -6063,7 +6099,54 @@ function kresliNocMista(){
     {nadpis:"Rezervace", pole:"rezervace", sirka:"230px"},
     {nadpis:"Poznámka", pole:"poznamka", sirka:"320px", viceradkove:true}
   ]), D.nocMista, ()=>{kresliNocMista();}, true);
+  kresliKartyNocMista();
   kresliSouhrnNoclehu();
+}
+
+/* Karty míst pro telefon. Pořadí údajů je podle toho, co člověk u trati hledá
+   nejdřív: kam jet, komu volat, kolik je tam místa a kdo tam spí. Adresa,
+   mapa a telefon jsou rovnou k proklepnutí. */
+function kresliKartyNocMista(){
+  const cil = $('#kartyNocMista');
+  if(!cil) return;
+  if(!mobil){ cil.innerHTML = ''; return; }
+  /* Stejné síto jako `bezCitlivych` u tabulky: ve veřejné verzi se
+     nepřihlášenému neukazuje adresa, mapa, kontakt, telefon ani poznámka.
+     Kdyby se to tady rozešlo s tabulkou, karty by prozradily to, co sloupce
+     schovávají. */
+  const citlive = VEREJNA && !prihlasen;
+  const radek = (co, html) => html ? '<div class="nocRadek"><span class="nocCo">' + co
+    + '</span><span class="nocHodnota">' + html + '</span></div>' : '';
+  let h = '<p class="nocPoznamkaKUprave">Ke čtení. Opravuje se na počítači.</p>';
+  let noc = null;
+  (D.nocMista || []).forEach(m => {
+    if((m.noc || '') !== noc){
+      noc = m.noc || '';
+      h += '<div class="nocNoc">' + esc(noc ? ('noc na ' + noc) : 'bez určené noci') + '</div>';
+    }
+    const o = obsazenostNoci(m.noc || '');
+    const kdo = kdoTamSpi((o.kde || {})[m.kod] || []);
+    const obsazeno = ((o.kde || {})[m.kod] || []).length;
+    const kap = +m.kapacita || 0;
+    h += '<div class="nocKarta"><h4>' + esc(m.nazev || m.kod) + '</h4>'
+      + '<div class="nocPodnadpis">' + esc(m.kod)
+      + (m.predavka ? ' · u předávky ' + esc(m.predavka) + ' ' + esc(popisPredavky(m.predavka)) : '')
+      + '</div>'
+      + (citlive ? '' : radek('Kde', textSOdkazy(m.adresa || '') + (m.mapa_url
+          ? ' <a class="odkazVTextu" href="' + esc(m.mapa_url) + '" target="_blank"'
+            + ' rel="noopener noreferrer">mapa</a>' : '')))
+      + (citlive ? '' : radek('Komu volat', esc(m.kontakt || '') + ' '
+          + textSOdkazy(m.telefon || '')))
+      + radek('Lůžka', kap ? (obsazeno + ' z ' + kap
+          + ' <span class="nocStitek' + (obsazeno > kap ? ' plno' : '') + '">'
+          + (obsazeno > kap ? 'přeplněno' : (kap - obsazeno) + ' volných') + '</span>')
+        : (obsazeno ? obsazeno + ' lidí, kapacita neuvedena' : ''))
+      + radek('Pokoje', textSOdkazy(m.pokoje || ''))
+      + radek('Kdo tam spí', kdo)
+      + (citlive ? '' : radek('Poznámka', textSOdkazy(m.poznamka || '')))
+      + '</div>';
+  });
+  cil.innerHTML = h;
 }
 
 /* ---------- součet lůžek a obsazenost ----------
@@ -6187,6 +6270,7 @@ function kresliNocLide(){
     {nadpis:"Grupa", pole:"kod_tymu", typ:"select", moznosti:(r)=>volbyGrup(true,false,r&&r.kod_tymu), sirka:"165px"},
     {nadpis:"Poznámka", pole:"poznamka"}
   ], D.nocLide, ()=>{kresliNocLide();kresliSouhrnNoclehu();}, true);
+  kresliKartyNocLide();
 
   let h = '';
   NOCI.forEach(noc=>{
@@ -6213,6 +6297,44 @@ function kresliNocLide(){
     h += '</div></div>';
   });
   $('#obsazenost').innerHTML = h;
+}
+
+/* Lidé na telefonu: ne řádky, ale seznam po nocích a místech. Tabulka „noc,
+   místo, jméno, grupa" se na displeji čte špatně — noc i místo se v ní opakují
+   u každého řádku a jméno, kvůli kterému se tam člověk dívá, zůstane vzadu. */
+function kresliKartyNocLide(){
+  const cil = $('#kartyNocLide');
+  if(!cil) return;
+  if(!mobil){ cil.innerHTML = ''; return; }
+  const nazevMista = k => {
+    if(!k) return 'vlastní nocleh';
+    if(k === NERESI) return 'neřeší se';
+    const m = (D.nocMista || []).find(x => x.kod === k);
+    return m ? (m.nazev || m.kod) : k;
+  };
+  let h = '<p class="nocPoznamkaKUprave">Ke čtení. Opravuje se na počítači.</p>';
+  NOCI.forEach(noc => {
+    const vNoci = (D.nocLide || []).filter(x => x.noc === noc);
+    h += '<div class="nocNoc">' + esc('noc na ' + noc) + ' · ' + vNoci.length + ' lidí</div>';
+    if(!vNoci.length){ h += '<div class="nocKarta"><div class="nocPodnadpis">nikdo</div></div>'; return; }
+    const podleMista = {};
+    vNoci.forEach(x => { const k = x.kod_noclehu || ''; (podleMista[k] = podleMista[k] || []).push(x); });
+    Object.keys(podleMista).sort((a,b)=>nazevMista(a).localeCompare(nazevMista(b),'cs')).forEach(k => {
+      const lide = podleMista[k].slice().sort((a,b)=>
+        String(a.kod_tymu||'').localeCompare(String(b.kod_tymu||''),'cs')
+        || String(a.jmeno||'').localeCompare(String(b.jmeno||''),'cs'));
+      h += '<div class="nocKarta"><h4>' + esc(nazevMista(k)) + '</h4>'
+        + '<div class="nocPodnadpis">' + lide.length + ' lidí</div>';
+      const podleGrupy = {};
+      lide.forEach(x => { const g = x.kod_tymu || '—'; (podleGrupy[g] = podleGrupy[g] || []).push(x.jmeno || ''); });
+      Object.keys(podleGrupy).sort().forEach(g => {
+        h += '<div class="nocRadek"><span class="nocCo">' + esc(g) + '</span>'
+          + '<span class="nocHodnota">' + esc(podleGrupy[g].filter(Boolean).join(', ')) + '</span></div>';
+      });
+      h += '</div>';
+    });
+  });
+  cil.innerHTML = h;
 }
 function doplnZeClenu(){
   let pridano = 0;
@@ -8030,8 +8152,15 @@ function kresliPruhGenerovani(){
 }
 
 // jméno předávky pro hlášky; číslo už nese kód úkolu, tak ho neopakujeme
+/* Jméno předávky podle jejího ČÍSLA, ne podle pořadí v poli. *Opraveno
+   30. 8. 2026 (v5.85).* Dřív tu stálo `D.predavky[cislo-1]`, což mlčky
+   předpokládalo, že je pole setříděné. Když se data nasypou nesetříděná —
+   třeba ze skriptu, který je bere přímo z databáze — osa na listu grupy
+   spároval čísla se špatnými jmény („6 Dolní Lomná") a nic to nenahlásilo.
+   Index zůstává jako záloha pro řádky bez čísla. */
 function popisPredavky(cislo){
-  const p = D.predavky[cislo-1];
+  const c = +cislo;
+  const p = (D.predavky || []).find(x => +x.cislo === c) || (D.predavky || [])[c-1];
   return (p && p.nazev) ? p.nazev : ('předávka ' + cislo);
 }
 
@@ -10642,6 +10771,8 @@ function nastavZobrazeni(chciMobil){
   if(!mobil) mobilVse = false;
   kresliNav(); kresliStavPrihlaseni(); hlidejOtevrenou(); zmerHlavicku();
   kresliPodrobny();                      // na mobilu má jinou sadu sloupců
+  // noclehy mají na telefonu vlastní rozvržení, ne jen užší tabulku (v5.85)
+  kresliNocMista(); kresliNocLide();
   hlaska(mobil ? 'Mobilní zobrazení' : 'Plné zobrazení');
 }
 function prepniZobrazeni(){ nastavZobrazeni(!mobil); }

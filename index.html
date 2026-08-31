@@ -718,8 +718,8 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
        záložek zúžená na podrobný plán. -->
   <div class="vzkazLista">
     <button class="tlVzkaz" id="tlVzkaz" onclick="otevriVzkaz()"
-      title="Nahraje vzkaz mikrofonem a rovnou ho i přepíše. Pošle se organizátorům do plánovače.">🎤 Nahrát vzkaz</button>
-    <span class="co"><b>Něco se na trati změnilo?</b> Řekněte to sem, ať to nemusíte psát.</span>
+      title="Tipy, nápady a řešení pro příští ročník. Řeknete to do mikrofonu, uloží se zvuk i přepis — a v zimě, až se plánuje další ročník, to nikdo nemusí lovit z paměti. Připnout to jde ke konkrétní předávce, grupě nebo úkolu.">🎤 Nahrát vzkaz</button>
+    <span class="co"><b>Tip, nápad, co příště jinak?</b> Řekněte to sem, ať se to do příštího ročníku nezapomene.</span>
     <span class="cekaji" id="vzkazCekaji" style="display:none"></span>
   </div>
 </header>
@@ -727,9 +727,11 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
 <!-- ---------- okno pro nahrání vzkazu ---------- -->
 <div id="oknoVzkaz" onclick="if(event.target===this) zavriVzkaz()">
   <div class="vzkazPanel">
-    <h2>Vzkaz z trati</h2>
-    <p class="popisek" style="margin:0 0 14px">Zmáčkněte mikrofon a mluvte. Nahraje se zvuk
-      a zároveň se pořizuje přepis — organizátoři uvidí obojí. Psát jde i rovnou do pole.</p>
+    <h2>Tip, nápad, řešení pro příští ročník</h2>
+    <p class="popisek" style="margin:0 0 14px">Co fungovalo, co ne a co příště udělat jinak.
+      Zmáčkněte mikrofon a mluvte — nahraje se zvuk a zároveň se pořizuje přepis, takže se to
+      dá později i vyhledat. Psát jde i rovnou do pole. Hodí se to i na vzkaz, který nepočká
+      do příště: připněte ho k předávce nebo grupě a organizátoři ho uvidí hned.</p>
 
     <div class="nahravatko">
       <button class="tlNahrat" id="tlNahrat" onclick="prepniNahravani()"
@@ -744,7 +746,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     <label class="pole">Kdo píše
       <input id="vzkazKdo" maxlength="60" placeholder="jméno, ať víme, komu volat zpátky"></label>
 
-    <label class="pole">Přepis — než odešlete, můžete ho opravit
+    <label class="pole">Přepis — než odešlete, můžete ho opravit nebo dopsat
       <textarea id="vzkazText" placeholder="Tady se objeví, co jste řekl. Nebo napište rovnou."></textarea></label>
 
     <div class="vzkazPin">
@@ -1171,15 +1173,17 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
 
   <section class="sekce" id="s-vzkazy">
     <div class="karta">
-      <h2>Vzkazy z trati — tabulka vzkazy</h2>
+      <h2>Vzkazy — tipy a nápady na příště — tabulka vzkazy</h2>
       <div class="telo">
-        <p class="popisek">Co kdo nahrál tlačítkem v hlavičce. U každého vzkazu je přepis
-          i zvuk — přepis se dá prohledávat, zvuk je pojistka, když rozpoznávání řeči
-          v hluku selhalo. Poslat vzkaz smí kdokoli, kdo zná odkaz; číst je jen přihlášený.</p>
+        <p class="popisek">Co kdo nahrál tlačítkem v hlavičce: tipy, nápady a řešení pro
+          příští ročník, ale i vzkazy, které nepočkají. U každého je přepis i zvuk — přepis
+          se dá prohledávat, zvuk je pojistka, když rozpoznávání řeči v hluku selhalo.
+          Nahrát vzkaz smí kdokoli, kdo zná odkaz; číst je jen přihlášený.
+          <b>Vyřízený</b> znamená zařízeno nebo zapsáno do plánu, ne smazáno — nic se nemaže.</p>
         <div class="nastroje lista">
           <label class="popisek" style="margin:0">Stav:
             <select id="vzkazyStav" onchange="kresliVzkazy()">
-              <option value="nový">jen nové</option>
+              <option value="nový">jen nevyřízené</option>
               <option value="">všechny</option>
               <option value="vyřízený">jen vyřízené</option>
             </select></label>
@@ -2102,7 +2106,7 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
 const VERZE = "v5.86";
-const BUILD = "2026-08-31T17:48+02:00";                              // vyplní se ve veřejném buildu
+const BUILD = "2026-08-31T18:25+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2305,7 +2309,7 @@ const ZALOZKY = [
      kosmetika: databáze mu je stejně nevydá (policy vzkazy_prihlaseny), a
      prázdná záložka by vypadala jako závada. */
   {id:"s-vzkazy",        nazev:"Vzkazy",             jenPrihlasenym:true,
-   napoveda:"Nahrané vzkazy z trati — přepis i zvuk, se stavem nový a vyřízený."}
+   napoveda:"Tipy, nápady a řešení pro příští ročník, jak je kdo nahrál — přepis i zvuk, se stavem nový a vyřízený."}
 ];
 
 /* Podstránky: obrazovky, které nemají vlastní tlačítko v liště a otevírají se odjinud.

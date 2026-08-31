@@ -1981,8 +1981,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.85";
-const BUILD = "2026-08-31T02:04+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.86";
+const BUILD = "2026-08-31T03:30+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2325,8 +2325,8 @@ const NAPOVEDA = {
   "GPS délka":"Zeměpisná délka, plní se od ročníku HB26.",
   "Typ zajištění":"Local znamená místní pořadatele, Interně HB naše grupa.",
   "Soubor GPX":"Název trasy na webu, například hb26-07-v1.gpx.",
-  "První běžec":"Kdy na předávku dorazil první běžec. Průměr skutečných časů z HB24 a HB25.",
-  "Poslední běžec":"Kdy dorazil poslední běžec. Průměr z HB24 a HB25, po vyřazení zjevných chyb v zápisu.",
+  "První běžec":"Kdy na předávku dorazí první běžec. Odhad z kalkulace startovních časů (sloupec odhad_prvni). Do v5.85 to byl průměr z HB24 a HB25.",
+  "Poslední běžec":"Kdy dorazí poslední běžec. Odhad z kalkulace startovních časů (sloupec odhad_posledni). Do v5.85 to byl průměr z HB24 a HB25.",
   // noclehy
   "Kapacita":"Kolik lůžek je celkem k dispozici.",
   "Pokoje":"Jak jsou lůžka rozdělená.",
@@ -9242,18 +9242,37 @@ const MAPA = {
                        zamek: !!r.zamek, odvozeno: !!r.odvozeno}),
     naDb: r => ({...r, zamek: !!r.zamek, odvozeno: !!r.odvozeno})
   },
+/* Odhad prichodu prvniho a posledniho tymu se v databazi drzi jako cas bez data
+   (sloupce odhad_prvni, odhad_posledni). Tabulka ho ale ukazuje ve tvaru "so 6:00",
+   protoze zavod prechazi pres pulnoc. Den se odvodi ze dvou pravidel:
+     - cas pred 6:00 rano nemuze byt sobota, v sobotu se startuje v 6:00
+     - od urcite predavky uz je cele pole za pulnoci
+   Prahy vychazi z kalkulace HB26 (prvni bezec preklopi na predavce 19,
+   posledni uz na 15). Kdyby se kalkulace vyrazne zmenila, upravi se tady. */
+const PRAH_NEDELE = {prvni: 19, posledni: 15};
+function sDnem(cislo, cas, ktery){
+  const t = (cas || '').slice(0,5);
+  if(!t) return '';
+  const hod = parseInt(t.slice(0,2), 10);
+  const nedele = hod < 6 || (cislo >= (PRAH_NEDELE[ktery] || 99));
+  return (nedele ? 'ne ' : 'so ') + (t[0] === '0' ? t.slice(1) : t);
+}
+
   predavky: {
-    tabulka:'predavky', klic:['cislo'], konflikt:['rok','cislo'], rok:true, jen:['prvni','posledni','_km'],
+    tabulka:'predavky', klic:['cislo'], konflikt:['rok','cislo'], rok:true, jen:['_km'],
     // Pozor na dve ruzne delky: km/min je cesta AUTEM na dalsi predavku (sloupec
     // "Na dalsi"), delka je BEHECKA delka etapy z GPX. Driv obe sedely na jednom
     // sloupci delka_km a cas autem se neukladal vubec, takze se pri nacteni ztratil.
     pole:{cislo:'cislo', nazev:'nazev', lat:'gps_lat', lon:'gps_lon', typ:'typ_zajisteni',
           pozn:'poznamka', gpx:'gpx_soubor', km:'auto_km', min:'auto_min', delka:'delka_km',
-          mapa:'mapa_url', zavrit_od:'zavrit_od', zavrit_do:'zavrit_do'},
+          mapa:'mapa_url', zavrit_od:'zavrit_od', zavrit_do:'zavrit_do',
+          prvni:'odhad_prvni', posledni:'odhad_posledni'},
     // databáze vrací čas jako „06:00:00", políčko chce „06:00" — bez oříznutí
     // by se řádek tvářil jako změněný hned po načtení
     naJs: r => ({...r, zavrit_od: (r.zavrit_od||'').slice(0,5),
-                       zavrit_do: (r.zavrit_do||'').slice(0,5)})
+                       zavrit_do: (r.zavrit_do||'').slice(0,5),
+                       prvni: sDnem(r.cislo, r.prvni, 'prvni'),
+                       posledni: sDnem(r.cislo, r.posledni, 'posledni')})
   },
   /* Etapa rozdělená na úseky: délka, převýšení, povrch a jestli se tam smí
      autem. Z toho se počítá doba značení a úklidu. Geometrie (od_m, do_m,

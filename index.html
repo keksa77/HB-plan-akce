@@ -680,8 +680,9 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
 .vzkazPanel label.pole textarea{width:100%;margin-top:3px;padding:7px 9px;
   border:1px solid var(--linka);border-radius:8px;font:14px Nunito,sans-serif;color:var(--tmava)}
 .vzkazPanel textarea{min-height:96px;resize:vertical}
-.nahravatko{display:flex;align-items:center;gap:12px;background:#FAF6F2;
-  border:1px solid var(--linka);border-radius:12px;padding:12px;margin:0 0 12px}
+.nahravatko{background:#FAF6F2;border:1px solid var(--linka);border-radius:12px;
+  padding:12px;margin:0 0 12px}
+.nahravatkoRadka{display:flex;align-items:center;gap:12px}
 .tlNahrat{background:var(--vinova);color:#fff;border:0;border-radius:50%;
   width:56px;height:56px;font-size:23px;cursor:pointer;flex:none}
 .tlNahrat.bezi{animation:tepe 1.1s infinite}
@@ -689,7 +690,7 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
 .nahravatko .cas{font:800 19px Nunito,sans-serif;font-variant-numeric:tabular-nums}
 .nahravatko .jak{font-size:12px;color:var(--pisek)}
 .vzkazSoukromi{background:#FAF3F4;border:1px solid #E8D3D6;border-left:3px solid var(--vinova);
-  border-radius:8px;padding:8px 11px;margin:0 0 14px;font-size:12.5px;line-height:1.5;color:var(--tmava)}
+  border-radius:8px;padding:8px 11px;margin:11px 0 0;font-size:12.5px;line-height:1.5;color:var(--tmava)}
 .vzkazPin{display:flex;gap:8px;flex-wrap:wrap}
 .vzkazPin label.pole{flex:1;min-width:120px}
 
@@ -735,17 +736,20 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
       dá později i vyhledat. Psát jde i rovnou do pole. Hodí se to i na vzkaz, který nepočká
       do příště: připněte ho k předávce nebo grupě a organizátoři ho uvidí hned.</p>
 
-    <p class="vzkazSoukromi">🔒 <b>Je to neveřejné.</b> K nahrávce ani k přepisu se nikdo
-      další nedostane — přístup k nim má jenom Marek (Keksa).</p>
-
     <div class="nahravatko">
-      <button class="tlNahrat" id="tlNahrat" onclick="prepniNahravani()"
-        title="Spustí a zastaví nahrávání. Poprvé se prohlížeč zeptá na povolení mikrofonu.">🎤</button>
-      <div>
-        <div class="cas" id="vzkazCas">0:00</div>
-        <div class="jak" id="vzkazJak">nenahrává se</div>
+      <div class="nahravatkoRadka">
+        <button class="tlNahrat" id="tlNahrat" onclick="prepniNahravani()"
+          title="Spustí a zastaví nahrávání. Poprvé se prohlížeč zeptá na povolení mikrofonu.">🎤</button>
+        <div>
+          <div class="cas" id="vzkazCas">0:00</div>
+          <div class="jak" id="vzkazJak">nenahrává se</div>
+        </div>
+        <audio id="vzkazPrehled" controls style="display:none;margin-left:auto;max-width:170px;height:34px"></audio>
       </div>
-      <audio id="vzkazPrehled" controls style="display:none;margin-left:auto;max-width:170px;height:34px"></audio>
+      <!-- Slib o soukromí patří sem k mikrofonu, ne nahoru mezi vysvětlivky:
+           čte se ve chvíli, kdy se člověk rozhoduje, jestli něco nahraje. -->
+      <p class="vzkazSoukromi">🔒 <b>Je to neveřejné.</b> K nahrávce ani k přepisu se nikdo
+        další nedostane — přístup k nim má jenom Marek (Keksa).</p>
     </div>
 
     <label class="pole">Kdo píše
@@ -2111,7 +2115,7 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
 const VERZE = "v5.86";
-const BUILD = "2026-09-01T13:54+02:00";                              // vyplní se ve veřejném buildu
+const BUILD = "2026-09-01T14:45+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.

@@ -2126,7 +2126,7 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
 const VERZE = "v5.86";
-const BUILD = "2026-09-02T18:25+02:00";                              // vyplní se ve veřejném buildu
+const BUILD = "2026-09-02T18:39+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -11120,6 +11120,7 @@ const VZKAZ_BUCKET = 'vzkazy-zvuk';
 const VZKAZ_MAX_S  = 300;          // pět minut; databáze pustí nejvýš dvacet
 let vzkazMedia = null, vzkazStream = null, vzkazKusy = [], vzkazBlob = null;
 let vzkazDelka = 0, vzkazTiky = null, vzkazUsi = null, vzkazNahravame = false;
+let vzkazPrepisZaklad = '', vzkazPrepisHotovy = '', vzkazPrepisVzdal = false;
 let vzkazyData = [];
 
 /* Dotaz do databáze BEZ přihlášení. Nejde použít sbDotaz — ten si vyžádá token
@@ -11238,24 +11239,81 @@ async function spustNahravani(){
 
 /* Přepis běží vedle nahrávání, ne místo něj. Když ho prohlížeč neumí (Safari,
    Firefox), nahrávání to nesmí shodit — vzkaz dorazí jen jako zvuk. */
+/* Přepis vedle nahrávání. *Přepsáno 2. 9. 2026 — přestal chodit.*
+
+   Dvě příčiny, obě tiché. Za prvé: Chrome poslech sám ukončí po chvíli ticha
+   i s `continuous = true`. Padne `onend`, rozpoznávání je mrtvé a text prostě
+   přestane přibývat — nic to nehlásí. Teď se poslech, dokud se nahrává, sám
+   nastartuje znovu. Za druhé: `onerror` byl prázdný, takže když se mikrofon
+   nedal (rozpoznávání si o něj říká zvlášť, vedle nahrávání), nedozvěděl se
+   o tom vůbec nikdo. Teď je důvod vidět pod počítadlem.
+
+   Hotový text se drží stranou v `vzkazPrepisHotovy`. Po restartu totiž
+   `e.results` začíná od nuly — kdyby se skládal jen z něj, každé nadechnutí
+   by přepsalo všechno, co bylo řečeno předtím. */
+/* Třída rozpoznávání se hledá až ve chvíli spuštění, ne při načtení stránky.
+   Jednak si ji tak může podstrčit test, jednak prohlížeč nemusí mít API hotové
+   hned na začátku. */
+function tridaRozpoznavani(){
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
 function spustPrepis(){
-  if(!RozpoznavaniReci) return;
-  try{
-    vzkazUsi = new RozpoznavaniReci();
-    vzkazUsi.lang = 'cs-CZ'; vzkazUsi.continuous = true; vzkazUsi.interimResults = true;
-    const pole = $('#vzkazText');
-    const zaklad = pole.value ? pole.value.replace(/\s+$/,'') + ' ' : '';
-    vzkazUsi.onresult = e => {
-      let hotovo = '', rozdelane = '';
-      for(let i=0;i<e.results.length;i++){
-        const kus = e.results[i][0].transcript;
-        if(e.results[i].isFinal) hotovo += kus + ' '; else rozdelane += kus;
-      }
-      pole.value = zaklad + hotovo + rozdelane;
-    };
-    vzkazUsi.onerror = () => {};      // přepis je bonus, zvuk je jistota
-    vzkazUsi.start();
-  }catch(e){ vzkazUsi = null; }
+  const Usi = tridaRozpoznavani();
+  const stav = t => { const el = $('#vzkazJak'); if(el && vzkazNahravame) el.textContent = t; };
+  if(!Usi){
+    stav('nahrávám — přepis tenhle prohlížeč neumí, pošle se jen zvuk');
+    return;
+  }
+  const pole = $('#vzkazText');
+  vzkazPrepisZaklad = pole.value ? pole.value.replace(/\s+$/,'') + ' ' : '';
+  vzkazPrepisHotovy = '';
+  vzkazPrepisVzdal = false;
+
+  const nastartuj = () => {
+    try{
+      vzkazUsi = new Usi();
+      vzkazUsi.lang = 'cs-CZ'; vzkazUsi.continuous = true; vzkazUsi.interimResults = true;
+
+      vzkazUsi.onresult = e => {
+        let rozdelane = '';
+        for(let i = e.resultIndex; i < e.results.length; i++){
+          const kus = e.results[i][0].transcript;
+          if(e.results[i].isFinal) vzkazPrepisHotovy += kus + ' ';
+          else rozdelane += kus;
+        }
+        pole.value = vzkazPrepisZaklad + vzkazPrepisHotovy + rozdelane;
+        pole.scrollTop = pole.scrollHeight;
+      };
+
+      vzkazUsi.onerror = e => {
+        const duvody = {
+          'not-allowed':         'mikrofon je pro rozpoznávání řeči zakázaný — povolte ho u ikonky zámku',
+          'service-not-allowed': 'rozpoznávání řeči je zakázané v nastavení prohlížeče',
+          'audio-capture':       'mikrofon si vzalo něco jiného, přepis nejede',
+          'network':             'rozpoznávání řeči se nedovolalo na server'
+        };
+        // „no-speech" a „aborted" znamenají jen ticho nebo restart, ne závadu
+        if(e.error === 'no-speech' || e.error === 'aborted') return;
+        vzkazPrepisVzdal = true;
+        stav('nahrávám — ' + (duvody[e.error] || ('přepis selhal: ' + e.error))
+             + '; zvuk se ukládá dál');
+      };
+
+      /* Tohle je jádro opravy: dokud se nahrává, poslech se po každém ukončení
+         nastartuje znovu. Bez toho skončil přepis první delší pauzou. */
+      vzkazUsi.onend = () => {
+        if(vzkazNahravame && !vzkazPrepisVzdal) setTimeout(nastartuj, 250);
+      };
+
+      vzkazUsi.start();
+    }catch(e){
+      vzkazUsi = null;
+      vzkazPrepisVzdal = true;
+      stav('nahrávám — přepis se nepodařilo spustit, zvuk se ukládá dál');
+    }
+  };
+  nastartuj();
 }
 
 function zastavNahravani(){
@@ -11263,7 +11321,9 @@ function zastavNahravani(){
   clearInterval(vzkazTiky); vzkazTiky = null;
   try{ vzkazMedia && vzkazMedia.state !== 'inactive' && vzkazMedia.stop(); }catch(e){}
   try{ vzkazStream && vzkazStream.getTracks().forEach(t=>t.stop()); }catch(e){}
-  try{ vzkazUsi && vzkazUsi.stop(); }catch(e){}
+  // pořadí: nejdřív příznak, pak stop — jinak by onend poslech znovu nastartoval
+  vzkazPrepisVzdal = true;
+  try{ vzkazUsi && vzkazUsi.abort ? vzkazUsi.abort() : (vzkazUsi && vzkazUsi.stop()); }catch(e){}
   vzkazUsi = null; vzkazStream = null;
   const tl = $('#tlNahrat'); tl.textContent = '🎤'; tl.classList.remove('bezi');
   $('#vzkazJak').textContent = vzkazDelka

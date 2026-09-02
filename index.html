@@ -333,8 +333,14 @@ td .casDvoj select.castCasu{min-width:48px}
 .vicevyber.maVyber > button{border-color:var(--olive);font-weight:700}
 .vicevyber .panel{position:absolute;z-index:40;top:calc(100% + 4px);left:0;min-width:230px;
   max-width:min(92vw, 340px);
-  max-height:340px;overflow-y:auto;background:var(--bila);border:1px solid var(--linka);
-  border-radius:10px;box-shadow:0 10px 24px -12px rgba(75,41,20,.5);padding:6px}
+  max-height:340px;background:var(--bila);border:1px solid var(--linka);
+  border-radius:10px;box-shadow:0 10px 24px -12px rgba(75,41,20,.5);padding:6px;
+  flex-direction:column}
+/* Roluje se jen seznam položek. Hlavička („Vybrat vše") a patka („Hotovo")
+   stojí, takže cesta ven je vidět bez rolování i u třiadvaceti grup. */
+.vicevyber .panel .seznamPanelu{overflow-y:auto;flex:1;min-height:0}
+/* Když pod filtrem není místo, panel se otevře nad ním. */
+.vicevyber .panel.vzhuru{top:auto;bottom:100%;margin-bottom:4px}
 /* Jména osádky se do jednoho řádku nevejdou, tak se zalomí; zaškrtávátko
    zůstává u prvního řádku, ne uprostřed odstavce. */
 .vicevyber .panel label{display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-radius:7px;
@@ -342,14 +348,14 @@ td .casDvoj select.castCasu{min-width:48px}
 .vicevyber .panel input{margin-top:1px}
 .vicevyber .panel label:hover{background:#F5F2EA}
 .vicevyber .panel input{width:16px;height:16px;flex:none}
-.vicevyber .hlavaPanelu{display:flex;gap:6px;padding:2px 4px 6px;border-bottom:1px solid var(--linka);
-  margin-bottom:4px}
+.vicevyber .hlavaPanelu{display:flex;flex:none;gap:6px;padding:2px 4px 6px;
+  border-bottom:1px solid var(--linka);margin-bottom:4px}
 .vicevyber .hlavaPanelu button{flex:1;font:700 11.5px Nunito,sans-serif;padding:4px 6px;
   border:1px solid var(--linka);border-radius:6px;background:var(--bila);cursor:pointer;color:var(--olive)}
 .vicevyber .hlavaPanelu button:hover{background:#F5F2EA}
 /* „Hotovo" drží spodek panelu i při rolování — u třiadvaceti grup je konec
    seznamu daleko a cesta ven musí být pořád na očích. */
-.vicevyber .patkaPanelu{position:sticky;bottom:-6px;margin:4px -6px -6px;padding:6px;
+.vicevyber .patkaPanelu{flex:none;margin:4px -6px -6px;padding:6px;
   background:var(--bila);border-top:1px solid var(--linka)}
 .vicevyber .patkaPanelu button{width:100%;font:800 13px Nunito,sans-serif;padding:8px;
   border:0;border-radius:8px;background:var(--zelena);color:#fff;cursor:pointer}
@@ -661,6 +667,9 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
 .vzkazLista{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   background:var(--vinova);margin:0 -22px;padding:8px 22px}
 .vzkazLista .co{font-size:12.5px;color:#fff;opacity:.9}
+/* Slib o soukromí je i tady na úvodní straně, ne až v okně nahrávání: kdo se
+   bojí, že ho někdo uslyší, na mikrofon vůbec neklepne. */
+.vzkazLista .soukromi{display:block;opacity:1;font-weight:700}
 .vzkazLista .co b{opacity:1}
 .tlVzkaz{background:#fff;color:var(--vinova);border:0;border-radius:22px;
   padding:8px 20px;font:800 14px Nunito,sans-serif;cursor:pointer;
@@ -722,7 +731,8 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
   <div class="vzkazLista">
     <button class="tlVzkaz" id="tlVzkaz" onclick="otevriVzkaz()"
       title="Tipy, nápady a řešení pro příští ročník. Řeknete to do mikrofonu, uloží se zvuk i přepis — a v zimě, až se plánuje další ročník, to nikdo nemusí lovit z paměti. Připnout to jde ke konkrétní předávce, grupě nebo úkolu.">🎤 Nahrát vzkaz</button>
-    <span class="co"><b>Tip, nápad, co příště jinak?</b> Řekněte to sem, ať se to do příštího ročníku nezapomene.</span>
+    <span class="co"><b>Tip, nápad, co příště jinak?</b> Řekněte to sem, ať se to do příštího ročníku nezapomene.
+      <b class="soukromi">🔒 Je to neveřejné — nahrávku i přepis čte jenom Marek (Keksa).</b></span>
     <span class="cekaji" id="vzkazCekaji" style="display:none"></span>
   </div>
 </header>
@@ -833,10 +843,11 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     letos zrevidováno, ale zatím nedomluveno.
   </div>
 
-  <div class="varovani" id="verejnaPozn">
-    <b>Nepřihlášení — read only.</b> Změny se nikam neukládají.
-    Telefony organizátorů jsou z databáze a jen na závodní víkend.
-  </div>
+  <!-- Pruh „Nepřihlášení — read only" tu byl do 2. 9. 2026. Zrušen na přání:
+       nepřihlášený stejně nic uložit nemůže, takže mu to nic neříkalo, a nad
+       plánem zabíral první obrazovku. Prvek zůstává kvůli oznacZdrojDat(),
+       který si do něj odkládá seznam načtených sad, ale nic nezobrazuje. -->
+  <div class="varovani" id="verejnaPozn" hidden></div>
 
   <!-- 1. PLÁN ÚKOLŮ -->
   <section class="sekce" id="s-ukoly">
@@ -2115,7 +2126,7 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
 const VERZE = "v5.86";
-const BUILD = "2026-09-01T14:45+02:00";                              // vyplní se ve veřejném buildu
+const BUILD = "2026-09-02T18:25+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -4342,11 +4353,13 @@ function kresliVicevyber(id, popisVse, polozky, sada){
                            : vybrane.length + ' vybraných');
   el.classList.toggle('maVyber', vybrane.length > 0);
   el.innerHTML = '<button type="button" title="' + esc(shrnuti) + '">' + esc(shrnuti) + '</button>'
-    + '<div class="panel" style="display:' + (bylOtevreny ? 'block' : 'none') + '">'
+    + '<div class="panel" style="display:' + (bylOtevreny ? 'flex' : 'none') + '">'
     + '<div class="hlavaPanelu"><button type="button" data-vse="1">Vybrat vše</button>'
     + '<button type="button" data-nic="1">Zrušit výběr</button></div>'
+    + '<div class="seznamPanelu">'
     + polozky.map(p => '<label><input type="checkbox" value="' + esc(p.v) + '"'
         + (sada.has(p.v) ? ' checked' : '') + '>' + esc(p.t) + '</label>').join('')
+    + '</div>' 
     // Bez tlačítka na zavření není z panelu poznat, jak ven — klepnutí mimo
     // panel je zvyk, ne návod, a na telefonu ho nikdo neuhodne.
     + '<div class="patkaPanelu"><button type="button" data-hotovo="1"'
@@ -4358,9 +4371,13 @@ function kresliVicevyber(id, popisVse, polozky, sada){
     e.preventDefault(); e.stopPropagation();
     const otevrit = panel.style.display === 'none';
     zavriVicevybery();
-    panel.style.display = otevrit ? 'block' : 'none';
+    panel.style.display = otevrit ? 'flex' : 'none';
     el.classList.toggle('otevreny', otevrit);
+    if(otevrit) dorovnejPanelVyberu(el, panel);
   };
+  // Panel se překresluje při každé změně zaškrtnutí; když zůstal otevřený,
+  // musí se strop přeměřit znovu, jinak by po překreslení platil starý.
+  if(bylOtevreny) dorovnejPanelVyberu(el, panel);
   panel.onclick = e => e.stopPropagation();
   panel.querySelector('[data-vse]').onclick = ()=>{ polozky.forEach(p=>sada.add(p.v)); kresliPodrobny(); };
   panel.querySelector('[data-nic]').onclick = ()=>{ sada.clear(); kresliPodrobny(); };
@@ -4369,6 +4386,23 @@ function kresliVicevyber(id, popisVse, polozky, sada){
     i.onchange = ()=>{ i.checked ? sada.add(i.value) : sada.delete(i.value); kresliPodrobny(); };
   });
 }
+/* Panel výběru se musí vejít na obrazovku i s tlačítkem „Hotovo". *Opraveno
+   2. 9. 2026.* Do té doby měl panel pevných 340 px a otevíral se vždy dolů:
+   když filtr stál nízko v okně, konec panelu i se zeleným tlačítkem spadl pod
+   okraj obrazovky a muselo se rolovat celou stránkou. Teď se strop počítá
+   z místa, které pod filtrem (nebo nad ním) opravdu je, a seznam se roluje
+   uvnitř panelu — patka s „Hotovo" tak zůstane vidět vždycky. */
+function dorovnejPanelVyberu(el, panel){
+  if(document.body.classList.contains('mobil')){ panel.style.maxHeight = ''; return; }
+  const r = el.getBoundingClientRect();
+  const rezerva = 16;
+  const dole  = window.innerHeight - r.bottom - rezerva;
+  const nahore = r.top - rezerva;
+  const vzhuru = dole < 220 && nahore > dole;      // dole už není kam, otočíme
+  panel.classList.toggle('vzhuru', vzhuru);
+  panel.style.maxHeight = Math.max(160, Math.round(vzhuru ? nahore : dole)) + 'px';
+}
+
 function zavriVicevybery(){
   document.querySelectorAll('.vicevyber').forEach(v => {
     v.classList.remove('otevreny');
@@ -9813,9 +9847,10 @@ function kresliStavPrihlaseni(){
       + '<button class="tl" style="padding:3px 10px;font-size:11.5px" onclick="odhlas()">Odhlásit</button>'
     : '<button class="tl hlavni" style="padding:3px 10px;font-size:11.5px" onclick="otevriPrihlaseni()">Přihlásit</button>');
   const pozn = $('#poznHlavicka');
+  // Nepřihlášenému se „read only" nepíše — viz poznámka u #verejnaPozn.
   if(pozn) pozn.textContent = prihlasen
     ? 'data z databáze · změny se ukládají tlačítkem'
-    : 'nepřihlášení — read only';
+    : '';
 }
 
 // po načtení stránky: platnou relaci obnovíme, ať se nemusí hlásit pořád dokola
@@ -9973,7 +10008,7 @@ async function nactiVerejnaData(){
    v souboru v den nasazení. Bez toho by stará data vypadala stejně jako nová. */
 function oznacZdrojDat(sady){
   const el = $('#poznHlavicka');
-  if(el && !prihlasen) el.textContent = 'nepřihlášení — read only · data z databáze';
+  if(el && !prihlasen) el.textContent = 'data z databáze';
   const p = $('#verejnaPozn');
   if(p && sady && sady.length) p.setAttribute('data-sady', sady.join(', '));
 }

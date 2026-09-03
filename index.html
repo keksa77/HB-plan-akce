@@ -1429,9 +1429,10 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
 </div>
 
 <div class="hlaska" id="hlaska"></div>
-<div id="nacitani" style="display:none;position:fixed;left:0;right:0;top:0;z-index:60;
-  padding:7px 14px;font:700 13px Nunito,sans-serif;color:#fff;background:#5E6B4B;
-  text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.2)"></div>
+<!-- Zelený pruh přes celou hlavičku („Načítám data…" / „Hotovo — data jsou
+     z databáze…") je od 3. 9. 2026 pryč. Překrýval hlavičku při každém načtení
+     stránky a neříkal nic, co by člověk potřeboval. Výhrady při načítání se
+     hlásí chybovkou, která nemizí sama; úspěch stačí tiše hláškou dole. -->
 
 <style>
 /* ---------- mobilní zobrazení ----------
@@ -2125,8 +2126,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.86";
-const BUILD = "2026-09-02T18:39+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.86h";
+const BUILD = "2026-09-03T22:56+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -9122,6 +9123,22 @@ function uplatniPrava(){
     sek.querySelectorAll('input,select,textarea,button').forEach(el=>{
       if(jeOvladaniFiltru(el)) return;
       el.disabled = !!jenCist;
+      /* Zamčené tlačítko vypadá jako rozbité: klepnutí nic neudělá a bublina
+         u něj dál slibuje, že přidá řádek. *Doplněno 3. 9. 2026* poté, co se
+         „+ Přidat člověka" nepřihlášenému jevil jako nefunkční. Původní popis
+         se schová stranou a po odemčení se vrátí. */
+      if(el.tagName === 'BUTTON'){
+        if(jenCist){
+          if(el.dataset.popisOdemceny === undefined)
+            el.dataset.popisOdemceny = el.title || '';
+          el.title = prihlasen
+            ? 'Tohle vaše úroveň měnit nesmí — máte to jen ke čtení.'
+            : 'Nepřihlášený tady nic měnit nemůže. Přihlaste se tlačítkem vpravo nahoře.';
+        } else if(el.dataset.popisOdemceny !== undefined){
+          el.title = el.dataset.popisOdemceny;
+          delete el.dataset.popisOdemceny;
+        }
+      }
     });
     sek.querySelectorAll('[draggable]').forEach(el=>{ el.draggable = !jenCist; });
     sek.querySelectorAll('.smaz').forEach(el=>{ el.style.display = jenCist ? 'none' : ''; });
@@ -9360,6 +9377,14 @@ const MAPA = {
     // v databázi má kod_tymu prázdný (sloupec je nullable, cizí klíč se na NULL
     // neptá). Dřív se takový řádek při ukládání tiše zahazoval. Beze jména se
     // ale uložit nedá, jméno je povinné.
+    /* Šéf smí být v grupě jen jeden — hlídá to částečný unikátní index
+       `clenove_tymu_jeden_sef_idx` na (rok, kod_tymu) WHERE sef AND NOT historie.
+       V jedné dávce zapisuje Postgres řádek po řádku, takže když se nový šéf
+       zapíše dřív, než se starému příznak sundá, index to zastaví a spadne
+       CELÁ dávka (409, „duplicate key … jeden_sef_idx"). *Opraveno 3. 9. 2026
+       po hlášení z provozu.* Řešení: do dávky jdou první ti, kdo šéfem být
+       přestávají, teprve za nimi nový šéf. */
+    poradiZapisu: (a, b) => (a.sef === 'ano') - (b.sef === 'ano'),
     filtr: r => !!String(r.jmeno || '').trim() && !dvojnikClena(r),
     nedodelky: r => {
       if(!String(r.jmeno || '').trim())
@@ -9630,6 +9655,10 @@ function dvojnikClena(r){
    česky — původní hlášení zůstává pod tím, ať se dá poslat dál. */
 function srozumitelneOdmitnuti(zprava){
   const t = String(zprava || '');
+  if(/clenove_tymu_jeden_sef_idx/.test(t))
+    return 'V jedné grupě by byli dva šéfové. Zkuste uložit znovu — pořadí zápisu '
+         + 'se od 3. 9. 2026 srovnává samo. Když to spadne i podruhé, sundejte '
+         + 'příznak původnímu šéfovi, uložte, a teprve pak označte nového.';
   if(/clenove_tymu_rok_kod_tymu_jmeno_key/.test(t))
     return 'V jedné grupě je stejné jméno dvakrát. Počítají se i odložení členové, '
          + 'které křížek jen schoval — takového člověka vyvolejte zpátky vyhledávacím '
@@ -10188,8 +10217,17 @@ async function ulozDoDatabaze(volby){
     }
     try{
       // 1) zápis — nové řádky zvlášť, ať se vrátí jejich id
-      const sKlicem = radky.filter(r => m.klic.every(k => r[k] !== undefined && r[k] !== null && r[k] !== ''));
-      const nove    = radky.filter(r => sKlicem.indexOf(r) < 0);
+      let sKlicem = radky.filter(r => m.klic.every(k => r[k] !== undefined && r[k] !== null && r[k] !== ''));
+      let nove    = radky.filter(r => sKlicem.indexOf(r) < 0);
+      /* Některé sady si diktují pořadí uvnitř dávky, protože databáze hlídá
+         podmínku, která smí být porušená jen mezi dvěma řádky — u členů grup
+         jediný šéf v grupě. Řadí se obě části zvlášť; u nových řádků musí
+         pořadí platit i pro přiřazení vrácených id, proto se řadí to pole,
+         ze kterého se dávka skládá. */
+      if(m.poradiZapisu){
+        sKlicem = sKlicem.slice().sort(m.poradiZapisu);
+        nove    = nove.slice().sort(m.poradiZapisu);
+      }
 
       if(sKlicem.length){
         // on_conflict musí sedět na klíč v databázi, ne na to, podle čeho
@@ -10913,25 +10951,14 @@ function dotazNaCommit(){
     .catch(e => { const el = $('#stavCommit'); if(el) el.textContent = 'nepodařilo se zjistit (' + e.message + ')'; });
 }
 
-/* ---------- hláška o načítání ----------
-   Než se stáhnou data z databáze, běží stránka na tom, co je zapečené v souboru.
-   Je to vidět (grupy bez jmen šéfů), tak se to rovnou řekne — a když je hotovo,
-   řekne se to taky. */
-function ukazNacitani(text){
-  const el = $('#nacitani'); if(!el) return;
-  el.textContent = text;
-  el.style.background = '#5E6B4B';
-  el.style.display = '';
-  clearTimeout(el._t);
-}
-function schovejNacitani(text, jak){
-  const el = $('#nacitani'); if(!el) return;
-  el.textContent = text;
-  el.style.background = (jak === 'vyhrada') ? '#8C5A2B' : '#3F6B3F';
-  el.style.display = '';
-  clearTimeout(el._t);
-  el._t = setTimeout(()=>{ el.style.display = 'none'; }, jak === 'vyhrada' ? 9000 : 4500);
-}
+/* ---------- hláška o načítání ---------- *(zrušeno 3. 9. 2026, v5.86h)*
+   Dřív se přes celou hlavičku vysunul zelený pruh „Načítám data z databáze…"
+   a po dotažení „Hotovo — data jsou z databáze…". Keksa ho nechal odstranit:
+   při každém načtení stránky překrýval hlavičku a nic potřebného neříkal.
+   Funkce zůstávají jako prázdné skořápky, aby se nemuselo hlídat, odkud všude
+   se volají; o výhradách se člověk dozví chybovkou, o úspěchu hláškou dole. */
+function ukazNacitani(){ /* pruh se už nezobrazuje */ }
+function schovejNacitani(){ /* pruh se už nezobrazuje */ }
 
 const MOBIL_KLIC = 'hb_mobil';
 

@@ -682,7 +682,11 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
   background:rgba(43,38,32,.55);align-items:center;justify-content:center;padding:14px}
 #oknoVzkaz.videt{display:flex}
 .vzkazPanel{background:#fff;border-radius:14px;padding:20px 22px;width:440px;
-  max-width:100%;max-height:94vh;overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.28)}
+  max-width:100%;max-height:94vh;box-shadow:0 18px 50px rgba(0,0,0,.28);
+  display:flex;flex-direction:column;overflow:hidden}
+/* Roluje jen tělo. Patička s Odeslat drží dole, ať je na telefonu vidět hned. */
+.vzkazTelo{overflow-y:auto;flex:1;min-height:0}
+.vzkazPaticka{flex:none;padding-top:8px;border-top:1px solid var(--linka);background:#fff}
 .vzkazPanel h2{margin:0 0 3px;font-size:19px}
 .vzkazPanel label.pole{display:block;margin:0 0 10px;font-size:12.5px;color:var(--pisek)}
 .vzkazPanel label.pole input,.vzkazPanel label.pole select,
@@ -740,10 +744,15 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
 <!-- ---------- okno pro nahrání vzkazu ---------- -->
 <div id="oknoVzkaz" onclick="if(event.target===this) zavriVzkaz()">
   <div class="vzkazPanel">
+   <!-- Tělo roluje, patička s Odeslat stojí. Bez toho utíkalo tlačítko na
+        telefonu pod okraj displeje a nebylo odkud vědět, že se má rolovat.
+        *Rozděleno 4. 9. 2026.* -->
+   <div class="vzkazTelo">
     <h2>Tip, nápad, řešení pro příští ročník</h2>
     <p class="popisek" style="margin:0 0 14px">Co fungovalo, co ne a co příště udělat jinak.
-      Zmáčkněte mikrofon a mluvte — nahraje se zvuk a zároveň se pořizuje přepis, takže se to
-      dá později i vyhledat. Psát jde i rovnou do pole. Hodí se to i na vzkaz, který nepočká
+      Zmáčkněte mikrofon a mluvte — nahraje se zvuk. Text k tomu můžete napsat do pole níž
+      nebo si ho nadiktovat tlačítkem „Diktovat"; na telefonu to jde jedno po druhém, protože
+      mikrofon dá systém vždycky jen jednomu. Hodí se to i na vzkaz, který nepočká
       do příště: připněte ho k předávce nebo grupě a organizátoři ho uvidí hned.</p>
 
     <div class="nahravatko">
@@ -754,6 +763,11 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
           <div class="cas" id="vzkazCas">0:00</div>
           <div class="jak" id="vzkazJak">nenahrává se</div>
         </div>
+        <!-- Diktování je samostatné tlačítko, ne přívažek k nahrávání. Na
+             Androidu dá systém mikrofon jen jednomu — buď záznamu, nebo
+             rozpoznávání řeči. *Rozděleno 4. 9. 2026.* -->
+        <button class="tl" id="tlDiktovat" onclick="prepniDiktovani()" style="margin-left:8px"
+          title="Nadiktuje text do pole níž. Nenahrává zvuk — mikrofon může mít jen jedno z toho.">⌨ Diktovat</button>
         <audio id="vzkazPrehled" controls style="display:none;margin-left:auto;max-width:170px;height:34px"></audio>
       </div>
       <!-- Slib o soukromí patří sem k mikrofonu, ne nahoru mezi vysvětlivky:
@@ -773,14 +787,20 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
         <select id="vzkazPredavka"><option value="">— netýká se —</option></select></label>
       <label class="pole" title="Trasérská grupa — ta, která na tom úseku značí trasu nebo sbírá fáborky. Vyberte ji, když se vzkaz týká práce grupy, ne místa předávky.">Trasérská grupa
         <select id="vzkazGrupa"><option value="">— netýká se —</option></select></label>
-      <label class="pole">Úkol
-        <input id="vzkazUkol" maxlength="20" placeholder="kód, třeba P7"></label>
+      <!-- Políčko „Úkol" je pryč *(4. 9. 2026)*. Na telefonu odsouvalo tlačítko
+           Odeslat pod okraj displeje a kód úkolu stejně nikdo zpaměti nezná —
+           kdo ho chce uvést, napíše ho do textu. Sloupec `ukol` v databázi
+           zůstává, jen se z tohohle okna neplní. -->
     </div>
 
-    <div class="popisek" id="vzkazStav" style="min-height:18px"></div>
-    <div style="display:flex;gap:8px;margin-top:6px">
-      <button class="tl hlavni" id="tlPoslatVzkaz" onclick="poslivzkaz()">Odeslat</button>
-      <button class="tl" onclick="zavriVzkaz()">Zpět</button>
+   </div>
+
+    <div class="vzkazPaticka">
+      <div class="popisek" id="vzkazStav" style="min-height:18px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="tl hlavni" id="tlPoslatVzkaz" onclick="poslivzkaz()">Odeslat</button>
+        <button class="tl" onclick="zavriVzkaz()">Zpět</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2126,8 +2146,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.86i";
-const BUILD = "2026-09-04T14:06+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.86j";
+const BUILD = "2026-09-04T15:16+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -11276,7 +11296,7 @@ function zavriVzkaz(){
 function vyprazdniVzkaz(){
   vzkazBlob = null; vzkazKusy = []; vzkazDelka = 0;
   $('#vzkazText').value = '';
-  $('#vzkazUkol').value = '';
+  const ukol = $('#vzkazUkol'); if(ukol) ukol.value = '';   // políčko od 4. 9. 2026 v okně není
   $('#vzkazPredavka').value = ''; $('#vzkazGrupa').value = '';
   $('#vzkazCas').textContent = '0:00';
   $('#vzkazJak').textContent = 'nenahrává se';
@@ -11320,14 +11340,16 @@ async function spustNahravani(){
   vzkazNahravame = true;
   const tl = $('#tlNahrat'); tl.textContent = '⏹'; tl.classList.add('bezi');
   $('#vzkazJak').textContent = 'nahrávám… zmáčkněte znovu, až domluvíte';
-  /* Rozpoznávání se pouští PŘED nahráváním. Říká si o mikrofon zvlášť, vedle
-     `MediaRecorder`u, a když ho zabírá už rozběhnutý záznam, chová se
-     v Chrome nespolehlivě — nastartuje, hned zase skončí a nevrátí nic.
-     *Přeházeno 3. 9. 2026 po hlášení „nedělá přepis".* Zvuk tím netrpí:
-     nahrávání se spouští hned za tím a prvních pár desetin vteřiny je stejně
-     jen nadechnutí. */
-  spustPrepis();
+  /* Nahrávání má u mikrofonu přednost, přepis je jen bonus. *Vráceno
+     4. 9. 2026, když se ukázalo, že Keksa nahrává na Androidu.* Den předtím
+     jsem to prohodil obráceně v domnění, že rozpoznávání potřebuje mikrofon
+     jako první — jenže na Androidu si ho jedno z těch dvou vezme celý,
+     a kdyby vyhrálo rozpoznávání, přišel by vzkaz beze zvuku. To je horší
+     než vzkaz bez přepisu. */
   vzkazMedia.start();
+  if(!jeAndroid()) spustPrepis();
+  else $('#vzkazJak').textContent = 'nahrávám… přepis vedle záznamu Android nepustí, '
+       + 'text napište nebo nadiktujte tlačítkem, až domluvíte';
   vzkazTiky = setInterval(()=>{
     vzkazDelka++;
     $('#vzkazCas').textContent = vzkazCasText(vzkazDelka);
@@ -11356,6 +11378,56 @@ function tridaRozpoznavani(){
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
+/* ---------- proč je na telefonu diktování zvlášť ---------- *(4. 9. 2026)*
+
+   Android dává mikrofon jen jednomu. Když běží `MediaRecorder`, rozpoznávání
+   řeči nedostane nic — nastartuje, hned zase skončí a mlčí; a kdyby dostalo
+   přednost ono, nahrálo by se ticho. Dva dny jsem to zkoušel srovnat pořadím
+   a hlídači, ale narovnat se to nedá, je to vlastnost systému.
+
+   Tak se to rozdělilo. Mikrofon nahrává zvuk, tlačítko „Diktovat" píše text
+   a každé si mikrofon vezme samo pro sebe. Na počítači běží obojí naráz dál,
+   tam to systém dovolí. */
+function jeAndroid(){
+  return /Android/i.test(navigator.userAgent || '');
+}
+
+let vzkazDiktujeme = false;
+
+/* Diktování bez nahrávání. Text jde do téhož pole; co v něm bylo, zůstane. */
+function prepniDiktovani(){
+  if(vzkazDiktujeme){ zastavDiktovani(); return; }
+  if(vzkazNahravame){
+    $('#vzkazJak').textContent = 'nejdřív zastavte nahrávání — mikrofon může mít jen jedno z toho';
+    return;
+  }
+  if(!tridaRozpoznavani()){
+    $('#vzkazJak').textContent = 'diktování tenhle prohlížeč neumí — napište to do pole';
+    return;
+  }
+  vzkazDiktujeme = true;
+  const tl = $('#tlDiktovat'); if(tl){ tl.textContent = '⏹ Konec diktování'; tl.classList.add('hlavni'); }
+  $('#vzkazJak').textContent = 'poslouchám — mluvte, text se píše do pole níž';
+  /* spustPrepis se řídí příznakem nahrávání; pro diktování se tváří stejně,
+     jen se u toho nic nenahrává. */
+  vzkazNahravame = true;
+  spustPrepis();
+}
+
+function zastavDiktovani(){
+  vzkazDiktujeme = false;
+  vzkazNahravame = false;
+  vzkazPrepisVzdal = true;
+  clearInterval(vzkazPrepisHlidac); vzkazPrepisHlidac = null;
+  try{ vzkazUsi && (vzkazUsi.abort ? vzkazUsi.abort() : vzkazUsi.stop()); }catch(e){}
+  vzkazUsi = null;
+  const tl = $('#tlDiktovat'); if(tl){ tl.textContent = '⌨ Diktovat'; tl.classList.remove('hlavni'); }
+  const pole = $('#vzkazText');
+  $('#vzkazJak').textContent = (pole && pole.value.trim())
+    ? 'nadiktováno — text můžete opravit a odeslat'
+    : 'nic se nezachytilo — napište to prosím do pole';
+}
+
 function spustPrepis(){
   const Usi = tridaRozpoznavani();
   const stav = t => { const el = $('#vzkazJak'); if(el && vzkazNahravame) el.textContent = t; };
@@ -11370,14 +11442,19 @@ function spustPrepis(){
   vzkazPrepisPokusy = 0; vzkazPrepisVysledku = 0;
 
   /* Hlídač ticha. Když poslech běží, ale nic nevrací, není to podle ničeho
-     poznat — tohle to řekne nahlas místo aby to mlčelo. */
+     poznat — tohle to řekne nahlas místo aby to mlčelo. Počítá si vlastní
+     vteřiny, ať platí i při diktování, kde se nic nenahrává. */
   clearInterval(vzkazPrepisHlidac);
+  let ticho = 0;
   vzkazPrepisHlidac = setInterval(()=>{
     if(!vzkazNahravame){ clearInterval(vzkazPrepisHlidac); vzkazPrepisHlidac = null; return; }
+    ticho += 2;
     if(vzkazPrepisVzdal || vzkazPrepisVysledku) return;
-    if(vzkazDelka >= 8)
-      stav('nahrávám — přepis zatím nic nezachytil, mluvte blíž k mikrofonu; '
-         + 'zvuk se ukládá tak jako tak');
+    if(ticho >= 8)
+      stav(vzkazDiktujeme
+        ? 'poslouchám, ale zatím nic nezachytilo — mluvte blíž k mikrofonu'
+        : 'nahrávám — přepis zatím nic nezachytil, mluvte blíž k mikrofonu; '
+          + 'zvuk se ukládá tak jako tak');
   }, 2000);
 
   const nastartuj = () => {

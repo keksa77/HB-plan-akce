@@ -750,9 +750,9 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
    <div class="vzkazTelo">
     <h2>Tip, nápad, řešení pro příští ročník</h2>
     <p class="popisek" style="margin:0 0 14px">Co fungovalo, co ne a co příště udělat jinak.
-      Zmáčkněte mikrofon a mluvte — nahraje se zvuk. Text k tomu můžete napsat do pole níž
-      nebo si ho nadiktovat tlačítkem „Diktovat"; na telefonu to jde jedno po druhém, protože
-      mikrofon dá systém vždycky jen jednomu. Hodí se to i na vzkaz, který nepočká
+      Zmáčkněte mikrofon a mluvte — nahraje se zvuk a zároveň se pořizuje přepis. Text jde
+      opravit nebo napsat rovnou do pole. Kdyby přepis na telefonu nechodil, objeví se po
+      zastavení nahrávání tlačítko „Diktovat", kterým se text pořídí zvlášť. Hodí se to i na vzkaz, který nepočká
       do příště: připněte ho k předávce nebo grupě a organizátoři ho uvidí hned.</p>
 
     <div class="nahravatko">
@@ -2150,8 +2150,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.86k";
-const BUILD = "2026-09-04T15:33+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.86l";
+const BUILD = "2026-09-04T15:50+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -11350,16 +11350,21 @@ async function spustNahravani(){
   ukazDiktovani();                       // při nahrávání se schová
   const tl = $('#tlNahrat'); tl.textContent = '⏹'; tl.classList.add('bezi');
   $('#vzkazJak').textContent = 'nahrávám… zmáčkněte znovu, až domluvíte';
-  /* Nahrávání má u mikrofonu přednost, přepis je jen bonus. *Vráceno
-     4. 9. 2026, když se ukázalo, že Keksa nahrává na Androidu.* Den předtím
-     jsem to prohodil obráceně v domnění, že rozpoznávání potřebuje mikrofon
-     jako první — jenže na Androidu si ho jedno z těch dvou vezme celý,
-     a kdyby vyhrálo rozpoznávání, přišel by vzkaz beze zvuku. To je horší
-     než vzkaz bez přepisu. */
+  /* Nahrávání má u mikrofonu přednost, přepis je bonus — proto se pouští až
+     za ním. Zvuk je to, oč jde; přepis se dá dopsat.
+
+     *Historie téhle dvou­řádky, ať se to nemotá dokola.* 3. 9. jsem přepis
+     dal před nahrávání, 4. 9. ho na Androidu vypnul úplně s odůvodněním, že
+     si tam mikrofon vezme jen jedno z toho. To odůvodnění byl ale odhad
+     z obecné znalosti, ne měření na skutečném telefonu — a Keksa říká, že
+     mu obojí naráz chodilo. Tak to zase běží obojí a rozhodne se to podle
+     výsledku: když z nahrávání vypadne prázdno, řekne se to nahlas (viz
+     `zkontrolujZaznam`) a od té chvíle si tenhle telefon přepis při nahrávání
+     nepouští. Žádné hádání, jen co se opravdu stalo. */
   vzkazMedia.start();
-  if(!jeAndroid()) spustPrepis();
-  else $('#vzkazJak').textContent = 'nahrávám… přepis vedle záznamu Android nepustí, '
-       + 'text napište nebo nadiktujte tlačítkem, až domluvíte';
+  if(!prepisPriNahravaniVypnuty()) spustPrepis();
+  else $('#vzkazJak').textContent = 'nahrávám… přepis se na tomhle telefonu vedle záznamu '
+       + 'neosvědčil, text nadiktujte tlačítkem, až domluvíte';
   vzkazTiky = setInterval(()=>{
     vzkazDelka++;
     $('#vzkazCas').textContent = vzkazCasText(vzkazDelka);
@@ -11402,13 +11407,42 @@ function jeAndroid(){
   return /Android/i.test(navigator.userAgent || '');
 }
 
-/* Tlačítko „Diktovat" se ukazuje jen tam, kde má smysl: na telefonu, kde přepis
-   vedle nahrávání neběží, a až ve chvíli, kdy se nenahrává. Na počítači nikdy —
-   tam text přibývá rovnou při nahrávání a druhé tlačítko by jen mátlo. */
+/* Tlačítko „Diktovat" se ukazuje jen tam, kde má smysl: na telefonu a až ve
+   chvíli, kdy se nenahrává. Na počítači nikdy — tam text přibývá rovnou při
+   nahrávání a druhé tlačítko by jen mátlo. */
 function ukazDiktovani(){
   const tl = $('#tlDiktovatVzkaz'); if(!tl) return;
   const mistoNaNej = jeAndroid() && !!tridaRozpoznavani() && !vzkazNahravame;
   tl.style.display = mistoNaNej ? '' : 'none';
+}
+
+/* ---------- vzal si mikrofon přepis? ---------- *(4. 9. 2026)*
+   Místo dohadů se to změří. Když po nahrávání nevypadne žádný zvuk, přepis
+   při nahrávání se na tomhle telefonu příště nepustí. Drží se to v prohlížeči,
+   takže je to rozhodnutí toho jednoho přístroje, ne všech. */
+const PREPIS_VYPNUT_KLIC = 'hb_prepis_pri_nahravani_vypnut';
+function prepisPriNahravaniVypnuty(){
+  try{ return localStorage.getItem(PREPIS_VYPNUT_KLIC) === 'ano'; }catch(e){ return false; }
+}
+function vypniPrepisPriNahravani(){
+  try{ localStorage.setItem(PREPIS_VYPNUT_KLIC, 'ano'); }catch(e){}
+}
+
+/* Volá se po zastavení nahrávání, až je blob hotový. Vrací text hlášky, nebo
+   prázdno, když je všechno v pořádku. */
+function zkontrolujZaznam(){
+  const maZvuk = !!(vzkazBlob && vzkazBlob.size > 0);
+  if(maZvuk) return '';
+  if(vzkazDelka < 1) return '';          // stisk omylem, o nic nejde
+  /* Prázdný záznam po několika vteřinách mluvení znamená, že mikrofon dostal
+     někdo jiný — a jediný další zájemce je rozpoznávání řeči. */
+  if(!prepisPriNahravaniVypnuty() && vzkazPrepisVysledku > 0){
+    vypniPrepisPriNahravani();
+    return 'Zvuk se nenahrál — mikrofon si vzal přepis. Text v poli zůstává, '
+         + 'ten poslat můžete. Příště tenhle telefon nechá mikrofon nahrávání '
+         + 'a text si nadiktujete tlačítkem zvlášť.';
+  }
+  return 'Zvuk se nenahrál. Zkuste to prosím znovu, nebo pošlete jen text.';
 }
 
 let vzkazDiktujeme = false;
@@ -11566,6 +11600,12 @@ function zastavNahravani(){
   $('#vzkazJak').textContent = vzkazDelka
     ? ('nahráno ' + vzkazCasText(vzkazDelka) + ' — můžete odeslat')
     : 'nenahrává se';
+  /* Blob vzniká až v `onstop`, který přijde o kousek později. Kontrola se tedy
+     odloží — jinak by se ptala na zvuk, který ještě není složený. */
+  setTimeout(()=>{
+    const potiz = zkontrolujZaznam();
+    if(potiz) $('#vzkazJak').textContent = potiz;
+  }, 400);
 }
 
 /* ---------- odeslání ---------- */

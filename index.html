@@ -2150,8 +2150,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.86l";
-const BUILD = "2026-09-04T15:50+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.86m";
+const BUILD = "2026-09-04T16:06+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -11432,6 +11432,20 @@ function vypniPrepisPriNahravani(){
    prázdno, když je všechno v pořádku. */
 function zkontrolujZaznam(){
   const maZvuk = !!(vzkazBlob && vzkazBlob.size > 0);
+
+  /* Zvuk je, ale přepis za celou dobu nezachytil ani slovo. Tak to dopadlo
+     4. 9. 2026 na Keksově Androidu: mikrofon dostalo nahrávání a rozpoznávání
+     mlčelo. Nemá smysl to zkoušet znovu — od téhle chvíle si tenhle přístroj
+     pustí přepis až v diktování, kde je na mikrofon sám. Krátké nahrávky se
+     nepočítají, tam se nemuselo stihnout nic říct. */
+  if(maZvuk && vzkazDelka >= 4 && vzkazPrepisVysledku === 0
+     && !prepisPriNahravaniVypnuty() && !!tridaRozpoznavani()){
+    vypniPrepisPriNahravani();
+    return 'Zvuk je nahraný, ale přepis při nahrávání na tomhle telefonu nechodí — '
+         + 'mikrofon může mít jen jedno z toho. Text si nadiktujte tlačítkem '
+         + '„Diktovat" vedle mikrofonu; příště už se o přepis při nahrávání '
+         + 'nepokusím.';
+  }
   if(maZvuk) return '';
   if(vzkazDelka < 1) return '';          // stisk omylem, o nic nejde
   /* Prázdný záznam po několika vteřinách mluvení znamená, že mikrofon dostal

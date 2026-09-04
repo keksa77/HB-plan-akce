@@ -2126,8 +2126,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.86h";
-const BUILD = "2026-09-03T22:56+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.86i";
+const BUILD = "2026-09-04T14:06+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -5834,6 +5834,10 @@ function vratZHistorie(i){
   const r = D.clenove[i];
   if(!r) return;
   r.historie = false;
+  /* Šéfovský příznak se z historie nevrací. Grupa už mezitím šéfa nejspíš má
+     a dva by jí databáze nedovolila — spadl by celý zápis členů.
+     *Doplněno 3. 9. 2026.* */
+  r.sef = 'ne';
   oznacZmenu();
   kresliClenove(); kresliPaletu(); kresliPlan();
   hlaska('Vráceno zpět: ' + (r.jmeno || 'bez jména'));
@@ -9383,8 +9387,57 @@ const MAPA = {
        zapíše dřív, než se starému příznak sundá, index to zastaví a spadne
        CELÁ dávka (409, „duplicate key … jeden_sef_idx"). *Opraveno 3. 9. 2026
        po hlášení z provozu.* Řešení: do dávky jdou první ti, kdo šéfem být
-       přestávají, teprve za nimi nový šéf. */
+       přestávají, teprve za nimi nový šéf.
+
+       *Doplněno 3. 9. 2026 večer — samotné pořadí nestačilo.* Ověřeno přímo
+       na databázi, že spadnou ještě dva další případy, na které pořadí nemá vliv:
+       (B) v prohlížeči jsou v jedné grupě označení dva šéfové naráz, takže je
+           dávka porušená sama v sobě, ať se seřadí jakkoli;
+       (C) nový šéf je čerstvě přidaný řádek. Ten jde do databáze samostatným
+           příkazem `insert` (kvůli vrácenému id) a naráží na starého šéfa,
+           kterému se příznak sundat nestihl nebo se jeho řádek do dávky vůbec
+           nedostal — třeba proto, že ho odsál filtr dvojníků.
+       Proto se ještě před zápisem udělá dvojí úklid: v prohlížeči zůstane
+       v grupě jediný označený šéf a v databázi se samostatným příkazem sundá
+       příznak všem, kdo v těch grupách šéfem podle prohlížeče být nemají.
+       Samostatný příkaz je podstatný — uvnitř jedné dávky se úklid ještě
+       „nevidí". */
     poradiZapisu: (a, b) => (a.sef === 'ano') - (b.sef === 'ano'),
+    predZapisem: async (radky, rok) => {
+      const hlaseni = [];
+      const podleGrupy = new Map();
+      radky.forEach(r => {
+        if(r.sef !== 'ano' || r.historie || !r.kod_tymu) return;
+        if(!podleGrupy.has(r.kod_tymu)) podleGrupy.set(r.kod_tymu, []);
+        podleGrupy.get(r.kod_tymu).push(r);
+      });
+      if(!podleGrupy.size) return hlaseni;
+
+      // (B) v grupě smí do dávky jít jediný šéf
+      podleGrupy.forEach((lide, kod) => {
+        if(lide.length < 2) return;
+        lide.slice(1).forEach(r => { r.sef = 'ne'; });
+        hlaseni.push('V grupě ' + kod + ' bylo označeno víc šéfů ('
+          + lide.map(x => x.jmeno || 'bez jména').join(', ') + '). Šéfem jsem nechal '
+          + (lide[0].jmeno || 'prvního z nich') + ', ostatním příznak sundal. '
+          + 'Jestli to má být obráceně, klikněte na toho správného.');
+      });
+
+      /* (C) + jistota navíc: sundat šéfa v databázi každému, kdo jím podle
+         prohlížeče v dotčených grupách být nemá. Vlastní příkaz, proto ho
+         další zápis uvidí. Nezařazení (grupa prázdná) se netýká — index je
+         na grupu. */
+      const grupy = [...podleGrupy.keys()];
+      const zustavaji = grupy.map(k => podleGrupy.get(k)[0])
+                             .map(r => r.id).filter(id => id !== undefined && id !== null);
+      let dotaz = 'clenove_tymu?rok=eq.' + encodeURIComponent(rok)
+                + '&sef=eq.true&historie=eq.false'
+                + '&kod_tymu=in.(' + grupy.map(encodeURIComponent).join(',') + ')';
+      if(zustavaji.length) dotaz += '&id=not.in.(' + zustavaji.join(',') + ')';
+      await sbDotaz(dotaz, {method:'PATCH', headers:{'Prefer':'return=minimal'},
+                            body: JSON.stringify({sef:false})});
+      return hlaseni;
+    },
     filtr: r => !!String(r.jmeno || '').trim() && !dvojnikClena(r),
     nedodelky: r => {
       if(!String(r.jmeno || '').trim())
@@ -10216,6 +10269,14 @@ async function ulozDoDatabaze(volby){
       continue;
     }
     try{
+      /* Úklid před zápisem. Některá sada potřebuje srovnat databázi samostatným
+         příkazem dřív, než se pošle dávka — u členů grup jediný šéf. Co při tom
+         opravila v prohlížeči, řekne v návratovém poli a jde to mezi nedodělky.
+         Když úklid selže, sada se neuloží: dávka by stejně spadla. */
+      if(m.predZapisem){
+        const rekla = await m.predZapisem(radky, rok);
+        (rekla || []).forEach(t => nedodelky.push(t));
+      }
       // 1) zápis — nové řádky zvlášť, ať se vrátí jejich id
       let sKlicem = radky.filter(r => m.klic.every(k => r[k] !== undefined && r[k] !== null && r[k] !== ''));
       let nove    = radky.filter(r => sKlicem.indexOf(r) < 0);
@@ -11148,6 +11209,10 @@ const VZKAZ_MAX_S  = 300;          // pět minut; databáze pustí nejvýš dvac
 let vzkazMedia = null, vzkazStream = null, vzkazKusy = [], vzkazBlob = null;
 let vzkazDelka = 0, vzkazTiky = null, vzkazUsi = null, vzkazNahravame = false;
 let vzkazPrepisZaklad = '', vzkazPrepisHotovy = '', vzkazPrepisVzdal = false;
+/* Kolikrát se poslech nastartoval a kolikrát něco vrátil. Z rozdílu se pozná
+   „točí se dokola a nechytá nic", což byl 3. 9. 2026 stav, který se navenek
+   nijak neprojevil — jen se nic nepsalo. *Doplněno 3. 9. 2026 večer.* */
+let vzkazPrepisPokusy = 0, vzkazPrepisVysledku = 0, vzkazPrepisHlidac = null;
 let vzkazyData = [];
 
 /* Dotaz do databáze BEZ přihlášení. Nejde použít sbDotaz — ten si vyžádá token
@@ -11252,16 +11317,22 @@ async function spustNahravani(){
     const a = $('#vzkazPrehled');
     a.src = URL.createObjectURL(vzkazBlob); a.style.display = '';
   };
-  vzkazMedia.start();
   vzkazNahravame = true;
   const tl = $('#tlNahrat'); tl.textContent = '⏹'; tl.classList.add('bezi');
   $('#vzkazJak').textContent = 'nahrávám… zmáčkněte znovu, až domluvíte';
+  /* Rozpoznávání se pouští PŘED nahráváním. Říká si o mikrofon zvlášť, vedle
+     `MediaRecorder`u, a když ho zabírá už rozběhnutý záznam, chová se
+     v Chrome nespolehlivě — nastartuje, hned zase skončí a nevrátí nic.
+     *Přeházeno 3. 9. 2026 po hlášení „nedělá přepis".* Zvuk tím netrpí:
+     nahrávání se spouští hned za tím a prvních pár desetin vteřiny je stejně
+     jen nadechnutí. */
+  spustPrepis();
+  vzkazMedia.start();
   vzkazTiky = setInterval(()=>{
     vzkazDelka++;
     $('#vzkazCas').textContent = vzkazCasText(vzkazDelka);
     if(vzkazDelka >= VZKAZ_MAX_S) zastavNahravani();
   }, 1000);
-  spustPrepis();
 }
 
 /* Přepis běží vedle nahrávání, ne místo něj. Když ho prohlížeč neumí (Safari,
@@ -11296,13 +11367,35 @@ function spustPrepis(){
   vzkazPrepisZaklad = pole.value ? pole.value.replace(/\s+$/,'') + ' ' : '';
   vzkazPrepisHotovy = '';
   vzkazPrepisVzdal = false;
+  vzkazPrepisPokusy = 0; vzkazPrepisVysledku = 0;
+
+  /* Hlídač ticha. Když poslech běží, ale nic nevrací, není to podle ničeho
+     poznat — tohle to řekne nahlas místo aby to mlčelo. */
+  clearInterval(vzkazPrepisHlidac);
+  vzkazPrepisHlidac = setInterval(()=>{
+    if(!vzkazNahravame){ clearInterval(vzkazPrepisHlidac); vzkazPrepisHlidac = null; return; }
+    if(vzkazPrepisVzdal || vzkazPrepisVysledku) return;
+    if(vzkazDelka >= 8)
+      stav('nahrávám — přepis zatím nic nezachytil, mluvte blíž k mikrofonu; '
+         + 'zvuk se ukládá tak jako tak');
+  }, 2000);
 
   const nastartuj = () => {
     try{
+      vzkazPrepisPokusy++;
+      /* Poslech, který se nastartuje pošesté a pořád nic nevrátil, se nechytá
+         a další pokusy jen zatěžují telefon. Radši se to řekne. */
+      if(vzkazPrepisPokusy > 5 && !vzkazPrepisVysledku){
+        vzkazPrepisVzdal = true;
+        stav('nahrávám — přepis se v tomhle prohlížeči nechytá, napište to prosím '
+           + 'do pole rukou; zvuk se ukládá dál');
+        return;
+      }
       vzkazUsi = new Usi();
       vzkazUsi.lang = 'cs-CZ'; vzkazUsi.continuous = true; vzkazUsi.interimResults = true;
 
       vzkazUsi.onresult = e => {
+        vzkazPrepisVysledku++;
         let rozdelane = '';
         for(let i = e.resultIndex; i < e.results.length; i++){
           const kus = e.results[i][0].transcript;
@@ -11346,6 +11439,7 @@ function spustPrepis(){
 function zastavNahravani(){
   vzkazNahravame = false;
   clearInterval(vzkazTiky); vzkazTiky = null;
+  clearInterval(vzkazPrepisHlidac); vzkazPrepisHlidac = null;
   try{ vzkazMedia && vzkazMedia.state !== 'inactive' && vzkazMedia.stop(); }catch(e){}
   try{ vzkazStream && vzkazStream.getTracks().forEach(t=>t.stop()); }catch(e){}
   // pořadí: nejdřív příznak, pak stop — jinak by onend poslech znovu nastartoval

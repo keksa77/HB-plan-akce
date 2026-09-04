@@ -2150,8 +2150,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.86n";
-const BUILD = "2026-09-04T16:45+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.86o";
+const BUILD = "2026-09-04T18:35+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -9181,9 +9181,21 @@ function uplatniPrava(){
 function schovejKontakty(){
   const tab = $('#tabClenove'); if(!tab) return;
   if(pravo(platnaUroven(), "kontakty") !== "žádné") return;
+  /* Telefony organizátorů mají být o závodním víkendu vidět i nepřihlášenému —
+     tak se to 3. 9. 2026 rozhodlo a tak to pouští `bezCitlivych` (sloupec má
+     `verejne:true`). Tahle funkce ale sloupec schovávala podruhé, podle úrovně,
+     a čísla se do tabulky nedostala, i když v datech byla. *Opraveno 4. 9. 2026
+     po hlášení „proč nejsou viditelné telefony".*
+
+     Výjimka platí jen pro veřejný build a nepřihlášeného — přesně na ten případ
+     „kdokoli, kdo zná odkaz". Vypíná se v databázi: až se pohled `verejne_clenove`
+     přestane plnit telefony, zůstanou buňky prázdné samy od sebe, bez nasazování
+     nové verze. E-mail a číslo účtu se neukazují nikdy. */
+  const telefonSmi = VEREJNA && !prihlasen;
   const skryt = [];
   tab.querySelectorAll('thead th').forEach((th,i)=>{
     const n = th.textContent.trim();
+    if(n==='Telefon' && telefonSmi) return;
     if(n==='Telefon' || n==='E-mail' || n==='Číslo účtu') skryt.push(i);
   });
   tab.querySelectorAll('tr').forEach(tr=>{

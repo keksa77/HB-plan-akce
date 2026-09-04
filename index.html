@@ -763,10 +763,14 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
           <div class="cas" id="vzkazCas">0:00</div>
           <div class="jak" id="vzkazJak">nenahrává se</div>
         </div>
-        <!-- Diktování je samostatné tlačítko, ne přívažek k nahrávání. Na
+        <!-- Diktování je samostatné tlačítko, ne přívažek k nahrávání: na
              Androidu dá systém mikrofon jen jednomu — buď záznamu, nebo
-             rozpoznávání řeči. *Rozděleno 4. 9. 2026.* -->
-        <button class="tl" id="tlDiktovat" onclick="prepniDiktovani()" style="margin-left:8px"
+             rozpoznávání řeči. *Rozděleno 4. 9. 2026.* Vidět je ale jen tehdy,
+             kdy je k něčemu — na počítači nikdy (tam přepis běží rovnou při
+             nahrávání) a na telefonu až po zastavení nahrávání. Ve výchozím
+             pohledu tak stojí u mikrofonu jedno tlačítko, ne dvě. -->
+        <button class="tl" id="tlDiktovatVzkaz" onclick="prepniDiktovaniVzkazu()"
+          style="margin-left:8px;display:none"
           title="Nadiktuje text do pole níž. Nenahrává zvuk — mikrofon může mít jen jedno z toho.">⌨ Diktovat</button>
         <audio id="vzkazPrehled" controls style="display:none;margin-left:auto;max-width:170px;height:34px"></audio>
       </div>
@@ -2146,8 +2150,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.86j";
-const BUILD = "2026-09-04T15:16+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.86k";
+const BUILD = "2026-09-04T15:33+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -11229,6 +11233,10 @@ const VZKAZ_MAX_S  = 300;          // pět minut; databáze pustí nejvýš dvac
 let vzkazMedia = null, vzkazStream = null, vzkazKusy = [], vzkazBlob = null;
 let vzkazDelka = 0, vzkazTiky = null, vzkazUsi = null, vzkazNahravame = false;
 let vzkazPrepisZaklad = '', vzkazPrepisHotovy = '', vzkazPrepisVzdal = false;
+/* `vzkazPrepisHotovy` = věty z dřívějších poslechů, `vzkazPrepisRelace` = to,
+   co vrací poslech běžící právě teď. Rozdělené proto, že se ten druhý pokaždé
+   skládá znovu od nuly — viz onresult. */
+let vzkazPrepisRelace = '';
 /* Kolikrát se poslech nastartoval a kolikrát něco vrátil. Z rozdílu se pozná
    „točí se dokola a nechytá nic", což byl 3. 9. 2026 stav, který se navenek
    nijak neprojevil — jen se nic nepsalo. *Doplněno 3. 9. 2026 večer.* */
@@ -11301,6 +11309,7 @@ function vyprazdniVzkaz(){
   $('#vzkazCas').textContent = '0:00';
   $('#vzkazJak').textContent = 'nenahrává se';
   const a = $('#vzkazPrehled'); a.style.display = 'none'; a.removeAttribute('src');
+  const tl = $('#tlDiktovatVzkaz'); if(tl) tl.style.display = 'none';
 }
 
 /* ---------- nahrávání ---------- */
@@ -11338,6 +11347,7 @@ async function spustNahravani(){
     a.src = URL.createObjectURL(vzkazBlob); a.style.display = '';
   };
   vzkazNahravame = true;
+  ukazDiktovani();                       // při nahrávání se schová
   const tl = $('#tlNahrat'); tl.textContent = '⏹'; tl.classList.add('bezi');
   $('#vzkazJak').textContent = 'nahrávám… zmáčkněte znovu, až domluvíte';
   /* Nahrávání má u mikrofonu přednost, přepis je jen bonus. *Vráceno
@@ -11392,10 +11402,23 @@ function jeAndroid(){
   return /Android/i.test(navigator.userAgent || '');
 }
 
+/* Tlačítko „Diktovat" se ukazuje jen tam, kde má smysl: na telefonu, kde přepis
+   vedle nahrávání neběží, a až ve chvíli, kdy se nenahrává. Na počítači nikdy —
+   tam text přibývá rovnou při nahrávání a druhé tlačítko by jen mátlo. */
+function ukazDiktovani(){
+  const tl = $('#tlDiktovatVzkaz'); if(!tl) return;
+  const mistoNaNej = jeAndroid() && !!tridaRozpoznavani() && !vzkazNahravame;
+  tl.style.display = mistoNaNej ? '' : 'none';
+}
+
 let vzkazDiktujeme = false;
 
 /* Diktování bez nahrávání. Text jde do téhož pole; co v něm bylo, zůstane. */
-function prepniDiktovani(){
+/* Jmenuje se „…Vzkazu", protože diktování má stránka dvě: tohle je to do okna
+   vzkazu, a pak je starší diktování do to-do listu, které má svoje tlačítko
+   `tlDiktovat`. Krátkou chvíli 4. 9. 2026 se obě tlačítka jmenovala stejně
+   a to-do diktování by tím sáhlo na cizí tlačítko. */
+function prepniDiktovaniVzkazu(){
   if(vzkazDiktujeme){ zastavDiktovani(); return; }
   if(vzkazNahravame){
     $('#vzkazJak').textContent = 'nejdřív zastavte nahrávání — mikrofon může mít jen jedno z toho';
@@ -11406,7 +11429,7 @@ function prepniDiktovani(){
     return;
   }
   vzkazDiktujeme = true;
-  const tl = $('#tlDiktovat'); if(tl){ tl.textContent = '⏹ Konec diktování'; tl.classList.add('hlavni'); }
+  const tl = $('#tlDiktovatVzkaz'); if(tl){ tl.textContent = '⏹ Konec diktování'; tl.classList.add('hlavni'); }
   $('#vzkazJak').textContent = 'poslouchám — mluvte, text se píše do pole níž';
   /* spustPrepis se řídí příznakem nahrávání; pro diktování se tváří stejně,
      jen se u toho nic nenahrává. */
@@ -11421,7 +11444,7 @@ function zastavDiktovani(){
   clearInterval(vzkazPrepisHlidac); vzkazPrepisHlidac = null;
   try{ vzkazUsi && (vzkazUsi.abort ? vzkazUsi.abort() : vzkazUsi.stop()); }catch(e){}
   vzkazUsi = null;
-  const tl = $('#tlDiktovat'); if(tl){ tl.textContent = '⌨ Diktovat'; tl.classList.remove('hlavni'); }
+  const tl = $('#tlDiktovatVzkaz'); if(tl){ tl.textContent = '⌨ Diktovat'; tl.classList.remove('hlavni'); }
   const pole = $('#vzkazText');
   $('#vzkazJak').textContent = (pole && pole.value.trim())
     ? 'nadiktováno — text můžete opravit a odeslat'
@@ -11437,7 +11460,7 @@ function spustPrepis(){
   }
   const pole = $('#vzkazText');
   vzkazPrepisZaklad = pole.value ? pole.value.replace(/\s+$/,'') + ' ' : '';
-  vzkazPrepisHotovy = '';
+  vzkazPrepisHotovy = ''; vzkazPrepisRelace = '';
   vzkazPrepisVzdal = false;
   vzkazPrepisPokusy = 0; vzkazPrepisVysledku = 0;
 
@@ -11471,15 +11494,26 @@ function spustPrepis(){
       vzkazUsi = new Usi();
       vzkazUsi.lang = 'cs-CZ'; vzkazUsi.continuous = true; vzkazUsi.interimResults = true;
 
+      /* Text se pokaždé skládá znovu z celého `e.results`, nikdy se nepřilepuje.
+         *Opraveno 4. 9. 2026 — Keksovi vyšlo „Haló haló tohle Haló haló tohle
+         je Haló haló tohle je zkouška".* Přilepování stálo na tom, že prohlížeč
+         pošle jen to nové od `resultIndex`. Chrome na Androidu ale posílá
+         pokaždé celý seznam od nuly, takže se každá hotová věta přidala znovu
+         a text rostl jako sněhová koule. Skládání zpaměti je proti tomu odolné:
+         ať prohlížeč pošle cokoli, výsledek je vždycky obraz toho seznamu.
+
+         Věty z dřívějších poslechů drží `vzkazPrepisHotovy` — po restartu
+         začíná `e.results` zase od nuly a bez toho by se ztratily. */
       vzkazUsi.onresult = e => {
         vzkazPrepisVysledku++;
-        let rozdelane = '';
-        for(let i = e.resultIndex; i < e.results.length; i++){
+        let hotoveTeD = '', rozdelane = '';
+        for(let i = 0; i < e.results.length; i++){
           const kus = e.results[i][0].transcript;
-          if(e.results[i].isFinal) vzkazPrepisHotovy += kus + ' ';
+          if(e.results[i].isFinal) hotoveTeD += kus + ' ';
           else rozdelane += kus;
         }
-        pole.value = vzkazPrepisZaklad + vzkazPrepisHotovy + rozdelane;
+        vzkazPrepisRelace = hotoveTeD;
+        pole.value = vzkazPrepisZaklad + vzkazPrepisHotovy + vzkazPrepisRelace + rozdelane;
         pole.scrollTop = pole.scrollHeight;
       };
 
@@ -11500,6 +11534,10 @@ function spustPrepis(){
       /* Tohle je jádro opravy: dokud se nahrává, poslech se po každém ukončení
          nastartuje znovu. Bez toho skončil přepis první delší pauzou. */
       vzkazUsi.onend = () => {
+        /* Co tenhle poslech stihl dořeknout, se ukládá k dřívějšímu. Až sem
+           se totiž `e.results` po restartu vynuluje. */
+        vzkazPrepisHotovy += vzkazPrepisRelace;
+        vzkazPrepisRelace = '';
         if(vzkazNahravame && !vzkazPrepisVzdal) setTimeout(nastartuj, 250);
       };
 
@@ -11524,6 +11562,7 @@ function zastavNahravani(){
   try{ vzkazUsi && vzkazUsi.abort ? vzkazUsi.abort() : (vzkazUsi && vzkazUsi.stop()); }catch(e){}
   vzkazUsi = null; vzkazStream = null;
   const tl = $('#tlNahrat'); tl.textContent = '🎤'; tl.classList.remove('bezi');
+  ukazDiktovani();                       // po zastavení se na telefonu nabídne
   $('#vzkazJak').textContent = vzkazDelka
     ? ('nahráno ' + vzkazCasText(vzkazDelka) + ' — můžete odeslat')
     : 'nenahrává se';

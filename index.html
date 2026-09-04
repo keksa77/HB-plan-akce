@@ -2150,8 +2150,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.86m";
-const BUILD = "2026-09-04T16:06+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.86n";
+const BUILD = "2026-09-04T16:45+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -11499,6 +11499,33 @@ function zastavDiktovani(){
     : 'nic se nezachytilo — napište to prosím do pole';
 }
 
+/* ---------- spojení dvou kusů přepisu bez opakování ---------- *(4. 9. 2026)*
+
+   Poslech se během diktování několikrát sám ukončí a nastartuje znovu. Chrome
+   na Androidu přitom po restartu často zopakuje i to, co už řekl předtím —
+   proto se text nepřilepuje natvrdo, ale přes tuhle funkci: co se překrývá,
+   se přilepí jen jednou. Porovnává se bez ohledu na velikost písmen a mezery,
+   ale do textu jde vždycky původní podoba. */
+function pripojBezOpakovani(cely, kus){
+  const slova = t => String(t || '').trim().split(/\s+/).filter(Boolean);
+  const a = slova(cely), b = slova(kus);
+  if(!b.length) return a.join(' ');
+  if(!a.length) return b.join(' ');
+  const stejne = (x, y) => x.toLocaleLowerCase('cs').replace(/[.,!?;:]+$/, '')
+                        === y.toLocaleLowerCase('cs').replace(/[.,!?;:]+$/, '');
+  /* Hledá se nejdelší překryv: konec dosavadního textu = začátek nového kusu.
+     Porovnává se po slovech, ne po znacích — na znaky to 4. 9. 2026 uřízlo
+     „chybí" na „bí". */
+  const strop = Math.min(a.length, b.length);
+  for(let k = strop; k > 0; k--){
+    let sedi = true;
+    for(let i = 0; i < k; i++){
+      if(!stejne(a[a.length - k + i], b[i])){ sedi = false; break; }
+    }
+    if(sedi) return a.concat(b.slice(k)).join(' ');
+  }
+  return a.concat(b).join(' ');
+}
 function spustPrepis(){
   const Usi = tridaRozpoznavani();
   const stav = t => { const el = $('#vzkazJak'); if(el && vzkazNahravame) el.textContent = t; };
@@ -11539,6 +11566,13 @@ function spustPrepis(){
            + 'do pole rukou; zvuk se ukládá dál');
         return;
       }
+      /* Starý poslech se umlčí úplně — odpojí se mu obsluhy, ne jen zavolá
+         abort. Na Androidu jinak doběhne ještě po restartu, ohlásí tytéž věty
+         znovu a text se zdvojí. */
+      if(vzkazUsi){
+        try{ vzkazUsi.onresult = null; vzkazUsi.onend = null; vzkazUsi.onerror = null;
+             vzkazUsi.abort ? vzkazUsi.abort() : vzkazUsi.stop(); }catch(e){}
+      }
       vzkazUsi = new Usi();
       vzkazUsi.lang = 'cs-CZ'; vzkazUsi.continuous = true; vzkazUsi.interimResults = true;
 
@@ -11561,7 +11595,9 @@ function spustPrepis(){
           else rozdelane += kus;
         }
         vzkazPrepisRelace = hotoveTeD;
-        pole.value = vzkazPrepisZaklad + vzkazPrepisHotovy + vzkazPrepisRelace + rozdelane;
+        const spojene = pripojBezOpakovani(vzkazPrepisHotovy, vzkazPrepisRelace);
+        pole.value = (vzkazPrepisZaklad + spojene
+                      + (rozdelane ? ' ' + rozdelane : '')).replace(/\s+/g, ' ').trimStart();
         pole.scrollTop = pole.scrollHeight;
       };
 
@@ -11584,7 +11620,7 @@ function spustPrepis(){
       vzkazUsi.onend = () => {
         /* Co tenhle poslech stihl dořeknout, se ukládá k dřívějšímu. Až sem
            se totiž `e.results` po restartu vynuluje. */
-        vzkazPrepisHotovy += vzkazPrepisRelace;
+        vzkazPrepisHotovy = pripojBezOpakovani(vzkazPrepisHotovy, vzkazPrepisRelace);
         vzkazPrepisRelace = '';
         if(vzkazNahravame && !vzkazPrepisVzdal) setTimeout(nastartuj, 250);
       };

@@ -26,6 +26,8 @@ nav button{background:transparent;border:0;border-radius:9px 9px 0 0;color:#fff;
   padding:8px 14px;font:800 12.5px Nunito,sans-serif;cursor:pointer;white-space:nowrap}
 nav button:hover{opacity:1;background:rgba(255,255,255,.10)}
 nav button.aktivni{background:var(--papir);color:var(--hneda);opacity:1}
+nav button.vnejsi{opacity:.62;border:1px dashed rgba(255,255,255,.45);border-bottom:0}
+nav button.vnejsi:hover{opacity:1}
 nav .odd{margin-left:auto;opacity:.45;font-weight:700;font-size:11.5px;padding:8px 0 0}
 
 main{max-width:1560px;margin:0 auto;padding:18px 22px 70px}
@@ -2150,7 +2152,7 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.86o";
+const VERZE = "v5.86p";
 const BUILD = "2026-09-04T18:35+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
@@ -2366,6 +2368,18 @@ const PODSTRANKY = [
 ];
 const VSECHNY_SEKCE = () => ZALOZKY.concat(PODSTRANKY);
 
+/* Vnější stránky: samostatné soubory vedle plánovače (vlastní adresa, vlastní
+   přihlášení do téže databáze). Do lišty patří, ale nejsou to sekce — otevírají
+   se v novém panelu, aby rozdělaná práce v plánovači nezmizela. Nabízejí se jen
+   přihlášenému správci; je to pracovní nástroj, ne veřejný obsah. */
+const VNEJSI_STRANKY = [
+  {nazev:"Výplaty", odkaz:"vyplaty.html",
+   napoveda:"Postup u pomocníků po akci — komu šel dotazník, co je domluvené, kolik a jestli je zaplaceno. Otevře se v novém panelu."}
+];
+function vnejsiKVideni(){
+  return (prihlasen && mojeUroven === 'SPRAVCE') ? VNEJSI_STRANKY : [];
+}
+
 /* Které záložky se zrovna nabízejí. Dvě síta za sebou:
    1) To-do je pracovní seznam, bez přihlášení nemá co ukazovat, tak se nenabízí vůbec.
    2) Na mobilu zůstanou jen ty, ve kterých se cestou opravdu dá pracovat. */
@@ -2428,6 +2442,7 @@ function kresliNav(){
   const n = $('#nav');
   const videt = zalozkyKVideni();
   n.innerHTML = videt.map(z=>`<button data-id="${z.id}" title="${z.napoveda||''}" onclick="prepni('${z.id}')">${z.nazev}</button>`).join('')
+    + vnejsiKVideni().map(v=>`<button class="vnejsi" title="${v.napoveda}" onclick="window.open('${v.odkaz}','_blank','noopener')">${v.nazev} &#8599;</button>`).join('')
     + (odemykaciTlacitko() || `<span class="odd">skryté: vzdálenosti · historie plánů · fotky</span>`);
 }
 function prepni(id){

@@ -9,7 +9,11 @@
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.5 -apple-system,"Segoe UI",Roboto,Arial,sans-serif}
   .wrap{max-width:1240px;margin:0 auto;padding:18px 14px 90px}
-  h1{background:var(--hb);color:#fff;margin:0;padding:16px 20px;border-radius:8px 8px 0 0;font-size:20px}
+  h1{background:var(--hb);color:#fff;margin:0;padding:16px 20px;border-radius:8px 8px 0 0;font-size:20px;
+     display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  h1 a{margin-left:auto;color:#fff;font-size:13px;font-weight:600;text-decoration:none;
+       border:1px solid rgba(255,255,255,.5);border-radius:14px;padding:3px 12px;white-space:nowrap}
+  h1 a:hover{background:rgba(255,255,255,.14)}
   .intro{background:#fff;border:1px solid var(--line);border-top:0;padding:12px 20px;border-radius:0 0 8px 8px;font-size:13.5px;color:#5a5250}
   .box{background:#fff;border:1px solid var(--line);border-radius:6px;padding:14px;margin-top:14px}
   .mriz{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -2435,7 +2439,7 @@ var qrcode = function() {
 </head>
 <body>
 <div class="wrap">
-  <h1>HB26 — postup u pomocníků</h1>
+  <h1>HB26 — postup u pomocníků <a href="./" title="Zpátky do plánovače Hory Bory">&#8592; plánovač</a></h1>
   <div class="intro">
     Všechno se ukládá do databáze (Supabase, tabulka <code>vyplaty</code>, navázaná na členy grup) — otevřete to kdekoli,
     přihlásíte se stejným účtem jako do plánovače a vidíte ten samý stav. <strong>Zaškrtávátka se ukládají hned.</strong>
@@ -2630,12 +2634,12 @@ function zapomenSezeni(){
   obnovovaci = null;
   try { localStorage.removeItem(KLIC_SEZENI); } catch(e){}
 }
-async function obnovSezeni(){
+async function obnovSezeni(vynutit){
   let ulozene = null;
   try { ulozene = JSON.parse(localStorage.getItem(KLIC_SEZENI) || 'null'); } catch(e){ return false; }
   if(!ulozene || !ulozene.obnova) return false;
   obnovovaci = ulozene.obnova;
-  if(ulozene.token && ulozene.platiDo > Date.now()){
+  if(!vynutit && ulozene.token && ulozene.platiDo > Date.now()){
     token = ulozene.token;
     return true;
   }
@@ -2666,8 +2670,36 @@ function odhlasit(){
   hlaska('hlaskaLogin', 'Odhlášeno.', 'info');
 }
 
-function hlavicky(){
-  return {'apikey': KLIC, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'};
+function hlavicky(prefer){
+  const h = {'apikey': KLIC, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'};
+  if(prefer) h['Prefer'] = prefer;
+  return h;
+}
+
+/* Přihlášení platí hodinu. Když stránka zůstane otevřená dýl, databáze další
+   zápis odmítne a vypadá to, že se nic neukládá. Proto každý dotaz vede sem:
+   při odmítnutí si tiše obnovíme přihlášení a pošleme ho znovu. */
+async function dotaz(cesta, volby){
+  volby = volby || {};
+  const posli = () => fetch(URL_BASE + cesta, {
+    method: volby.method || 'GET',
+    headers: hlavicky(volby.prefer),
+    body: volby.body
+  });
+  let odp = await posli();
+  if(odp.status === 401 || odp.status === 403){
+    if(await obnovSezeni(true)) odp = await posli();
+    else { sezeniVyprselo(); }
+  }
+  return odp;
+}
+
+function sezeniVyprselo(){
+  zapomenSezeni();
+  token = null;
+  el('appka').style.display = 'none';
+  el('prihlaseni').style.display = 'block';
+  hlaska('hlaskaLogin', 'Přihlášení vypršelo. Přihlaste se znovu — rozepsané změny se neuložily.', 'chyba');
 }
 
 // ---- odkazy navázané na ročník
@@ -2680,8 +2712,7 @@ function zobrazOdkaz(poleId, odkazId){
 }
 async function nactiOdkazy(){
   try {
-    const odp = await fetch(URL_BASE + '/rest/v1/nastaveni_rocniku?rok=eq.' + ROK + '&select=odkaz_formular,odkaz_odpovedi,zprava_whatsapp',
-                            {headers: hlavicky()});
+    const odp = await dotaz('/rest/v1/nastaveni_rocniku?rok=eq.' + ROK + '&select=odkaz_formular,odkaz_odpovedi,zprava_whatsapp');
     if(!odp.ok) return;
     const d = await odp.json();
     const n = d[0] || {};
@@ -2702,10 +2733,8 @@ async function ulozOdkaz(pole, prvek){
   try {
     const telo = {rok: ROK, upraveno: new Date().toISOString()};
     telo[pole] = hodnota;
-    const odp = await fetch(URL_BASE + '/rest/v1/nastaveni_rocniku?on_conflict=rok', {
-      method: 'POST',
-      headers: Object.assign({}, hlavicky(), {'Prefer': 'resolution=merge-duplicates,return=minimal'}),
-      body: JSON.stringify(telo)
+    const odp = await dotaz('/rest/v1/nastaveni_rocniku?on_conflict=rok', {
+      method: 'POST', prefer: 'resolution=merge-duplicates,return=minimal', body: JSON.stringify(telo)
     });
     if(!odp.ok) throw new Error('Odkaz se nepodařilo uložit (' + odp.status + ').');
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
@@ -2744,10 +2773,10 @@ function prevedRadek(r){
 
 // ---- historie: vyřešené řádky se stěhují do vlastní tabulky, nic se nemaže
 async function nactiHistorii(){
-  const dotaz = '/rest/v1/vyplaty_historie?rok=eq.' + ROK +
+  const cesta = '/rest/v1/vyplaty_historie?rok=eq.' + ROK +
     '&select=id,clen_id,jmeno,kod_tymu,formular,domluva,faktura,castka_kc,zaplaceno,poznamka,loni_kc,loni_popis,ucet,kontakt_jak,kontakt_datum,vyreseno_kdy,clenove_tymu(jmeno,kod_tymu,email,telefon,cislo_uctu)' +
     '&order=vyreseno_kdy.desc';
-  const odp = await fetch(URL_BASE + dotaz, {headers: hlavicky()});
+  const odp = await dotaz(cesta);
   if(!odp.ok) throw new Error('Historii se nepodařilo načíst (' + odp.status + ').');
   const d = await odp.json();
   historie = d.map(prevedRadek);
@@ -2756,11 +2785,7 @@ async function nactiHistorii(){
 }
 
 async function zavolej(funkce, id){
-  const odp = await fetch(URL_BASE + '/rest/v1/rpc/' + funkce, {
-    method: 'POST',
-    headers: hlavicky(),
-    body: JSON.stringify({p_id: id})
-  });
+  const odp = await dotaz('/rest/v1/rpc/' + funkce, {method: 'POST', body: JSON.stringify({p_id: id})});
   if(!odp.ok){
     let text = '';
     try { const e = await odp.json(); text = e.message || e.hint || ''; } catch(x){}
@@ -2808,9 +2833,9 @@ async function nacti(){
   ukazatel('Načítám…');
   hlaska('hlaska', '', '');
   try {
-    const dotaz = '/rest/v1/vyplaty?rok=eq.' + ROK +
+    const cesta = '/rest/v1/vyplaty?rok=eq.' + ROK +
       '&select=id,clen_id,jmeno,kod_tymu,formular,domluva,faktura,castka_kc,zaplaceno,poznamka,loni_kc,loni_popis,ucet,kontakt_jak,kontakt_datum,clenove_tymu(jmeno,kod_tymu,email,telefon,cislo_uctu)';
-    const odp = await fetch(URL_BASE + dotaz, {headers: hlavicky()});
+    const odp = await dotaz(cesta);
     if(!odp.ok) throw new Error('Databáze odpověděla ' + odp.status + '. Zkuste Načíst znovu, nebo se přihlaste znovu.');
     const d = await odp.json();
     radky = d.map(prevedRadek);
@@ -2835,10 +2860,8 @@ async function uloz(radek, pole, hodnota, checkbox){
   Object.keys(telo).forEach(k => { puvodni[k] = radek[k]; radek[k] = telo[k]; });
   ukazatel('Ukládám…');
   try {
-    const odp = await fetch(URL_BASE + '/rest/v1/vyplaty?id=eq.' + radek.id, {
-      method: 'PATCH',
-      headers: Object.assign({}, hlavicky(), {'Prefer': 'return=minimal'}),
-      body: JSON.stringify(telo)
+    const odp = await dotaz('/rest/v1/vyplaty?id=eq.' + radek.id, {
+      method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(telo)
     });
     if(!odp.ok) throw new Error('Uložení se nepovedlo (' + odp.status + ').');
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
@@ -2858,10 +2881,8 @@ async function ulozCastku(radek, hodnota, pole){
   radek.castka_kc = (hodnota === null) ? '' : String(hodnota);
   ukazatel('Ukládám…');
   try {
-    const odp = await fetch(URL_BASE + '/rest/v1/vyplaty?id=eq.' + radek.id, {
-      method: 'PATCH',
-      headers: Object.assign({}, hlavicky(), {'Prefer': 'return=minimal'}),
-      body: JSON.stringify({castka_kc: hodnota})
+    const odp = await dotaz('/rest/v1/vyplaty?id=eq.' + radek.id, {
+      method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({castka_kc: hodnota})
     });
     if(!odp.ok) throw new Error('Uložení částky se nepovedlo (' + odp.status + ').');
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
@@ -2889,9 +2910,8 @@ async function ulozUcet(radek, hodnota, pole){
       cesta = '/rest/v1/vyplaty?id=eq.' + radek.id;
       telo = {ucet: hodnota || null};
     }
-    const odp = await fetch(URL_BASE + cesta, {
-      method: 'PATCH',
-      headers: Object.assign({}, hlavicky(), {'Prefer': 'return=minimal'}),
+    const odp = await dotaz(cesta, {
+      method: 'PATCH', prefer: 'return=minimal',
       body: JSON.stringify(telo)
     });
     if(!odp.ok) throw new Error('Uložení účtu se nepovedlo (' + odp.status + ').');
@@ -2915,10 +2935,8 @@ async function ulozPole(radek, pole, hodnota, prvek){
   ukazatel('Ukládám…');
   try {
     const telo = {}; telo[pole] = hodnota;
-    const odp = await fetch(URL_BASE + '/rest/v1/vyplaty?id=eq.' + radek.id, {
-      method: 'PATCH',
-      headers: Object.assign({}, hlavicky(), {'Prefer': 'return=minimal'}),
-      body: JSON.stringify(telo)
+    const odp = await dotaz('/rest/v1/vyplaty?id=eq.' + radek.id, {
+      method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(telo)
     });
     if(!odp.ok) throw new Error('Uložení se nepovedlo (' + odp.status + ').');
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
@@ -3302,6 +3320,15 @@ el('hledat').addEventListener('input', vykresli);
 el('filtr').addEventListener('change', vykresli);
 ['fFormular','fDomluva','fFaktura'].forEach(id => el(id).addEventListener('change', vykresli));
 el('btnUlozitVse').addEventListener('click', ulozitVse);
+/* Každých pět minut se podíváme, jestli přihlášení nedobíhá, a včas ho obnovíme.
+   Bez toho stránka otevřená přes hodinu přestane ukládat. */
+setInterval(async () => {
+  if(!token) return;
+  let u = null;
+  try { u = JSON.parse(localStorage.getItem(KLIC_SEZENI) || 'null'); } catch(e){ return; }
+  if(u && u.platiDo - Date.now() < 6 * 60 * 1000) await obnovSezeni(true);
+}, 5 * 60 * 1000);
+
 window.addEventListener('resize', dorovnejLepeni);
 dorovnejLepeni();
 el('rokZnacka').textContent = ROK;

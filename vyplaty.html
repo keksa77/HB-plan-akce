@@ -2956,7 +2956,7 @@ function naIban(ucet){
    jen tohle jedno pole na text — banky ho vypisují do „zprávy pro příjemce"
    a většina ho nabídne i jako vlastní poznámku k platbě. */
 function zpravaKPlatbe(r){
-  return 'Hory Bory 2026 ' + r.jmeno + ' Díky!';
+  return 'Hory Bory 2026 - ' + r.jmeno + ', Díky!';
 }
 function spd(iban, castka, zprava){
   const casti = ['SPD*1.0', 'ACC:' + iban, 'AM:' + Number(castka).toFixed(2), 'CC:CZK'];

@@ -26,6 +26,13 @@
   .tabulka{overflow-x:auto;background:#fff;border:1px solid var(--line);border-radius:6px}
   table{border-collapse:collapse;width:100%;table-layout:fixed}
   th,td{border-bottom:1px solid var(--line);padding:6px 7px;text-align:left;font-size:13.5px}
+  thead tr.filtry th{position:sticky;top:31px;background:#8e3540;padding:3px 3px;z-index:2}
+  thead tr.filtry select{width:100%;font:inherit;font-size:11px;padding:2px 2px;border:1px solid rgba(255,255,255,.4);
+                         border-radius:3px;background:#fff;color:var(--txt)}
+  thead tr.filtry select.aktivni{background:#ffe9a8;font-weight:700}
+  tbody tr.zhistorie td{background:#f6f4f4;color:#6b6260}
+  tbody tr.zhistorie:hover td{background:#f1eeee}
+  button.vratit{padding:2px 7px;font-size:11px}
   thead th{position:sticky;top:0;background:var(--hb);color:#fff;font-size:11.5px;font-weight:600;z-index:2;
            white-space:normal;line-height:1.2;padding:6px 5px}
   thead th.stav{text-align:center}
@@ -94,7 +101,11 @@
     .wrap{padding:12px 8px 80px}
     h1{font-size:17px}
     table,thead,tbody,tr,td{display:block;width:auto}
-    thead{display:none}
+    thead tr.nadpisy{display:none}
+    thead tr.filtry{display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px;background:#8e3540}
+    thead tr.filtry th{position:static;flex:1 1 92px;padding:0;background:none}
+    thead tr.filtry th:empty{display:none}
+    thead tr.filtry th[data-popis]::before{content:attr(data-popis);display:block;font-size:10.5px;color:#fff;opacity:.85}
     tbody tr{border-bottom:1px solid var(--line);padding:8px 10px}
     tr.skupina{padding:0}
     tr.skupina td{padding:7px 10px}
@@ -2418,6 +2429,8 @@ var qrcode = function() {
     Do psaných polí (částka, účet, poznámka) můžete psát a pak dát <strong>Uložit vše</strong> dole, nebo jen odejít z pole —
     uloží se to taky. Rozepsané pole je žluté, uložené krátce zezelená. <strong>Formulář a domluva se vylučují</strong>,
     faktura je na nich nezávislá. Text zprávy na WhatsApp je pod tlačítkem nahoře — dá se upravit i zkopírovat.
+    <strong>Vyřešeno</strong> odstěhuje řádek do historie, ať v tabulce zůstane jen to, co se ještě řeší — nic se nemaže
+    a vrátit zpět jde hned nebo kdykoli přes filtr <em>historie</em>. Pod nadpisy formulář, domluva a faktura je filtr.
     Žlutě je u jména <strong>loňská částka z výpisů HB25</strong> — tlačítkem „použít" ji přenesete do letošní.
   </div>
 
@@ -2456,6 +2469,7 @@ var qrcode = function() {
         <div class="kachle">s částkou<b id="k3">0</b></div>
         <div class="kachle">zaplaceno<b id="k4">0</b></div>
         <div class="kachle">nedotčeno<b id="k5">0</b></div>
+        <div class="kachle">v historii<b id="k9">0</b></div>
         <div class="kachle">celkem<b id="k6">0 Kč</b></div>
         <div class="kachle">zbývá zaplatit<b id="k7">0 Kč</b></div>
       </div>
@@ -2473,6 +2487,7 @@ var qrcode = function() {
           <option value="nedotceno">nedotčení</option>
           <option value="bezcastky">bez částky</option>
           <option value="bezkontaktu">bez kontaktu</option>
+        <option value="historie">historie — vyřešení</option>
         </select>
         <button class="sek" id="btnObnovit">Načíst znovu</button>
         <span id="ukazatel"></span>
@@ -2482,7 +2497,7 @@ var qrcode = function() {
     <div class="tabulka">
       <table>
         <thead>
-          <tr>
+          <tr class="nadpisy">
             <th class="kdo" style="width:auto;min-width:132px">Grupa a jméno</th>
             <th class="stav" style="width:56px">formu&shy;lář</th>
             <th class="stav" style="width:58px">do&shy;mluva</th>
@@ -2493,6 +2508,14 @@ var qrcode = function() {
             <th style="width:112px">kontakt jak</th>
             <th style="width:120px">datum kontaktu</th>
             <th class="stav" style="width:62px">zapla&shy;ceno</th>
+            <th class="stav" style="width:64px">vy&shy;řešeno</th>
+          </tr>
+          <tr class="filtry">
+            <th></th>
+            <th data-popis="formulář"><select id="fFormular"><option value="">vše</option><option value="ano">✓ ano</option><option value="ne">✗ ne</option></select></th>
+            <th data-popis="domluva"><select id="fDomluva"><option value="">vše</option><option value="ano">✓ ano</option><option value="ne">✗ ne</option></select></th>
+            <th data-popis="faktura"><select id="fFaktura"><option value="">vše</option><option value="ano">✓ ano</option><option value="ne">✗ ne</option></select></th>
+            <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
           </tr>
         </thead>
         <tbody id="telo"></tbody>
@@ -2530,6 +2553,8 @@ const KONTAKTY = ['', 'WhatsApp', 'mail', 'telefon', 'SMS', 'osobně', 'jinak'];
 let token = null;
 let obnovovaci = null;
 let radky = [];
+let historie = [];
+let historieNactena = false;
 const rozepsane = new Map();   // pole -> funkce, která ho uloží
 
 function esc(t){ return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
@@ -2681,6 +2706,90 @@ async function ulozOdkaz(pole, prvek){
   }
 }
 
+function prevedRadek(r){
+  const c = r.clenove_tymu || {};
+  const kod = c.kod_tymu || r.kod_tymu || '—';
+  return {
+    id: r.id,
+    jmeno: c.jmeno || r.jmeno || '(bez jména)',
+    kod: kod,
+    kat: kategorie(kod),
+    email: c.email || '',
+    telefon: c.telefon || '',
+    ucet: (r.ucet || c.cislo_uctu || ''),
+    maClena: !!r.clen_id,
+    clenId: r.clen_id,
+    formular: !!r.formular, domluva: !!r.domluva, faktura: !!r.faktura, zaplaceno: !!r.zaplaceno,
+    poznamka: r.poznamka || '',
+    loni_kc: (r.loni_kc === null || r.loni_kc === undefined) ? null : Number(r.loni_kc),
+    loni_popis: r.loni_popis || '',
+    castka_kc: (r.castka_kc === null || r.castka_kc === undefined) ? '' : String(r.castka_kc),
+    kontakt_jak: r.kontakt_jak || '',
+    kontakt_datum: r.kontakt_datum || ''
+  };
+}
+
+// ---- historie: vyřešené řádky se stěhují do vlastní tabulky, nic se nemaže
+async function nactiHistorii(){
+  const dotaz = '/rest/v1/vyplaty_historie?rok=eq.' + ROK +
+    '&select=id,clen_id,jmeno,kod_tymu,formular,domluva,faktura,castka_kc,zaplaceno,poznamka,loni_kc,loni_popis,ucet,kontakt_jak,kontakt_datum,vyreseno_kdy,clenove_tymu(jmeno,kod_tymu,email,telefon,cislo_uctu)' +
+    '&order=vyreseno_kdy.desc';
+  const odp = await fetch(URL_BASE + dotaz, {headers: hlavicky()});
+  if(!odp.ok) throw new Error('Historii se nepodařilo načíst (' + odp.status + ').');
+  const d = await odp.json();
+  historie = d.map(prevedRadek);
+  historie.forEach((h, i) => { h.kdy = (d[i].vyreseno_kdy || '').slice(0, 10); });
+  historieNactena = true;
+}
+
+async function zavolej(funkce, id){
+  const odp = await fetch(URL_BASE + '/rest/v1/rpc/' + funkce, {
+    method: 'POST',
+    headers: hlavicky(),
+    body: JSON.stringify({p_id: id})
+  });
+  if(!odp.ok){
+    let text = '';
+    try { const e = await odp.json(); text = e.message || e.hint || ''; } catch(x){}
+    throw new Error('Přesun se nepovedl (' + odp.status + '). ' + text);
+  }
+}
+
+async function doHistorie(r, checkbox){
+  ukazatel('Přesouvám do historie…');
+  try {
+    await zavolej('vyplaty_do_historie', r.id);
+    radky = radky.filter(x => x.id !== r.id);
+    historieNactena = false;
+    ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
+    hlaska('hlaska', '', '');
+    el('stav').innerHTML = esc(r.kod + ' ' + r.jmeno) + ' je v historii. ' +
+      '<button class="sek vratit" id="btnVratit">Vrátit zpět</button>';
+    const b = el('btnVratit');
+    if(b) b.addEventListener('click', () => zHistorie(r.id));
+    vykresli();
+  } catch(e){
+    if(checkbox) checkbox.checked = false;
+    ukazatel('');
+    hlaska('hlaska', String(e.message || e), 'chyba');
+  }
+}
+
+async function zHistorie(id){
+  ukazatel('Vracím zpět…');
+  try {
+    await zavolej('vyplaty_z_historie', id);
+    historie = historie.filter(x => x.id !== id);
+    historieNactena = false;
+    el('stav').textContent = 'Vráceno mezi rozpracované.';
+    hlaska('hlaska', '', '');
+    await nacti();
+  } catch(e){
+    ukazatel('');
+    hlaska('hlaska', String(e.message || e), 'chyba');
+  }
+}
+
 // ---- data
 async function nacti(){
   ukazatel('Načítám…');
@@ -2691,31 +2800,11 @@ async function nacti(){
     const odp = await fetch(URL_BASE + dotaz, {headers: hlavicky()});
     if(!odp.ok) throw new Error('Databáze odpověděla ' + odp.status + '. Zkuste Načíst znovu, nebo se přihlaste znovu.');
     const d = await odp.json();
-    radky = d.map(r => {
-      const c = r.clenove_tymu || {};
-      const kod = c.kod_tymu || r.kod_tymu || '—';
-      return {
-        id: r.id,
-        jmeno: c.jmeno || r.jmeno || '(bez jména)',
-        kod: kod,
-        kat: kategorie(kod),
-        email: c.email || '',
-        telefon: c.telefon || '',
-        ucet: (r.ucet || c.cislo_uctu || ''),
-        maClena: !!r.clen_id,
-        clenId: r.clen_id,
-        formular: !!r.formular, domluva: !!r.domluva, faktura: !!r.faktura, zaplaceno: !!r.zaplaceno,
-        poznamka: r.poznamka || '',
-        loni_kc: (r.loni_kc === null || r.loni_kc === undefined) ? null : Number(r.loni_kc),
-        loni_popis: r.loni_popis || '',
-        castka_kc: (r.castka_kc === null || r.castka_kc === undefined) ? '' : String(r.castka_kc),
-        kontakt_jak: r.kontakt_jak || '',
-        kontakt_datum: r.kontakt_datum || ''
-      };
-    });
+    radky = d.map(prevedRadek);
     vykresli();
     ukazatel(radky.length + ' lidí načteno');
     nactiOdkazy();
+    nactiHistorii().then(pocty, () => {});
   } catch(e){
     ukazatel('');
     hlaska('hlaska', String(e.message || e), 'chyba');
@@ -2890,11 +2979,18 @@ function ukazQr(r){
 }
 
 // ---- výpis
+function sedi(hodnota, volba){ return !volba || (volba === 'ano' ? !!hodnota : !hodnota); }
+
 function vykresli(){
   const q = el('hledat').value.trim().toLowerCase();
   const f = el('filtr').value;
+  const fF = el('fFormular').value, fD = el('fDomluva').value, fA = el('fFaktura').value;
+  [['fFormular', fF], ['fDomluva', fD], ['fFaktura', fA]].forEach(([id, v]) =>
+    el(id).classList.toggle('aktivni', !!v));
   const telo = el('telo');
   telo.innerHTML = '';
+
+  if(f === 'historie'){ vykresliHistorii(q, fF, fD, fA); pocty(); return; }
 
   SKUPINY.forEach(sk => {
     const lide = radky.filter(r => r.kat === sk[0]).filter(r => {
@@ -2906,13 +3002,14 @@ function vykresli(){
       if(f === 'nedotceno' && neco(r)) return false;
       if(f === 'bezcastky' && cisloNeboNull(r.castka_kc) !== null) return false;
       if(f === 'bezkontaktu' && r.kontakt_jak) return false;
+      if(!sedi(r.formular, fF) || !sedi(r.domluva, fD) || !sedi(r.faktura, fA)) return false;
       return true;
     }).sort((a, b) => a.kod.localeCompare(b.kod, 'cs') || a.jmeno.localeCompare(b.jmeno, 'cs'));
     if(!lide.length) return;
 
     const hl = document.createElement('tr');
     hl.className = 'skupina';
-    hl.innerHTML = '<td colspan="10">' + esc(sk[1]) + ' — ' + lide.length + '</td>';
+    hl.innerHTML = '<td colspan="11">' + esc(sk[1]) + ' — ' + lide.length + '</td>';
     telo.appendChild(hl);
 
     lide.forEach(r => {
@@ -2941,9 +3038,14 @@ function vykresli(){
         '<td data-popis="kontakt jak"><select class="kontakt" data-kjak="1">' + KONTAKTY.map(k =>
           '<option value="' + k + '"' + (r.kontakt_jak === k ? ' selected' : '') + '>' + (k || '—') + '</option>').join('') + '</select></td>' +
         '<td data-popis="datum kontaktu"><input type="date" class="datum" data-kdatum="1" value="' + esc(r.kontakt_datum) + '"></td>' +
-        '<td class="stav" data-popis="zaplaceno"><input type="checkbox" class="zapl" data-pole="zaplaceno"' + (r.zaplaceno ? ' checked' : '') + '></td>';
-      tr.querySelectorAll('input[type=checkbox]').forEach(chb => {
+        '<td class="stav" data-popis="zaplaceno"><input type="checkbox" class="zapl" data-pole="zaplaceno"' + (r.zaplaceno ? ' checked' : '') + '></td>' +
+        '<td class="stav" data-popis="vyřešeno"><input type="checkbox" class="vyres" data-vyreseno="1" title="Přesune řádek do historie. Vrátit zpět jde hned potom i přes filtr historie."></td>';
+      tr.querySelectorAll('input[type=checkbox][data-pole]').forEach(chb => {
         chb.addEventListener('change', () => uloz(r, chb.dataset.pole, chb.checked, chb));
+      });
+      const chbVyres = tr.querySelector('input[data-vyreseno]');
+      chbVyres.addEventListener('change', () => {
+        if(chbVyres.checked) doHistorie(r, chbVyres);
       });
       const polejak = tr.querySelector('select[data-kjak]');
       const poledat = tr.querySelector('input[data-kdatum]');
@@ -2981,7 +3083,7 @@ function vykresli(){
       const prad = document.createElement('tr');
       prad.className = 'poznrad';
       if(!maPozn) prad.style.display = 'none';
-      prad.innerHTML = '<td colspan="10" data-popis="poznámka"><textarea placeholder="co je s tímhle člověkem domluveno…">' +
+      prad.innerHTML = '<td colspan="11" data-popis="poznámka"><textarea placeholder="co je s tímhle člověkem domluveno…">' +
                        esc(r.poznamka) + '</textarea></td>';
       const pta = prad.querySelector('textarea');
       const ulozPozn = () => ulozPole(r, 'poznamka', pta.value.trim() || null, pta);
@@ -2997,6 +3099,54 @@ function vykresli(){
   });
 
   pocty();
+}
+
+async function vykresliHistorii(q, fF, fD, fA){
+  const telo = el('telo');
+  if(!historieNactena){
+    telo.innerHTML = '<tr><td colspan="11">Načítám historii…</td></tr>';
+    try { await nactiHistorii(); }
+    catch(e){ telo.innerHTML = ''; hlaska('hlaska', String(e.message || e), 'chyba'); return; }
+    if(el('filtr').value !== 'historie') return;   // mezitím se přepnulo jinam
+  }
+  const lide = historie.filter(r => {
+    if(q && !((r.jmeno + ' ' + r.kod).toLowerCase().includes(q))) return false;
+    return sedi(r.formular, fF) && sedi(r.domluva, fD) && sedi(r.faktura, fA);
+  });
+  telo.innerHTML = '';
+  if(!lide.length){
+    telo.innerHTML = '<tr><td colspan="11">V historii zatím nikdo není. Řádek se sem přesune, až u něj zaškrtnete vyřešeno.</td></tr>';
+    pocty();
+    return;
+  }
+  const hl = document.createElement('tr');
+  hl.className = 'skupina';
+  hl.innerHTML = '<td colspan="11">Vyřešeno a odloženo do historie — ' + lide.length + '</td>';
+  telo.appendChild(hl);
+
+  lide.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.className = 'zhistorie';
+    const c = cisloNeboNull(r.castka_kc);
+    const znacka = v => v ? '✓' : '';
+    tr.innerHTML =
+      '<td class="kdo"><span class="kod">' + esc(r.kod) + '</span>' + esc(r.jmeno) +
+        (r.kdy ? '<div class="pozn">vyřešeno ' + esc(r.kdy) + '</div>' : '') +
+        (r.poznamka ? '<div class="pozn">' + esc(r.poznamka) + '</div>' : '') + '</td>' +
+      '<td class="stav" data-popis="formulář">' + znacka(r.formular) + '</td>' +
+      '<td class="stav" data-popis="domluva">' + znacka(r.domluva) + '</td>' +
+      '<td class="stav" data-popis="faktura">' + znacka(r.faktura) + '</td>' +
+      '<td class="stav" data-popis="částka Kč">' + (c === null ? '' : kc(c)) + '</td>' +
+      '<td data-popis="číslo účtu">' + esc(r.ucet) + '</td>' +
+      '<td class="stav" data-popis="QR"></td>' +
+      '<td data-popis="kontakt jak">' + esc(r.kontakt_jak) + '</td>' +
+      '<td data-popis="datum kontaktu">' + esc(r.kontakt_datum) + '</td>' +
+      '<td class="stav" data-popis="zaplaceno">' + znacka(r.zaplaceno) + '</td>' +
+      '<td class="stav" data-popis="vyřešeno"><button class="sek vratit">vrátit</button></td>';
+    tr.querySelector('button.vratit').addEventListener('click', () => zHistorie(r.id));
+    telo.appendChild(tr);
+  });
+  pocty();   // kachli „v historii" umíme vyplnit až tady, načítá se na pozadí
 }
 
 function pocty(){
@@ -3018,6 +3168,7 @@ function pocty(){
   el('k6').textContent = kc(suma);
   el('k7').textContent = kc(suma - sumaZapl);
   el('k8').textContent = fa;
+  el('k9').textContent = historieNactena ? historie.length : '?';
 }
 
 // ---- hlídání rozepsaných polí
@@ -3110,6 +3261,7 @@ el('btnObnovit').addEventListener('click', nacti);
 el('btnOdhlasit').addEventListener('click', odhlasit);
 el('hledat').addEventListener('input', vykresli);
 el('filtr').addEventListener('change', vykresli);
+['fFormular','fDomluva','fFaktura'].forEach(id => el(id).addEventListener('change', vykresli));
 el('btnUlozitVse').addEventListener('click', ulozitVse);
 el('rokZnacka').textContent = ROK;
 el('rokZnacka2').textContent = ROK;

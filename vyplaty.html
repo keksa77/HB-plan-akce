@@ -45,6 +45,26 @@
   input.ucet:focus{outline:2px solid var(--hb);outline-offset:-1px}
   select.kontakt{width:100%;font:inherit;font-size:12.5px;padding:4px 4px;border:1px solid var(--line);border-radius:4px;background:#fff}
   input.datum{width:100%;font:inherit;font-size:12.5px;padding:4px 4px;border:1px solid var(--line);border-radius:4px}
+  .kdo .loni{display:inline-block;font-size:11.5px;color:var(--warn);border:1px solid #e2cfa4;background:#fdf7ea;border-radius:9px;
+             padding:0 6px;margin-top:2px;cursor:help}
+  .kdo .prevzit{font-size:11px;padding:0 5px;margin-left:4px;line-height:16px;border-radius:8px}
+  .kdo .pozntlac{font-size:11px;padding:0 6px;margin-top:3px;line-height:17px;border-radius:8px;display:inline-block}
+  .kdo .pozntlac.plna{background:var(--hb);color:#fff;border-color:var(--hb)}
+  tr.poznrad td{background:#fbf7f7;padding:4px 7px 9px}
+  tr.poznrad textarea{width:100%;font:inherit;font-size:13px;padding:5px 7px;border:1px solid var(--line);border-radius:4px;
+                      resize:vertical;min-height:42px;background:#fff}
+  tr.poznrad textarea:focus{outline:2px solid var(--hb);outline-offset:-1px}
+  .nulozeno{border-color:#c98a00 !important;background:#fffaf0 !important;box-shadow:inset 0 0 0 1px #eccf92}
+  .ulozeno{border-color:var(--ok) !important;background:#f1f9f3 !important}
+  .odkazy{background:#fff;border:1px solid var(--line);border-radius:6px;padding:9px 12px;margin-bottom:10px;
+          display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:13px}
+  .odkazy .rok{background:var(--hb);color:#fff;border-radius:10px;padding:1px 9px;font-size:12px;font-weight:600}
+  .odkazy label{display:flex;align-items:center;gap:5px;color:#6b6260;font-size:12px;flex:1 1 280px}
+  .odkazy input{flex:1;font:inherit;font-size:12.5px;padding:4px 6px;border:1px solid var(--line);border-radius:4px;min-width:120px}
+  .odkazy a{color:var(--hb);font-size:12px;white-space:nowrap}
+  #pocitadlo{font-size:13px;font-weight:600}
+  #pocitadlo.cekam{color:#8a5a00}
+  #pocitadlo.hotovo{color:var(--ok)}
   select.kontakt:focus,input.datum:focus{outline:2px solid var(--hb);outline-offset:-1px}
   button.qr{padding:3px 8px;font-size:12px}
   #zaves{position:fixed;inset:0;background:rgba(30,24,22,.55);display:none;align-items:center;justify-content:center;z-index:20;padding:16px}
@@ -75,6 +95,8 @@
     tbody tr:not(.skupina) td[data-popis]::before{content:attr(data-popis);flex:0 0 108px;font-size:12px;color:#6b6260}
     input.kc{max-width:110px}
     input.ucet,select.kontakt,input.datum{max-width:190px}
+    tr.poznrad td{display:block;padding:4px 0 8px}
+    tr.poznrad td[data-popis]::before{content:none}
   }
 </style>
 <script>
@@ -2383,9 +2405,11 @@ var qrcode = function() {
 <div class="wrap">
   <h1>HB26 — postup u pomocníků</h1>
   <div class="intro">
-    Tahle verze si nic nepamatuje v prohlížeči — <strong>každé kliknutí se rovnou ukládá do databáze</strong>
-    (Supabase, tabulka <code>vyplaty</code>, navázaná na členy grup). Částka je číslo — napište ji a klikněte jinam. <strong>Formulář a domluva se vylučují</strong>: zaškrtnutí jednoho odškrtne druhé. Otevřete to kdekoli, přihlásíte se
-    stejným účtem jako do plánovače a vidíte ten samý stav.
+    Všechno se ukládá do databáze (Supabase, tabulka <code>vyplaty</code>, navázaná na členy grup) — otevřete to kdekoli,
+    přihlásíte se stejným účtem jako do plánovače a vidíte ten samý stav. <strong>Zaškrtávátka se ukládají hned.</strong>
+    Do psaných polí (částka, účet, poznámka) můžete psát a pak dát <strong>Uložit vše</strong> dole, nebo jen odejít z pole —
+    uloží se to taky. Rozepsané pole je žluté, uložené krátce zezelená. <strong>Formulář a domluva se vylučují</strong>,
+    faktura je na nich nezávislá. Žlutě je u jména <strong>loňská částka z výpisů HB25</strong> — tlačítkem „použít" ji přenesete do letošní.
   </div>
 
   <div class="box" id="prihlaseni">
@@ -2398,10 +2422,18 @@ var qrcode = function() {
   </div>
 
   <div id="appka">
+    <div class="odkazy">
+      <span class="rok" id="rokZnacka">HB26</span>
+      <label>dotazník <input type="url" id="odkazFormular" placeholder="https://forms.gle/…">
+        <a id="otevritFormular" href="#" target="_blank" rel="noopener" style="display:none">otevřít</a></label>
+      <label>odpovědi (tabulka) <input type="url" id="odkazOdpovedi" placeholder="https://docs.google.com/spreadsheets/…">
+        <a id="otevritOdpovedi" href="#" target="_blank" rel="noopener" style="display:none">otevřít</a></label>
+    </div>
     <div class="panel">
       <div class="mriz" style="margin-bottom:7px">
         <div class="kachle">formulář<b id="k1">0</b></div>
         <div class="kachle">domluva<b id="k2">0</b></div>
+        <div class="kachle">faktura<b id="k8">0</b></div>
         <div class="kachle">s částkou<b id="k3">0</b></div>
         <div class="kachle">zaplaceno<b id="k4">0</b></div>
         <div class="kachle">nedotčeno<b id="k5">0</b></div>
@@ -2435,6 +2467,7 @@ var qrcode = function() {
             <th class="kdo" style="width:auto;min-width:132px">Grupa a jméno</th>
             <th class="stav" style="width:56px">formu&shy;lář</th>
             <th class="stav" style="width:58px">do&shy;mluva</th>
+            <th class="stav" style="width:54px">fak&shy;tura</th>
             <th class="stav" style="width:86px">částka Kč</th>
             <th style="width:148px">číslo účtu</th>
             <th class="stav" style="width:46px">QR</th>
@@ -2449,7 +2482,9 @@ var qrcode = function() {
     <div class="hlaska" id="hlaska"></div>
 
     <div class="lista">
-      <button onclick="csv()">Stáhnout CSV</button>
+      <button id="btnUlozitVse" disabled>Uložit vše</button>
+      <span id="pocitadlo" class="hotovo">vše uloženo</span>
+      <button class="sek" onclick="csv()">Stáhnout CSV</button>
       <button class="sek" onclick="kopiruj()">Zkopírovat přehled</button>
       <button class="sek" id="btnOdhlasit">Odhlásit</button>
       <span id="stav" style="font-size:13px;color:var(--hb)"></span>
@@ -2462,7 +2497,8 @@ const URL_BASE = 'https://rjuxqlyckikuxfaeaozf.supabase.co';
 const KLIC = 'sb_publishable_wsSsZ1hCLbrRThr8Co4xbg_W9yAucb6';
 const ROK = 'HB26';
 
-const ZASKRTAVATKA = [['formular','formulář'], ['domluva','domluva'], ['zaplaceno','zaplaceno']];
+const ZASKRTAVATKA = [['formular','formulář'], ['domluva','domluva'], ['faktura','faktura'], ['zaplaceno','zaplaceno']];
+const KLIC_SEZENI = 'hb26_vyplaty_sezeni';
 const SKUPINY = [
   ['H', 'Pomocníci a traséři — grupy G'],
   ['M', 'Místní na předávce — P'],
@@ -2473,7 +2509,9 @@ const SLUZBY = ['FOTO','VIDEO','ZVUK','GASTRO','IT','MERCH'];
 const KONTAKTY = ['', 'WhatsApp', 'mail', 'telefon', 'SMS', 'osobně', 'jinak'];
 
 let token = null;
+let obnovovaci = null;
 let radky = [];
+const rozepsane = new Map();   // pole -> funkce, která ho uloží
 
 function esc(t){ return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 function el(id){ return document.getElementById(id); }
@@ -2490,7 +2528,7 @@ function kategorie(kod){
   if(SLUZBY.indexOf(kod) > -1) return 'S';
   return 'H';
 }
-function neco(r){ return r.formular || r.domluva || r.zaplaceno || cisloNeboNull(r.castka_kc) !== null || !!r.kontakt_jak; }
+function neco(r){ return r.formular || r.domluva || r.faktura || r.zaplaceno || cisloNeboNull(r.castka_kc) !== null || !!r.kontakt_jak || !!r.poznamka; }
 function cisloNeboNull(v){ const t = String(v == null ? '' : v).trim().replace(',', '.'); if(t === '') return null; const x = parseFloat(t); return isFinite(x) ? x : null; }
 function kc(v){ return (Math.round(Number(v)) || 0).toLocaleString('cs-CZ') + ' Kč'; }
 
@@ -2509,6 +2547,7 @@ async function prihlasit(){
     const d = await odp.json();
     if(!odp.ok || !d.access_token) throw new Error(d.error_description || d.msg || d.message || 'Přihlášení se nepovedlo.');
     token = d.access_token;
+    ulozSezeni(d);
     el('heslo').value = '';
     hlaska('hlaskaLogin', '', '');
     el('prihlaseni').style.display = 'none';
@@ -2521,7 +2560,48 @@ async function prihlasit(){
   }
 }
 
+function ulozSezeni(d){
+  obnovovaci = d.refresh_token || obnovovaci;
+  try {
+    localStorage.setItem(KLIC_SEZENI, JSON.stringify({
+      token: d.access_token, obnova: obnovovaci,
+      platiDo: Date.now() + ((d.expires_in || 3600) - 60) * 1000
+    }));
+  } catch(e){ /* prohlížeč nedovolí ukládat — nevadí, jen se bude přihlašovat pokaždé */ }
+}
+function zapomenSezeni(){
+  obnovovaci = null;
+  try { localStorage.removeItem(KLIC_SEZENI); } catch(e){}
+}
+async function obnovSezeni(){
+  let ulozene = null;
+  try { ulozene = JSON.parse(localStorage.getItem(KLIC_SEZENI) || 'null'); } catch(e){ return false; }
+  if(!ulozene || !ulozene.obnova) return false;
+  obnovovaci = ulozene.obnova;
+  if(ulozene.token && ulozene.platiDo > Date.now()){
+    token = ulozene.token;
+    return true;
+  }
+  try {
+    const odp = await fetch(URL_BASE + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: {'apikey': KLIC, 'Content-Type': 'application/json'},
+      body: JSON.stringify({refresh_token: obnovovaci})
+    });
+    const d = await odp.json();
+    if(!odp.ok || !d.access_token) throw new Error('vypršelo');
+    token = d.access_token;
+    ulozSezeni(d);
+    return true;
+  } catch(e){
+    zapomenSezeni();
+    return false;
+  }
+}
+
 function odhlasit(){
+  zapomenSezeni();
+  rozepsane.clear(); prepocitejRozepsane();
   token = null; radky = [];
   el('appka').style.display = 'none';
   el('prihlaseni').style.display = 'block';
@@ -2533,13 +2613,60 @@ function hlavicky(){
   return {'apikey': KLIC, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'};
 }
 
+// ---- odkazy navázané na ročník
+function zobrazOdkaz(poleId, odkazId){
+  const v = el(poleId).value.trim();
+  const a = el(odkazId);
+  const platny = /^https?:\/\//i.test(v);
+  a.style.display = platny ? '' : 'none';
+  if(platny) a.href = v;
+}
+async function nactiOdkazy(){
+  try {
+    const odp = await fetch(URL_BASE + '/rest/v1/nastaveni_rocniku?rok=eq.' + ROK + '&select=odkaz_formular,odkaz_odpovedi',
+                            {headers: hlavicky()});
+    if(!odp.ok) return;
+    const d = await odp.json();
+    const n = d[0] || {};
+    el('odkazFormular').value = n.odkaz_formular || '';
+    el('odkazOdpovedi').value = n.odkaz_odpovedi || '';
+    zobrazOdkaz('odkazFormular', 'otevritFormular');
+    zobrazOdkaz('odkazOdpovedi', 'otevritOdpovedi');
+  } catch(e){ /* odkazy nejsou kritické, tabulka jede dál */ }
+}
+async function ulozOdkaz(pole, prvek){
+  const hodnota = prvek.value.trim() || null;
+  if(hodnota && !/^https?:\/\//i.test(hodnota)){
+    hlaska('hlaska', 'Odkaz musí začínat https:// — neuloženo.', 'chyba');
+    return;
+  }
+  ukazatel('Ukládám…');
+  try {
+    const telo = {rok: ROK, upraveno: new Date().toISOString()};
+    telo[pole] = hodnota;
+    const odp = await fetch(URL_BASE + '/rest/v1/nastaveni_rocniku?on_conflict=rok', {
+      method: 'POST',
+      headers: Object.assign({}, hlavicky(), {'Prefer': 'resolution=merge-duplicates,return=minimal'}),
+      body: JSON.stringify(telo)
+    });
+    if(!odp.ok) throw new Error('Odkaz se nepodařilo uložit (' + odp.status + ').');
+    ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
+    hlaska('hlaska', '', '');
+    hotovo(prvek);
+    zobrazOdkaz(prvek.id, prvek.id === 'odkazFormular' ? 'otevritFormular' : 'otevritOdpovedi');
+  } catch(e){
+    ukazatel('');
+    hlaska('hlaska', String(e.message || e), 'chyba');
+  }
+}
+
 // ---- data
 async function nacti(){
   ukazatel('Načítám…');
   hlaska('hlaska', '', '');
   try {
     const dotaz = '/rest/v1/vyplaty?rok=eq.' + ROK +
-      '&select=id,clen_id,jmeno,kod_tymu,formular,domluva,castka_kc,zaplaceno,ucet,kontakt_jak,kontakt_datum,clenove_tymu(jmeno,kod_tymu,email,telefon,cislo_uctu)';
+      '&select=id,clen_id,jmeno,kod_tymu,formular,domluva,faktura,castka_kc,zaplaceno,poznamka,loni_kc,loni_popis,ucet,kontakt_jak,kontakt_datum,clenove_tymu(jmeno,kod_tymu,email,telefon,cislo_uctu)';
     const odp = await fetch(URL_BASE + dotaz, {headers: hlavicky()});
     if(!odp.ok) throw new Error('Databáze odpověděla ' + odp.status + '. Zkuste Načíst znovu, nebo se přihlaste znovu.');
     const d = await odp.json();
@@ -2556,7 +2683,10 @@ async function nacti(){
         ucet: (r.ucet || c.cislo_uctu || ''),
         maClena: !!r.clen_id,
         clenId: r.clen_id,
-        formular: !!r.formular, domluva: !!r.domluva, zaplaceno: !!r.zaplaceno,
+        formular: !!r.formular, domluva: !!r.domluva, faktura: !!r.faktura, zaplaceno: !!r.zaplaceno,
+        poznamka: r.poznamka || '',
+        loni_kc: (r.loni_kc === null || r.loni_kc === undefined) ? null : Number(r.loni_kc),
+        loni_popis: r.loni_popis || '',
         castka_kc: (r.castka_kc === null || r.castka_kc === undefined) ? '' : String(r.castka_kc),
         kontakt_jak: r.kontakt_jak || '',
         kontakt_datum: r.kontakt_datum || ''
@@ -2564,6 +2694,7 @@ async function nacti(){
     });
     vykresli();
     ukazatel(radky.length + ' lidí načteno');
+    nactiOdkazy();
   } catch(e){
     ukazatel('');
     hlaska('hlaska', String(e.message || e), 'chyba');
@@ -2571,7 +2702,7 @@ async function nacti(){
 }
 
 async function uloz(radek, pole, hodnota, checkbox){
-  // formulář a domluva se vylučují — když zaškrtnu jedno, druhé se odškrtne
+  // formulář a domluva se vylučují — když zaškrtnu jedno, druhé se odškrtne; faktura je na nich nezávislá
   const telo = {};
   telo[pole] = hodnota;
   if(hodnota && pole === 'formular') telo.domluva = false;
@@ -2612,6 +2743,7 @@ async function ulozCastku(radek, hodnota, pole){
     if(!odp.ok) throw new Error('Uložení částky se nepovedlo (' + odp.status + ').');
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
     hlaska('hlaska', '', '');
+    hotovo(pole);
     pocty();
   } catch(e){
     radek.castka_kc = puvodni;
@@ -2641,8 +2773,11 @@ async function ulozUcet(radek, hodnota, pole){
     });
     if(!odp.ok) throw new Error('Uložení účtu se nepovedlo (' + odp.status + ').');
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
+    hotovo(pole);
     hlaska('hlaska', '', '');
     vykresli();
+    // překreslení vyrobilo nové políčko — zelené potvrzení dej na ně
+    hotovo(document.querySelector('tr[data-radek="' + radek.id + '"] input.ucet'));
   } catch(e){
     radek.ucet = puvodni;
     if(pole) pole.value = puvodni;
@@ -2665,7 +2800,8 @@ async function ulozPole(radek, pole, hodnota, prvek){
     if(!odp.ok) throw new Error('Uložení se nepovedlo (' + odp.status + ').');
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
     hlaska('hlaska', '', '');
-    if(prvek) prvek.value = radek[pole];
+    if(prvek && prvek.tagName !== 'TEXTAREA') prvek.value = radek[pole];
+    hotovo(prvek);
     pocty();
   } catch(e){
     radek[pole] = puvodni;
@@ -2755,20 +2891,29 @@ function vykresli(){
 
     const hl = document.createElement('tr');
     hl.className = 'skupina';
-    hl.innerHTML = '<td colspan="9">' + esc(sk[1]) + ' — ' + lide.length + '</td>';
+    hl.innerHTML = '<td colspan="10">' + esc(sk[1]) + ' — ' + lide.length + '</td>';
     telo.appendChild(hl);
 
     lide.forEach(r => {
       const tr = document.createElement('tr');
+      tr.dataset.radek = r.id;
       if(r.zaplaceno) tr.className = 'hotovo';
       const drobne = [];
       if(!r.email) drobne.push('bez e-mailu');
       if(!r.ucet) drobne.push('bez čísla účtu');
+      const loniHtml = (r.loni_kc !== null)
+        ? '<div><span class="loni" title="' + esc(r.loni_popis || 'loňská výplata HB25') + '">loni ' + kc(r.loni_kc) + '</span>' +
+          '<button class="sek prevzit" data-prevzit="1" title="přenést loňskou částku do letošní částky">použít</button></div>'
+        : (r.loni_popis ? '<div><span class="loni" title="' + esc(r.loni_popis) + '">loni bez výplaty ⓘ</span></div>' : '');
+      const maPozn = !!(r.poznamka && r.poznamka.trim());
       tr.innerHTML =
         '<td class="kdo"><span class="kod">' + esc(r.kod) + '</span>' + esc(r.jmeno) +
-          (drobne.length ? '<div class="pozn">' + esc(drobne.join(' · ')) + '</div>' : '') + '</td>' +
+          (drobne.length ? '<div class="pozn">' + esc(drobne.join(' · ')) + '</div>' : '') + loniHtml +
+          '<div><button class="sek pozntlac' + (maPozn ? ' plna' : '') + '" data-pozn="1">' +
+          (maPozn ? '✎ poznámka' : '+ poznámka') + '</button></div></td>' +
         '<td class="stav" data-popis="formulář"><input type="checkbox" data-pole="formular"' + (r.formular ? ' checked' : '') + '></td>' +
         '<td class="stav" data-popis="domluva"><input type="checkbox" data-pole="domluva"' + (r.domluva ? ' checked' : '') + '></td>' +
+        '<td class="stav" data-popis="faktura"><input type="checkbox" data-pole="faktura"' + (r.faktura ? ' checked' : '') + '></td>' +
         '<td class="stav" data-popis="částka Kč"><input type="text" inputmode="decimal" class="kc" data-kc="1" value="' + esc(r.castka_kc) + '" placeholder="Kč"></td>' +
         '<td data-popis="číslo účtu"><input type="text" class="ucet" data-ucet="1" value="' + esc(r.ucet) + '" placeholder="123456789/0800"></td>' +
         '<td class="stav" data-popis="QR platba"><button class="sek qr" data-qr="1">QR</button></td>' +
@@ -2794,12 +2939,39 @@ function vykresli(){
       tr.querySelector('button[data-qr]').addEventListener('click', () => ukazQr(r));
 
       const polekc = tr.querySelector('input[data-kc]');
-      polekc.addEventListener('change', () => {
+      const ulozKc = () => {
         const hod = cisloNeboNull(polekc.value);
         polekc.value = (hod === null) ? '' : String(hod);
-        ulozCastku(r, hod, polekc);
+        return ulozCastku(r, hod, polekc);
+      };
+      polekc.addEventListener('change', ulozKc);
+      hlidej(polekc, ulozKc);
+      hlidej(poleucet, () => ulozUcet(r, poleucet.value.trim(), poleucet));
+
+      const prevzit = tr.querySelector('button[data-prevzit]');
+      if(prevzit) prevzit.addEventListener('click', () => {
+        polekc.value = String(r.loni_kc);
+        ulozKc();
       });
+
       telo.appendChild(tr);
+
+      // řádek s poznámkou — rozbalí se tlačítkem, sám je vidět, když poznámka není prázdná
+      const prad = document.createElement('tr');
+      prad.className = 'poznrad';
+      if(!maPozn) prad.style.display = 'none';
+      prad.innerHTML = '<td colspan="10" data-popis="poznámka"><textarea placeholder="co je s tímhle člověkem domluveno…">' +
+                       esc(r.poznamka) + '</textarea></td>';
+      const pta = prad.querySelector('textarea');
+      const ulozPozn = () => ulozPole(r, 'poznamka', pta.value.trim() || null, pta);
+      pta.addEventListener('change', ulozPozn);
+      hlidej(pta, ulozPozn);
+      tr.querySelector('button[data-pozn]').addEventListener('click', () => {
+        const skryty = prad.style.display === 'none';
+        prad.style.display = skryty ? '' : 'none';
+        if(skryty) pta.focus();
+      });
+      telo.appendChild(prad);
     });
   });
 
@@ -2807,10 +2979,11 @@ function vykresli(){
 }
 
 function pocty(){
-  let f = 0, d = 0, z = 0, sCastkou = 0, nic = 0, suma = 0, sumaZapl = 0;
+  let f = 0, d = 0, fa = 0, z = 0, sCastkou = 0, nic = 0, suma = 0, sumaZapl = 0;
   radky.forEach(r => {
     if(r.formular) f++;
     if(r.domluva) d++;
+    if(r.faktura) fa++;
     if(r.zaplaceno) z++;
     const c = cisloNeboNull(r.castka_kc);
     if(c !== null){ sCastkou++; suma += c; if(r.zaplaceno) sumaZapl += c; }
@@ -2823,6 +2996,41 @@ function pocty(){
   el('k5').textContent = nic;
   el('k6').textContent = kc(suma);
   el('k7').textContent = kc(suma - sumaZapl);
+  el('k8').textContent = fa;
+}
+
+// ---- hlídání rozepsaných polí
+function hlidej(pole, ulozFunkci){
+  pole.addEventListener('input', () => {
+    pole.classList.remove('ulozeno');
+    pole.classList.add('nulozeno');
+    rozepsane.set(pole, ulozFunkci);
+    prepocitejRozepsane();
+  });
+}
+function hotovo(pole){
+  if(!pole) return;
+  rozepsane.delete(pole);
+  pole.classList.remove('nulozeno');
+  pole.classList.add('ulozeno');
+  setTimeout(() => pole.classList.remove('ulozeno'), 2000);
+  prepocitejRozepsane();
+}
+function prepocitejRozepsane(){
+  const n = rozepsane.size;
+  const p = el('pocitadlo');
+  p.textContent = n ? ('neuloženo: ' + n) : 'vše uloženo';
+  p.className = n ? 'cekam' : 'hotovo';
+  el('btnUlozitVse').disabled = !n;
+}
+async function ulozitVse(){
+  // chvilku počkej — kliknutím na tlačítko odešlo rozepsané pole, to se uloží samo
+  el('btnUlozitVse').disabled = true;
+  await new Promise(r => setTimeout(r, 250));
+  const ulohy = Array.from(rozepsane.values());
+  el('btnUlozitVse').disabled = true;
+  for(const u of ulohy){ try { await u(); } catch(e){} }
+  prepocitejRozepsane();
 }
 
 function stahni(jm, obsah, typ){
@@ -2832,10 +3040,10 @@ function stahni(jm, obsah, typ){
 }
 
 function csv(){
-  const l = [['Skupina','Kod','Jmeno','Formular','Domluva','Castka Kc','Zaplaceno','Cislo uctu','Kontakt jak','Datum kontaktu'].join(';')];
+  const l = [['Skupina','Kod','Jmeno','Formular','Domluva','Faktura','Castka','Loni HB25','Zaplaceno','Ucet','Kontakt jak','Datum kontaktu','Poznamka'].join(';')];
   SKUPINY.forEach(sk => {
     radky.filter(r => r.kat === sk[0]).forEach(r => {
-      l.push([sk[1], r.kod, r.jmeno, r.formular?'ano':'', r.domluva?'ano':'', r.castka_kc || '', r.zaplaceno?'ano':'', r.ucet || '', r.kontakt_jak || '', r.kontakt_datum || '']
+      l.push([sk[1], r.kod, r.jmeno, r.formular?'ano':'', r.domluva?'ano':'', r.faktura?'ano':'', r.castka_kc || '', r.loni_kc === null ? '' : r.loni_kc, r.zaplaceno?'ano':'', r.ucet || '', r.kontakt_jak || '', r.kontakt_datum || '', r.poznamka || '']
         .map(x => '"' + String(x == null ? '' : x).replace(/"/g,'""') + '"').join(';'));
     });
   });
@@ -2854,11 +3062,13 @@ function kopiruj(){
       const c = cisloNeboNull(r.castka_kc);
       if(c !== null) zn.push(kc(c));
       if(r.kontakt_jak) zn.push('kontakt ' + r.kontakt_jak + (r.kontakt_datum ? ' ' + r.kontakt_datum : ''));
+      if(r.loni_kc !== null) zn.push('loni ' + kc(r.loni_kc));
       t.push('- ' + r.kod + ' ' + r.jmeno + ': ' + zn.join(', '));
+      if(r.poznamka) t.push('    ' + r.poznamka.replace(/\s+/g, ' '));
     });
     t.push('');
   });
-  t.push('Formulář ' + el('k1').textContent + ' · domluva ' + el('k2').textContent +
+  t.push('Formulář ' + el('k1').textContent + ' · domluva ' + el('k2').textContent + ' · faktura ' + el('k8').textContent +
          ' · s částkou ' + el('k3').textContent + ' · zaplaceno ' + el('k4').textContent +
          ' · nedotčeno ' + el('k5').textContent);
   t.push('Celkem ' + el('k6').textContent + ' · zbývá zaplatit ' + el('k7').textContent);
@@ -2879,6 +3089,32 @@ el('btnObnovit').addEventListener('click', nacti);
 el('btnOdhlasit').addEventListener('click', odhlasit);
 el('hledat').addEventListener('input', vykresli);
 el('filtr').addEventListener('change', vykresli);
+el('btnUlozitVse').addEventListener('click', ulozitVse);
+el('rokZnacka').textContent = ROK;
+[['odkazFormular','odkaz_formular'], ['odkazOdpovedi','odkaz_odpovedi']].forEach(([id, sloupec]) => {
+  const prvek = el(id);
+  const ulozit = () => ulozOdkaz(sloupec, prvek);
+  prvek.addEventListener('change', ulozit);
+  prvek.addEventListener('keydown', e => { if(e.key === 'Enter') prvek.blur(); });
+  hlidej(prvek, ulozit);
+});
+window.addEventListener('beforeunload', e => {
+  if(rozepsane.size){ e.preventDefault(); e.returnValue = ''; }
+});
+
+// přihlášení z minula — ať se nemusí ťukat heslo pokaždé
+(async () => {
+  hlaska('hlaskaLogin', 'Zkouším navázat na minulé přihlášení…', 'info');
+  const slo = await obnovSezeni();
+  if(slo){
+    hlaska('hlaskaLogin', '', '');
+    el('prihlaseni').style.display = 'none';
+    el('appka').style.display = 'block';
+    await nacti();
+  } else {
+    hlaska('hlaskaLogin', '', '');
+  }
+})();
 </script>
 </body>
 </html>

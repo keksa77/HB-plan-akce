@@ -62,6 +62,14 @@
   .odkazy label{display:flex;align-items:center;gap:5px;color:#6b6260;font-size:12px;flex:1 1 280px}
   .odkazy input{flex:1;font:inherit;font-size:12.5px;padding:4px 6px;border:1px solid var(--line);border-radius:4px;min-width:120px}
   .odkazy a{color:var(--hb);font-size:12px;white-space:nowrap}
+  .odkazy .prepinac{padding:4px 11px;font-size:12.5px;flex:0 0 auto}
+  #zpravaBox{background:#fff;border:1px solid var(--line);border-radius:6px;padding:11px 13px;margin-bottom:10px;display:none}
+  #zpravaBox.vidno{display:block}
+  #zpravaBox .hlava{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:7px;font-size:12.5px;color:#6b6260}
+  #zpravaBox textarea{width:100%;font:inherit;font-size:13.5px;line-height:1.45;padding:8px 10px;border:1px solid var(--line);
+                      border-radius:5px;resize:vertical;min-height:130px;background:#fff}
+  #zpravaBox textarea:focus{outline:2px solid var(--hb);outline-offset:-1px}
+  #zpravaStav{font-size:12.5px;color:var(--ok);font-weight:600}
   #pocitadlo{font-size:13px;font-weight:600}
   #pocitadlo.cekam{color:#8a5a00}
   #pocitadlo.hotovo{color:var(--ok)}
@@ -2409,7 +2417,8 @@ var qrcode = function() {
     přihlásíte se stejným účtem jako do plánovače a vidíte ten samý stav. <strong>Zaškrtávátka se ukládají hned.</strong>
     Do psaných polí (částka, účet, poznámka) můžete psát a pak dát <strong>Uložit vše</strong> dole, nebo jen odejít z pole —
     uloží se to taky. Rozepsané pole je žluté, uložené krátce zezelená. <strong>Formulář a domluva se vylučují</strong>,
-    faktura je na nich nezávislá. Žlutě je u jména <strong>loňská částka z výpisů HB25</strong> — tlačítkem „použít" ji přenesete do letošní.
+    faktura je na nich nezávislá. Text zprávy na WhatsApp je pod tlačítkem nahoře — dá se upravit i zkopírovat.
+    Žlutě je u jména <strong>loňská částka z výpisů HB25</strong> — tlačítkem „použít" ji přenesete do letošní.
   </div>
 
   <div class="box" id="prihlaseni">
@@ -2428,6 +2437,16 @@ var qrcode = function() {
         <a id="otevritFormular" href="#" target="_blank" rel="noopener" style="display:none">otevřít</a></label>
       <label>odpovědi (tabulka) <input type="url" id="odkazOdpovedi" placeholder="https://docs.google.com/spreadsheets/…">
         <a id="otevritOdpovedi" href="#" target="_blank" rel="noopener" style="display:none">otevřít</a></label>
+      <button class="sek prepinac" id="btnZprava">zpráva na WhatsApp</button>
+    </div>
+    <div id="zpravaBox">
+      <div class="hlava">
+        <strong style="color:var(--hb)">Zpráva, kterou posílám lidem na WhatsApp</strong>
+        <span>uloží se k ročníku <span id="rokZnacka2">HB26</span></span>
+        <button class="sek prepinac" id="btnKopirovatZpravu" style="margin-left:auto">Zkopírovat zprávu</button>
+        <span id="zpravaStav"></span>
+      </div>
+      <textarea id="zpravaText" placeholder="text zprávy…"></textarea>
     </div>
     <div class="panel">
       <div class="mriz" style="margin-bottom:7px">
@@ -2623,20 +2642,21 @@ function zobrazOdkaz(poleId, odkazId){
 }
 async function nactiOdkazy(){
   try {
-    const odp = await fetch(URL_BASE + '/rest/v1/nastaveni_rocniku?rok=eq.' + ROK + '&select=odkaz_formular,odkaz_odpovedi',
+    const odp = await fetch(URL_BASE + '/rest/v1/nastaveni_rocniku?rok=eq.' + ROK + '&select=odkaz_formular,odkaz_odpovedi,zprava_whatsapp',
                             {headers: hlavicky()});
     if(!odp.ok) return;
     const d = await odp.json();
     const n = d[0] || {};
     el('odkazFormular').value = n.odkaz_formular || '';
     el('odkazOdpovedi').value = n.odkaz_odpovedi || '';
+    el('zpravaText').value = n.zprava_whatsapp || '';
     zobrazOdkaz('odkazFormular', 'otevritFormular');
     zobrazOdkaz('odkazOdpovedi', 'otevritOdpovedi');
   } catch(e){ /* odkazy nejsou kritické, tabulka jede dál */ }
 }
 async function ulozOdkaz(pole, prvek){
-  const hodnota = prvek.value.trim() || null;
-  if(hodnota && !/^https?:\/\//i.test(hodnota)){
+  const hodnota = (pole === 'zprava_whatsapp' ? prvek.value : prvek.value.trim()) || null;
+  if(pole !== 'zprava_whatsapp' && hodnota && !/^https?:\/\//i.test(hodnota)){
     hlaska('hlaska', 'Odkaz musí začínat https:// — neuloženo.', 'chyba');
     return;
   }
@@ -2653,7 +2673,8 @@ async function ulozOdkaz(pole, prvek){
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
     hlaska('hlaska', '', '');
     hotovo(prvek);
-    zobrazOdkaz(prvek.id, prvek.id === 'odkazFormular' ? 'otevritFormular' : 'otevritOdpovedi');
+    if(prvek.id === 'odkazFormular') zobrazOdkaz(prvek.id, 'otevritFormular');
+    if(prvek.id === 'odkazOdpovedi') zobrazOdkaz(prvek.id, 'otevritOdpovedi');
   } catch(e){
     ukazatel('');
     hlaska('hlaska', String(e.message || e), 'chyba');
@@ -3091,11 +3112,33 @@ el('hledat').addEventListener('input', vykresli);
 el('filtr').addEventListener('change', vykresli);
 el('btnUlozitVse').addEventListener('click', ulozitVse);
 el('rokZnacka').textContent = ROK;
-[['odkazFormular','odkaz_formular'], ['odkazOdpovedi','odkaz_odpovedi']].forEach(([id, sloupec]) => {
+el('rokZnacka2').textContent = ROK;
+el('btnZprava').addEventListener('click', () => {
+  const box = el('zpravaBox');
+  box.classList.toggle('vidno');
+  if(box.classList.contains('vidno')) el('zpravaText').focus();
+});
+el('btnKopirovatZpravu').addEventListener('click', () => {
+  const txt = el('zpravaText').value;
+  const hotovoKopie = () => {
+    el('zpravaStav').textContent = 'zkopírováno';
+    setTimeout(() => { el('zpravaStav').textContent = ''; }, 2500);
+  };
+  const zaloha = () => {
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch(e){}
+    ta.remove(); hotovoKopie();
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(hotovoKopie, zaloha);
+  } else { zaloha(); }
+});
+[['odkazFormular','odkaz_formular'], ['odkazOdpovedi','odkaz_odpovedi'], ['zpravaText','zprava_whatsapp']].forEach(([id, sloupec]) => {
   const prvek = el(id);
   const ulozit = () => ulozOdkaz(sloupec, prvek);
   prvek.addEventListener('change', ulozit);
-  prvek.addEventListener('keydown', e => { if(e.key === 'Enter') prvek.blur(); });
+  if(prvek.tagName !== 'TEXTAREA') prvek.addEventListener('keydown', e => { if(e.key === 'Enter') prvek.blur(); });
   hlidej(prvek, ulozit);
 });
 window.addEventListener('beforeunload', e => {

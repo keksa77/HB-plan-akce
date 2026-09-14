@@ -80,13 +80,14 @@
   .odkazy input{flex:1;font:inherit;font-size:12.5px;padding:4px 6px;border:1px solid var(--line);border-radius:4px;min-width:120px}
   .odkazy a{color:var(--hb);font-size:12px;white-space:nowrap}
   .odkazy .prepinac{padding:4px 11px;font-size:12.5px;flex:0 0 auto}
-  #zpravaBox{background:#fff;border:1px solid var(--line);border-radius:6px;padding:11px 13px;margin-bottom:10px;display:none}
-  #zpravaBox.vidno{display:block}
-  #zpravaBox .hlava{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:7px;font-size:12.5px;color:#6b6260}
-  #zpravaBox textarea{width:100%;font:inherit;font-size:13.5px;line-height:1.45;padding:8px 10px;border:1px solid var(--line);
+  .zpravaBox{background:#fff;border:1px solid var(--line);border-radius:6px;padding:11px 13px;margin-bottom:10px;display:none}
+  .zpravaBox.vidno{display:block}
+  .zpravaBox .hlava{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:7px;font-size:12.5px;color:#6b6260}
+  .zpravaBox textarea{width:100%;font:inherit;font-size:13.5px;line-height:1.45;padding:8px 10px;border:1px solid var(--line);
                       border-radius:5px;resize:vertical;min-height:130px;background:#fff}
-  #zpravaBox textarea:focus{outline:2px solid var(--hb);outline-offset:-1px}
-  #zpravaStav{font-size:12.5px;color:var(--ok);font-weight:600}
+  .zpravaBox textarea:focus{outline:2px solid var(--hb);outline-offset:-1px}
+  .zpravaBox .stav{font-size:12.5px;color:var(--ok);font-weight:600}
+  .odkazy .prepinac.otevreno{background:var(--hb);color:#fff}
   #pocitadlo{font-size:13px;font-weight:600}
   #pocitadlo.cekam{color:#8a5a00}
   #pocitadlo.hotovo{color:var(--ok)}
@@ -2445,7 +2446,8 @@ var qrcode = function() {
     přihlásíte se stejným účtem jako do plánovače a vidíte ten samý stav. <strong>Zaškrtávátka se ukládají hned.</strong>
     Do psaných polí (částka, účet, poznámka) můžete psát a pak dát <strong>Uložit vše</strong> dole, nebo jen odejít z pole —
     uloží se to taky. Rozepsané pole je žluté, uložené krátce zezelená. <strong>Formulář a domluva se vylučují</strong>,
-    faktura je na nich nezávislá. Text zprávy na WhatsApp je pod tlačítkem nahoře — dá se upravit i zkopírovat.
+    faktura je na nich nezávislá. Nahoře jsou tři zprávy na WhatsApp — <strong>WA-formulář</strong>, <strong>WA-předávky</strong> a
+    <strong>WA-jiná zpráva</strong>; každá se dá upravit i zkopírovat a ukládá se zvlášť.
     <strong>Vyřešeno</strong> odstěhuje řádek do historie, ať v tabulce zůstane jen to, co se ještě řeší — nic se nemaže
     a vrátit zpět jde hned nebo kdykoli přes filtr <em>historie</em>. Pod nadpisy formulář, domluva a faktura je filtr.
     Žlutě je u jména <strong>loňská částka z výpisů HB25</strong> — tlačítkem „použít" ji přenesete do letošní.
@@ -2467,17 +2469,9 @@ var qrcode = function() {
         <a id="otevritFormular" href="#" target="_blank" rel="noopener" style="display:none">otevřít</a></label>
       <label>odpovědi (tabulka) <input type="url" id="odkazOdpovedi" placeholder="https://docs.google.com/spreadsheets/…">
         <a id="otevritOdpovedi" href="#" target="_blank" rel="noopener" style="display:none">otevřít</a></label>
-      <button class="sek prepinac" id="btnZprava">zpráva na WhatsApp</button>
+      <span id="tlacitkaZprav"></span>
     </div>
-    <div id="zpravaBox">
-      <div class="hlava">
-        <strong style="color:var(--hb)">Zpráva, kterou posílám lidem na WhatsApp</strong>
-        <span>uloží se k ročníku <span id="rokZnacka2">HB26</span></span>
-        <button class="sek prepinac" id="btnKopirovatZpravu" style="margin-left:auto">Zkopírovat zprávu</button>
-        <span id="zpravaStav"></span>
-      </div>
-      <textarea id="zpravaText" placeholder="text zprávy…"></textarea>
-    </div>
+    <div id="zpravyBoxy"></div>
     <div class="panel" id="panel">
       <div class="mriz" style="margin-bottom:7px">
         <div class="kachle">formulář<b id="k1">0</b></div>
@@ -2558,6 +2552,12 @@ const ROK = 'HB26';
 
 const ZASKRTAVATKA = [['formular','formulář'], ['domluva','domluva'], ['faktura','faktura'], ['zaplaceno','zaplaceno']];
 const KLIC_SEZENI = 'hb26_vyplaty_sezeni';
+/* Tři zprávy na WhatsApp — každá má vlastní tlačítko, text a sloupec v databázi. */
+const ZPRAVY = [
+  ['zprava_formular', 'WA-formulář',    'Zpráva s odkazem na dotazník — pro ty, co vyplňují hodiny a kilometry.'],
+  ['zprava_predavky', 'WA-předávky',    'Zpráva pro místní na předávkách.'],
+  ['zprava_jina',     'WA-jiná zpráva', 'Volná zpráva na cokoli dalšího.']
+];
 const SKUPINY = [
   ['H', 'Pomocníci a traséři — grupy G'],
   ['M', 'Místní na předávce — P'],
@@ -2712,20 +2712,21 @@ function zobrazOdkaz(poleId, odkazId){
 }
 async function nactiOdkazy(){
   try {
-    const odp = await dotaz('/rest/v1/nastaveni_rocniku?rok=eq.' + ROK + '&select=odkaz_formular,odkaz_odpovedi,zprava_whatsapp');
+    const odp = await dotaz('/rest/v1/nastaveni_rocniku?rok=eq.' + ROK + '&select=odkaz_formular,odkaz_odpovedi,' + ZPRAVY.map(z => z[0]).join(','));
     if(!odp.ok) return;
     const d = await odp.json();
     const n = d[0] || {};
     el('odkazFormular').value = n.odkaz_formular || '';
     el('odkazOdpovedi').value = n.odkaz_odpovedi || '';
-    el('zpravaText').value = n.zprava_whatsapp || '';
+    ZPRAVY.forEach(([sloupec]) => { el('t_' + sloupec).value = n[sloupec] || ''; });
     zobrazOdkaz('odkazFormular', 'otevritFormular');
     zobrazOdkaz('odkazOdpovedi', 'otevritOdpovedi');
   } catch(e){ /* odkazy nejsou kritické, tabulka jede dál */ }
 }
 async function ulozOdkaz(pole, prvek){
-  const hodnota = (pole === 'zprava_whatsapp' ? prvek.value : prvek.value.trim()) || null;
-  if(pole !== 'zprava_whatsapp' && hodnota && !/^https?:\/\//i.test(hodnota)){
+  const jeZprava = pole.indexOf('zprava_') === 0;
+  const hodnota = (jeZprava ? prvek.value : prvek.value.trim()) || null;
+  if(!jeZprava && hodnota && !/^https?:\/\//i.test(hodnota)){
     hlaska('hlaska', 'Odkaz musí začínat https:// — neuloženo.', 'chyba');
     return;
   }
@@ -3332,17 +3333,10 @@ setInterval(async () => {
 window.addEventListener('resize', dorovnejLepeni);
 dorovnejLepeni();
 el('rokZnacka').textContent = ROK;
-el('rokZnacka2').textContent = ROK;
-el('btnZprava').addEventListener('click', () => {
-  const box = el('zpravaBox');
-  box.classList.toggle('vidno');
-  if(box.classList.contains('vidno')) el('zpravaText').focus();
-});
-el('btnKopirovatZpravu').addEventListener('click', () => {
-  const txt = el('zpravaText').value;
+function doSchranky(txt, kam){
   const hotovoKopie = () => {
-    el('zpravaStav').textContent = 'zkopírováno';
-    setTimeout(() => { el('zpravaStav').textContent = ''; }, 2500);
+    kam.textContent = 'zkopírováno';
+    setTimeout(() => { kam.textContent = ''; }, 2500);
   };
   const zaloha = () => {
     const ta = document.createElement('textarea');
@@ -3353,8 +3347,41 @@ el('btnKopirovatZpravu').addEventListener('click', () => {
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(txt).then(hotovoKopie, zaloha);
   } else { zaloha(); }
+}
+
+// tlačítka a pole pro tři zprávy
+ZPRAVY.forEach(([sloupec, nazev, popis]) => {
+  const tl = document.createElement('button');
+  tl.className = 'sek prepinac';
+  tl.textContent = nazev;
+  tl.title = popis;
+  el('tlacitkaZprav').appendChild(tl);
+
+  const box = document.createElement('div');
+  box.className = 'zpravaBox';
+  box.innerHTML =
+    '<div class="hlava"><strong style="color:var(--hb)">' + esc(nazev) + '</strong>' +
+    '<span>' + esc(popis) + ' Uloží se k ročníku ' + esc(ROK) + '.</span>' +
+    '<button class="sek prepinac kopirovat" style="margin-left:auto">Zkopírovat zprávu</button>' +
+    '<span class="stav"></span></div>' +
+    '<textarea id="t_' + sloupec + '" placeholder="text zprávy…"></textarea>';
+  el('zpravyBoxy').appendChild(box);
+
+  const pole = box.querySelector('textarea');
+  tl.addEventListener('click', () => {
+    const otevrit = !box.classList.contains('vidno');
+    document.querySelectorAll('.zpravaBox').forEach(b => b.classList.remove('vidno'));
+    document.querySelectorAll('#tlacitkaZprav .prepinac').forEach(b => b.classList.remove('otevreno'));
+    if(otevrit){ box.classList.add('vidno'); tl.classList.add('otevreno'); pole.focus(); }
+  });
+  box.querySelector('.kopirovat').addEventListener('click', () => doSchranky(pole.value, box.querySelector('.stav')));
+
+  const ulozit = () => ulozOdkaz(sloupec, pole);
+  pole.addEventListener('change', ulozit);
+  hlidej(pole, ulozit);
 });
-[['odkazFormular','odkaz_formular'], ['odkazOdpovedi','odkaz_odpovedi'], ['zpravaText','zprava_whatsapp']].forEach(([id, sloupec]) => {
+
+[['odkazFormular','odkaz_formular'], ['odkazOdpovedi','odkaz_odpovedi']].forEach(([id, sloupec]) => {
   const prvek = el(id);
   const ulozit = () => ulozOdkaz(sloupec, prvek);
   prvek.addEventListener('change', ulozit);

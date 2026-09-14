@@ -21,19 +21,25 @@
   button:hover{filter:brightness(1.08)}
   button:disabled{opacity:.55;cursor:default}
   .panel{position:sticky;top:0;z-index:6;background:var(--bg);padding:9px 0;border-bottom:1px solid var(--line);margin-bottom:10px}
+  /* Nadpisy sloupců se lepí těsně pod ovládací lištu. Její výšku měříme za běhu
+     (kachle se při úzkém okně zalamují), aby se řádky neschovávaly pod ni. */
+  :root{--lista:120px;--nadpisy:31px}
   .kachle{background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 11px;font-size:12.5px;min-width:104px}
   .kachle b{display:block;font-size:17px;color:var(--hb)}
-  .tabulka{overflow-x:auto;background:#fff;border:1px solid var(--line);border-radius:6px}
+  /* Žádné overflow — kvůli němu by se nadpisy lepily uvnitř rámečku místo k oknu.
+     Tabulka se vejde na všechny šířky (pevné šířky sloupců, na telefonu karty). */
+  .tabulka{background:#fff;border:1px solid var(--line);border-radius:6px}
   table{border-collapse:collapse;width:100%;table-layout:fixed}
   th,td{border-bottom:1px solid var(--line);padding:6px 7px;text-align:left;font-size:13.5px}
-  thead tr.filtry th{position:sticky;top:31px;background:#8e3540;padding:3px 3px;z-index:2}
+  thead tr.filtry th{position:sticky;top:calc(var(--lista) + var(--nadpisy));background:#8e3540;padding:3px 3px;z-index:4;
+                     box-shadow:0 1px 0 rgba(0,0,0,.12)}
   thead tr.filtry select{width:100%;font:inherit;font-size:11px;padding:2px 2px;border:1px solid rgba(255,255,255,.4);
                          border-radius:3px;background:#fff;color:var(--txt)}
   thead tr.filtry select.aktivni{background:#ffe9a8;font-weight:700}
   tbody tr.zhistorie td{background:#f6f4f4;color:#6b6260}
   tbody tr.zhistorie:hover td{background:#f1eeee}
   button.vratit{padding:2px 7px;font-size:11px}
-  thead th{position:sticky;top:0;background:var(--hb);color:#fff;font-size:11.5px;font-weight:600;z-index:2;
+  thead th{position:sticky;top:var(--lista);background:var(--hb);color:#fff;font-size:11.5px;font-weight:600;z-index:5;
            white-space:normal;line-height:1.2;padding:6px 5px}
   thead th.stav{text-align:center}
   tbody td.stav{text-align:center;padding:6px 3px}
@@ -102,8 +108,14 @@
     h1{font-size:17px}
     table,thead,tbody,tr,td{display:block;width:auto}
     thead tr.nadpisy{display:none}
-    thead tr.filtry{display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px;background:#8e3540}
-    thead tr.filtry th{position:static;flex:1 1 92px;padding:0;background:none}
+    /* Na telefonu by přilepená lišta s kachlemi ukrojila skoro půl displeje,
+       tak se lepí jen hlavička tabulky a lišta odjede nahoru. */
+    .panel{position:static}
+    /* Na telefonu se lepí celá hlavička — samotný řádek by se neměl kam posouvat,
+       jeho rodič thead je totiž stejně vysoký jako on sám. */
+    thead{position:sticky;top:var(--lista);z-index:5}
+    thead tr.filtry{display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px;background:#8e3540;position:static}
+    thead tr.filtry th{position:static;flex:1 1 92px;padding:0;background:none;box-shadow:none}
     thead tr.filtry th:empty{display:none}
     thead tr.filtry th[data-popis]::before{content:attr(data-popis);display:block;font-size:10.5px;color:#fff;opacity:.85}
     tbody tr{border-bottom:1px solid var(--line);padding:8px 10px}
@@ -2461,7 +2473,7 @@ var qrcode = function() {
       </div>
       <textarea id="zpravaText" placeholder="text zprávy…"></textarea>
     </div>
-    <div class="panel">
+    <div class="panel" id="panel">
       <div class="mriz" style="margin-bottom:7px">
         <div class="kachle">formulář<b id="k1">0</b></div>
         <div class="kachle">domluva<b id="k2">0</b></div>
@@ -3147,6 +3159,7 @@ async function vykresliHistorii(q, fF, fD, fA){
     telo.appendChild(tr);
   });
   pocty();   // kachli „v historii" umíme vyplnit až tady, načítá se na pozadí
+  dorovnejLepeni();
 }
 
 function pocty(){
@@ -3169,6 +3182,23 @@ function pocty(){
   el('k7').textContent = kc(suma - sumaZapl);
   el('k8').textContent = fa;
   el('k9').textContent = historieNactena ? historie.length : '?';
+  dorovnejLepeni();
+}
+
+/* Lišta nahoře je přilepená a mění výšku podle toho, jak se zalomí kachle.
+   Nadpisy sloupců se proto lepí na změřenou výšku, ne na pevné číslo. */
+function dorovnejLepeni(){
+  const panel = el('panel');
+  if(!panel) return;
+  const nadpisy = document.querySelector('thead tr.nadpisy');
+  const koren = document.documentElement.style;
+  const lepiSe = getComputedStyle(panel).position === 'sticky';
+  koren.setProperty('--lista', (lepiSe ? Math.round(panel.getBoundingClientRect().height) : 0) + 'px');
+  if(nadpisy && nadpisy.offsetHeight){
+    koren.setProperty('--nadpisy', Math.round(nadpisy.getBoundingClientRect().height) + 'px');
+  } else {
+    koren.setProperty('--nadpisy', '0px');   // na telefonu se nadpisy neukazují
+  }
 }
 
 // ---- hlídání rozepsaných polí
@@ -3263,6 +3293,8 @@ el('hledat').addEventListener('input', vykresli);
 el('filtr').addEventListener('change', vykresli);
 ['fFormular','fDomluva','fFaktura'].forEach(id => el(id).addEventListener('change', vykresli));
 el('btnUlozitVse').addEventListener('click', ulozitVse);
+window.addEventListener('resize', dorovnejLepeni);
+dorovnejLepeni();
 el('rokZnacka').textContent = ROK;
 el('rokZnacka2').textContent = ROK;
 el('btnZprava').addEventListener('click', () => {

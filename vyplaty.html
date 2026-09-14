@@ -95,6 +95,7 @@
   .qrbox .detail{font-size:13px;color:#6b6260;margin-bottom:12px}
   .qrbox .platba{font-size:20px;font-weight:600;color:var(--hb);margin-bottom:10px}
   .qrbox img,.qrbox canvas,.qrbox table{margin:0 auto}
+  .qrbox .zprava{display:inline-block;margin-top:5px;color:var(--hb);font-weight:600}
   .qrbox .upoz{font-size:12px;color:#6b6260;margin-top:12px}
   .hlaska{margin-top:10px;font-size:13.5px;padding:8px 11px;border-radius:5px;display:none}
   .hlaska.chyba{display:block;background:#fdecec;border:1px solid #e6b8b8;color:#8a2020}
@@ -2951,9 +2952,15 @@ function naIban(ucet){
   const kontrola = String(98 - zbytek).padStart(2, '0');
   return 'CZ' + kontrola + zaklad;
 }
+/* Text, který jde do QR jako zpráva pro příjemce. Český standard SPD 1.0 má
+   jen tohle jedno pole na text — banky ho vypisují do „zprávy pro příjemce"
+   a většina ho nabídne i jako vlastní poznámku k platbě. */
+function zpravaKPlatbe(r){
+  return 'Hory Bory 2026 ' + r.jmeno + ' Díky!';
+}
 function spd(iban, castka, zprava){
   const casti = ['SPD*1.0', 'ACC:' + iban, 'AM:' + Number(castka).toFixed(2), 'CC:CZK'];
-  const msg = bezDiakritiky(zprava).slice(0, 60).trim();
+  const msg = bezDiakritiky(zprava).replace(/\*/g, ' ').slice(0, 60).trim();
   if(msg) casti.push('MSG:' + msg);
   return casti.join('*');
 }
@@ -2976,12 +2983,14 @@ function ukazQr(r){
   } else if(typeof qrcode !== 'function'){
     vnitrek += '<div class="detail">Nenačetla se knihovna na QR kódy — potřebuje připojení k internetu.</div>';
   } else {
-    const text = spd(iban, castka, 'Hory Bory 2026 ' + r.jmeno);
+    const zprava = zpravaKPlatbe(r);
+    const text = spd(iban, castka, zprava);
     const q = qrcode(0, 'M');
     q.addData(text);
     q.make();
     vnitrek += '<div class="platba">' + kc(castka) + '</div>' +
-               '<div class="detail">' + esc(r.ucet) + '<br>' + esc(iban) + '</div>' +
+               '<div class="detail">' + esc(r.ucet) + '<br>' + esc(iban) +
+               '<br><span class="zprava">„' + esc(bezDiakritiky(zprava)) + '"</span></div>' +
                q.createImgTag(6, 8) +
                '<div class="upoz">Načtěte v bankovní aplikaci. Kód nikde neukládám, zavřením zmizí.</div>';
   }

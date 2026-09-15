@@ -2460,7 +2460,7 @@ var qrcode = function() {
     dají se kombinovat. Filtr u vyřešeno přepne tabulku na historii.
     Vedle čísla účtu je <strong>WA</strong> — jestli na člověka máte individuální chat ve WhatsAppu:
     <strong>✓ mám</strong>, <strong>✗ nemám</strong>, <strong>?</strong> nevím. Klepnutím se to protáčí a hned ukládá.
-    Žlutě je u jména <strong>loňská částka z výpisů HB25</strong> — tlačítkem „použít" ji přenesete do letošní.
+    Žlutě je u jména <strong>částka z výpisů HB25</strong> — tlačítkem „použít" ji přenesete do HB26.
   </div>
 
   <div class="box" id="prihlaseni">
@@ -2501,7 +2501,7 @@ var qrcode = function() {
           <option value="H">pomocníci a traséři (G)</option>
           <option value="M">místní na předávce (P)</option>
           <option value="S">služby (foto, video, zvuk, gastro, IT, merch)</option>
-          <option value="X">loni placení, letos mimo grupy</option>
+          <option value="X">placení v HB25, letos mimo grupy</option>
           <option value="rozdelano">rozdělaní (něco ano, zaplaceno ne)</option>
           <option value="nezaplaceno">nezaplacení</option>
           <option value="zaplaceno">zaplacení</option>
@@ -2579,7 +2579,7 @@ const SKUPINY = [
   ['H', 'Pomocníci a traséři — grupy G'],
   ['M', 'Místní na předávce — P'],
   ['S', 'Služby — foto, video, zvuk, gastro, IT, merch'],
-  ['X', 'Loni placení, letos mimo grupy']
+  ['X', 'Placení v HB25, letos mimo grupy']
 ];
 const SLUZBY = ['FOTO','VIDEO','ZVUK','GASTRO','IT','MERCH'];
 const KONTAKTY = ['', 'WhatsApp', 'mail', 'telefon', 'SMS', 'osobně', 'jinak'];
@@ -3150,9 +3150,9 @@ function vykresli(){
       if(!r.email) drobne.push('bez e-mailu');
       if(!r.ucet) drobne.push('bez čísla účtu');
       const loniHtml = (r.loni_kc !== null)
-        ? '<div><span class="loni" title="' + esc(r.loni_popis || 'loňská výplata HB25') + '">loni ' + kc(r.loni_kc) + '</span>' +
-          '<button class="sek prevzit" data-prevzit="1" title="přenést loňskou částku do letošní částky">použít</button></div>'
-        : (r.loni_popis ? '<div><span class="loni" title="' + esc(r.loni_popis) + '">loni bez výplaty ⓘ</span></div>' : '');
+        ? '<div><span class="loni" title="' + esc(r.loni_popis || 'výplata HB25') + '">HB25 ' + kc(r.loni_kc) + '</span>' +
+          '<button class="sek prevzit" data-prevzit="1" title="přenést částku z HB25 do částky HB26">použít</button></div>'
+        : (r.loni_popis ? '<div><span class="loni" title="' + esc(r.loni_popis) + '">HB25 bez výplaty ⓘ</span></div>' : '');
       const maPozn = !!(r.poznamka && r.poznamka.trim());
       tr.innerHTML =
         '<td class="kdo"><span class="kod">' + esc(r.kod) + '</span>' + esc(r.jmeno) +
@@ -3375,7 +3375,7 @@ function stahni(jm, obsah, typ){
 }
 
 function csv(){
-  const l = [['Skupina','Kod','Jmeno','Formular','Domluva','Faktura','Castka','Loni HB25','Zaplaceno','Ucet','WhatsApp','Kontakt jak','Datum kontaktu','Poznamka'].join(';')];
+  const l = [['Skupina','Kod','Jmeno','Formular','Domluva','Faktura','Castka','HB25 Kc','Zaplaceno','Ucet','WhatsApp','Kontakt jak','Datum kontaktu','Poznamka'].join(';')];
   SKUPINY.forEach(sk => {
     radky.filter(r => r.kat === sk[0]).forEach(r => {
       l.push([sk[1], r.kod, r.jmeno, nazevFormulare(r.formular_typ), r.domluva?'ano':'', r.faktura?'ano':'', r.castka_kc || '', r.loni_kc === null ? '' : r.loni_kc, r.zaplaceno?'ano':'', r.ucet || '', r.whatsapp || '', r.kontakt_jak || '', r.kontakt_datum || '', r.poznamka || '']
@@ -3399,7 +3399,7 @@ function kopiruj(){
       const c = cisloNeboNull(r.castka_kc);
       if(c !== null) zn.push(kc(c));
       if(r.kontakt_jak) zn.push('kontakt ' + r.kontakt_jak + (r.kontakt_datum ? ' ' + r.kontakt_datum : ''));
-      if(r.loni_kc !== null) zn.push('loni ' + kc(r.loni_kc));
+      if(r.loni_kc !== null) zn.push('HB25 ' + kc(r.loni_kc));
       t.push('- ' + r.kod + ' ' + r.jmeno + ': ' + zn.join(', '));
       if(r.poznamka) t.push('    ' + r.poznamka.replace(/\s+/g, ' '));
     });

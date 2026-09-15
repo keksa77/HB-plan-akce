@@ -2461,6 +2461,9 @@ var qrcode = function() {
     Vedle čísla účtu je <strong>WA</strong> — jestli na člověka máte individuální chat ve WhatsAppu:
     <strong>✓ mám</strong>, <strong>✗ nemám</strong>, <strong>?</strong> nevím. Klepnutím se to protáčí a hned ukládá.
     Žlutě je u jména <strong>částka z výpisů HB25</strong> — tlačítkem „použít" ji přenesete do HB26.
+    Seznam se plní <strong>z kartotéky členů týmu</strong>: kdo je v ročníku, ten je i tady. Karta výplaty vznikne
+    až při prvním zápisu, takže prázdný řádek nic v databázi nezabírá. Jméno a grupa se berou z kartotéky —
+    opravíte je tam a propíše se to sem.
   </div>
 
   <div class="box" id="prihlaseni">
@@ -2766,6 +2769,76 @@ async function ulozOdkaz(pole, prvek){
   }
 }
 
+const POLE_KARTY = 'id,clen_id,jmeno,kod_tymu,formular_typ,domluva,faktura,castka_kc,zaplaceno,' +
+  'poznamka,loni_kc,loni_popis,ucet,whatsapp,kontakt_jak,kontakt_datum';
+
+/* Seznam se plní od členů týmu: každý živý člen ročníku má řádek.
+   Karta ve vyplaty vznikne teprve při prvním zápisu — do té doby je řádek prázdný. */
+function prazdnaKarta(){
+  return {id: null, formular_typ: '', domluva: false, faktura: false, zaplaceno: false, poznamka: '',
+          loni_kc: null, loni_popis: '', castka_kc: '', ucet: null, whatsapp: '', kontakt_jak: '', kontakt_datum: ''};
+}
+function slozRadek(c, k){
+  k = k || prazdnaKarta();
+  const kod = (c ? c.kod_tymu : k.kod_tymu) || '—';
+  return {
+    id: k.id || null,
+    klic: c ? ('c' + c.id) : ('v' + k.id),
+    jmeno: (c ? c.jmeno : k.jmeno) || '(bez jména)',
+    kod: kod,
+    kat: kategorie(kod),
+    email: c ? (c.email || '') : '',
+    telefon: c ? (c.telefon || '') : '',
+    ucet: (k.ucet || (c ? c.cislo_uctu : '') || ''),
+    whatsapp: k.whatsapp || '',
+    maClena: !!c,
+    clenId: c ? c.id : null,
+    mimoKartoteku: !c,
+    formular_typ: k.formular_typ || '', domluva: !!k.domluva, faktura: !!k.faktura, zaplaceno: !!k.zaplaceno,
+    poznamka: k.poznamka || '',
+    loni_kc: (k.loni_kc === null || k.loni_kc === undefined) ? null : Number(k.loni_kc),
+    loni_popis: k.loni_popis || '',
+    castka_kc: (k.castka_kc === null || k.castka_kc === undefined) ? '' : String(k.castka_kc),
+    kontakt_jak: k.kontakt_jak || '',
+    kontakt_datum: k.kontakt_datum || ''
+  };
+}
+
+/* Členové + karty dohromady. Archivní členové a ti, co už jsou vyřešení v historii,
+   se v tabulce neukazují — pokud ovšem kartu mají, ať se nic neztratí. */
+function slozRadky(clenove, karty){
+  const podleClena = new Map();
+  karty.forEach(k => { if(k.clen_id) podleClena.set(k.clen_id, k); });
+  const vHistorii = new Set(historie.map(h => h.clenId).filter(x => x));
+  const pouzite = new Set();
+  const seznam = [];
+  clenove.forEach(c => {
+    const k = podleClena.get(c.id);
+    if(!k && (c.historie || vHistorii.has(c.id))) return;
+    if(k) pouzite.add(k.id);
+    seznam.push(slozRadek(c, k));
+  });
+  karty.forEach(k => { if(!pouzite.has(k.id)) seznam.push(slozRadek(null, k)); });
+  radky = seznam;
+}
+
+/* Zápis do karty. Když karta ještě není, založí se (upsert podle ročníku a člena). */
+async function zapis(radek, telo){
+  if(radek.id){
+    return dotaz('/rest/v1/vyplaty?id=eq.' + radek.id, {
+      method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(telo)});
+  }
+  if(!radek.clenId) throw new Error('Řádek není napojený na člena týmu, kartu nelze založit.');
+  const novy = Object.assign({rok: ROK, clen_id: radek.clenId}, telo);
+  const odp = await dotaz('/rest/v1/vyplaty?on_conflict=rok,clen_id', {
+    method: 'POST', prefer: 'resolution=merge-duplicates,return=representation',
+    body: JSON.stringify(novy)});
+  if(odp.ok){
+    try { const d = await odp.json(); if(d && d[0] && d[0].id) radek.id = d[0].id; } catch(e){}
+  }
+  return odp;
+}
+
 function prevedRadek(r){
   const c = r.clenove_tymu || {};
   const kod = c.kod_tymu || r.kod_tymu || '—';
@@ -2815,8 +2888,12 @@ async function zavolej(funkce, id){
 async function doHistorie(r, checkbox){
   ukazatel('Přesouvám do historie…');
   try {
+    if(!r.id){
+      const odp = await zapis(r, {});
+      if(!odp.ok) throw new Error('Kartu se nepodařilo založit (' + odp.status + ').');
+    }
     await zavolej('vyplaty_do_historie', r.id);
-    radky = radky.filter(x => x.id !== r.id);
+    radky = radky.filter(x => x.klic !== r.klic);
     historieNactena = false;
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
     hlaska('hlaska', '', '');
@@ -2852,16 +2929,21 @@ async function nacti(){
   ukazatel('Načítám…');
   hlaska('hlaska', '', '');
   try {
-    const cesta = '/rest/v1/vyplaty?rok=eq.' + ROK +
-      '&select=id,clen_id,jmeno,kod_tymu,formular_typ,domluva,faktura,castka_kc,zaplaceno,poznamka,loni_kc,loni_popis,ucet,whatsapp,kontakt_jak,kontakt_datum,clenove_tymu(jmeno,kod_tymu,email,telefon,cislo_uctu)';
-    const odp = await dotaz(cesta);
-    if(!odp.ok) throw new Error('Databáze odpověděla ' + odp.status + '. Zkuste Načíst znovu, nebo se přihlaste znovu.');
-    const d = await odp.json();
-    radky = d.map(prevedRadek);
+    const cClenove = '/rest/v1/clenove_tymu?rok=eq.' + ROK +
+      '&select=id,jmeno,kod_tymu,email,telefon,cislo_uctu,historie&order=kod_tymu';
+    const cKarty = '/rest/v1/vyplaty?rok=eq.' + ROK + '&select=' + POLE_KARTY;
+    const [oClen, oKarty] = await Promise.all([dotaz(cClenove), dotaz(cKarty)]);
+    if(!oClen.ok || !oKarty.ok) throw new Error('Databáze odpověděla ' +
+      (oClen.ok ? oKarty.status : oClen.status) + '. Zkuste Načíst znovu, nebo se přihlaste znovu.');
+    const clenove = await oClen.json();
+    const karty = await oKarty.json();
+    if(!historieNactena){ try { await nactiHistorii(); } catch(e){} }
+    slozRadky(clenove, karty);
     vykresli();
-    ukazatel(radky.length + ' lidí načteno');
+    const sKartou = radky.filter(r => r.id).length;
+    ukazatel(radky.length + ' lidí z kartotéky · karta u ' + sKartou + ' · bez karty ' + (radky.length - sKartou));
     nactiOdkazy();
-    nactiHistorii().then(pocty, () => {});
+    pocty();
   } catch(e){
     ukazatel('');
     hlaska('hlaska', String(e.message || e), 'chyba');
@@ -2878,9 +2960,7 @@ async function uloz(radek, pole, hodnota, checkbox){
   Object.keys(telo).forEach(k => { puvodni[k] = radek[k]; radek[k] = telo[k]; });
   ukazatel('Ukládám…');
   try {
-    const odp = await dotaz('/rest/v1/vyplaty?id=eq.' + radek.id, {
-      method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(telo)
-    });
+    const odp = await zapis(radek, telo);
     if(!odp.ok) throw new Error('Uložení se nepovedlo (' + odp.status + ').');
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
     hlaska('hlaska', '', '');
@@ -2907,9 +2987,7 @@ async function ulozWhatsapp(radek, hodnota, tlacitko){
   radek.whatsapp = hodnota || '';
   ukazatel('Ukládám…');
   try {
-    const odp = await dotaz('/rest/v1/vyplaty?id=eq.' + radek.id, {
-      method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({whatsapp: hodnota})
-    });
+    const odp = await zapis(radek, {whatsapp: hodnota});
     if(!odp.ok) throw new Error('Uložení se nepovedlo (' + odp.status + ').');
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
     hlaska('hlaska', '', '');
@@ -2935,9 +3013,7 @@ async function ulozFormular(radek, hodnota, pole){
   if(hodnota) radek.domluva = false;
   ukazatel('Ukládám…');
   try {
-    const odp = await dotaz('/rest/v1/vyplaty?id=eq.' + radek.id, {
-      method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(telo)
-    });
+    const odp = await zapis(radek, telo);
     if(!odp.ok) throw new Error('Uložení se nepovedlo (' + odp.status + ').');
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
     hlaska('hlaska', '', '');
@@ -2955,9 +3031,7 @@ async function ulozCastku(radek, hodnota, pole){
   radek.castka_kc = (hodnota === null) ? '' : String(hodnota);
   ukazatel('Ukládám…');
   try {
-    const odp = await dotaz('/rest/v1/vyplaty?id=eq.' + radek.id, {
-      method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({castka_kc: hodnota})
-    });
+    const odp = await zapis(radek, {castka_kc: hodnota});
     if(!odp.ok) throw new Error('Uložení částky se nepovedlo (' + odp.status + ').');
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
     hlaska('hlaska', '', '');
@@ -2981,20 +3055,19 @@ async function ulozUcet(radek, hodnota, pole){
       cesta = '/rest/v1/clenove_tymu?id=eq.' + radek.clenId;
       telo = {cislo_uctu: hodnota || null};
     } else {
-      cesta = '/rest/v1/vyplaty?id=eq.' + radek.id;
+      cesta = null;
       telo = {ucet: hodnota || null};
     }
-    const odp = await dotaz(cesta, {
-      method: 'PATCH', prefer: 'return=minimal',
-      body: JSON.stringify(telo)
-    });
+    const odp = cesta
+      ? await dotaz(cesta, {method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(telo)})
+      : await zapis(radek, telo);
     if(!odp.ok) throw new Error('Uložení účtu se nepovedlo (' + odp.status + ').');
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
     hotovo(pole);
     hlaska('hlaska', '', '');
     vykresli();
     // překreslení vyrobilo nové políčko — zelené potvrzení dej na ně
-    hotovo(document.querySelector('tr[data-radek="' + radek.id + '"] input.ucet'));
+    hotovo(document.querySelector('tr[data-radek="' + radek.klic + '"] input.ucet'));
   } catch(e){
     radek.ucet = puvodni;
     if(pole) pole.value = puvodni;
@@ -3009,9 +3082,7 @@ async function ulozPole(radek, pole, hodnota, prvek){
   ukazatel('Ukládám…');
   try {
     const telo = {}; telo[pole] = hodnota;
-    const odp = await dotaz('/rest/v1/vyplaty?id=eq.' + radek.id, {
-      method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(telo)
-    });
+    const odp = await zapis(radek, telo);
     if(!odp.ok) throw new Error('Uložení se nepovedlo (' + odp.status + ').');
     ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
     hlaska('hlaska', '', '');
@@ -3144,7 +3215,7 @@ function vykresli(){
 
     lide.forEach(r => {
       const tr = document.createElement('tr');
-      tr.dataset.radek = r.id;
+      tr.dataset.radek = r.klic;
       if(r.zaplaceno) tr.className = 'hotovo';
       const drobne = [];
       if(!r.email) drobne.push('bez e-mailu');

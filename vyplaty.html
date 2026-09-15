@@ -61,6 +61,8 @@
   input.ucet{width:100%;font:inherit;font-size:12.5px;padding:4px 6px;border:1px solid var(--line);border-radius:4px}
   input.ucet:focus{outline:2px solid var(--hb);outline-offset:-1px}
   select.kontakt{width:100%;font:inherit;font-size:12.5px;padding:4px 4px;border:1px solid var(--line);border-radius:4px;background:#fff}
+  select.formtyp{width:100%;font:inherit;font-size:12px;padding:4px 2px;border:1px solid var(--line);border-radius:4px;background:#fff}
+  select.formtyp:focus{outline:2px solid var(--hb);outline-offset:-1px}
   input.datum{width:100%;font:inherit;font-size:12.5px;padding:4px 4px;border:1px solid var(--line);border-radius:4px}
   .kdo .loni{display:inline-block;font-size:11.5px;color:var(--warn);border:1px solid #e2cfa4;background:#fdf7ea;border-radius:9px;
              padding:0 6px;margin-top:2px;cursor:help}
@@ -2445,8 +2447,8 @@ var qrcode = function() {
     Všechno se ukládá do databáze (Supabase, tabulka <code>vyplaty</code>, navázaná na členy grup) — otevřete to kdekoli,
     přihlásíte se stejným účtem jako do plánovače a vidíte ten samý stav. <strong>Zaškrtávátka se ukládají hned.</strong>
     Do psaných polí (částka, účet, poznámka) můžete psát a pak dát <strong>Uložit vše</strong> dole, nebo jen odejít z pole —
-    uloží se to taky. Rozepsané pole je žluté, uložené krátce zezelená. <strong>Formulář a domluva se vylučují</strong>,
-    faktura je na nich nezávislá. Nahoře jsou tři zprávy na WhatsApp — <strong>WA-formulář</strong>, <strong>WA-předávky</strong> a
+    uloží se to taky. Rozepsané pole je žluté, uložené krátce zezelená. <strong>Formulář</strong> se vybírá — <em>trasér</em> (hodiny a kilometry),
+    nebo <em>předávka</em>; s domluvou se vylučuje, faktura je na nich nezávislá. Nahoře jsou tři zprávy na WhatsApp — <strong>WA-formulář</strong>, <strong>WA-předávky</strong> a
     <strong>WA-jiná zpráva</strong>; každá se dá upravit i zkopírovat a ukládá se zvlášť.
     <strong>Vyřešeno</strong> odstěhuje řádek do historie, ať v tabulce zůstane jen to, co se ještě řeší — nic se nemaže
     a vrátit zpět jde hned nebo kdykoli přes filtr <em>historie</em>. Pod nadpisy formulář, domluva, faktura, kontakt jak, zaplaceno a vyřešeno je filtr —
@@ -2511,7 +2513,7 @@ var qrcode = function() {
         <thead>
           <tr class="nadpisy">
             <th class="kdo" style="width:auto;min-width:132px">Grupa a jméno</th>
-            <th class="stav" style="width:56px">formu&shy;lář</th>
+            <th class="stav" style="width:92px">formulář</th>
             <th class="stav" style="width:58px">do&shy;mluva</th>
             <th class="stav" style="width:54px">fak&shy;tura</th>
             <th class="stav" style="width:86px">částka Kč</th>
@@ -2524,7 +2526,7 @@ var qrcode = function() {
           </tr>
           <tr class="filtry">
             <th></th>
-            <th data-popis="formulář"><select id="fFormular"><option value="">vše</option><option value="ano">✓ ano</option><option value="ne">✗ ne</option></select></th>
+            <th data-popis="formulář"><select id="fFormular"><option value="">vše</option><option value="traser">trasér</option><option value="predavka">předávka</option><option value="ne">✗ žádný</option></select></th>
             <th data-popis="domluva"><select id="fDomluva"><option value="">vše</option><option value="ano">✓ ano</option><option value="ne">✗ ne</option></select></th>
             <th data-popis="faktura"><select id="fFaktura"><option value="">vše</option><option value="ano">✓ ano</option><option value="ne">✗ ne</option></select></th>
             <th></th><th></th><th></th>
@@ -2555,7 +2557,10 @@ const URL_BASE = 'https://rjuxqlyckikuxfaeaozf.supabase.co';
 const KLIC = 'sb_publishable_wsSsZ1hCLbrRThr8Co4xbg_W9yAucb6';
 const ROK = 'HB26';
 
-const ZASKRTAVATKA = [['formular','formulář'], ['domluva','domluva'], ['faktura','faktura'], ['zaplaceno','zaplaceno']];
+const ZASKRTAVATKA = [['domluva','domluva'], ['faktura','faktura'], ['zaplaceno','zaplaceno']];
+/* Formulář není ano/ne — rozlišuje se, který kdo dostal. */
+const FORMULARE = [['', '—'], ['traser', 'trasér'], ['predavka', 'předávka']];
+function nazevFormulare(t){ const f = FORMULARE.find(x => x[0] === (t || '')); return f ? f[1] : (t || ''); }
 const KLIC_SEZENI = 'hb26_vyplaty_sezeni';
 /* Tři zprávy na WhatsApp — každá má vlastní tlačítko, text a sloupec v databázi. */
 const ZPRAVY = [
@@ -2594,7 +2599,7 @@ function kategorie(kod){
   if(SLUZBY.indexOf(kod) > -1) return 'S';
   return 'H';
 }
-function neco(r){ return r.formular || r.domluva || r.faktura || r.zaplaceno || cisloNeboNull(r.castka_kc) !== null || !!r.kontakt_jak || !!r.poznamka; }
+function neco(r){ return !!r.formular_typ || r.domluva || r.faktura || r.zaplaceno || cisloNeboNull(r.castka_kc) !== null || !!r.kontakt_jak || !!r.poznamka; }
 function cisloNeboNull(v){ const t = String(v == null ? '' : v).trim().replace(',', '.'); if(t === '') return null; const x = parseFloat(t); return isFinite(x) ? x : null; }
 function kc(v){ return (Math.round(Number(v)) || 0).toLocaleString('cs-CZ') + ' Kč'; }
 
@@ -2767,7 +2772,7 @@ function prevedRadek(r){
     ucet: (r.ucet || c.cislo_uctu || ''),
     maClena: !!r.clen_id,
     clenId: r.clen_id,
-    formular: !!r.formular, domluva: !!r.domluva, faktura: !!r.faktura, zaplaceno: !!r.zaplaceno,
+    formular_typ: r.formular_typ || '', domluva: !!r.domluva, faktura: !!r.faktura, zaplaceno: !!r.zaplaceno,
     poznamka: r.poznamka || '',
     loni_kc: (r.loni_kc === null || r.loni_kc === undefined) ? null : Number(r.loni_kc),
     loni_popis: r.loni_popis || '',
@@ -2780,7 +2785,7 @@ function prevedRadek(r){
 // ---- historie: vyřešené řádky se stěhují do vlastní tabulky, nic se nemaže
 async function nactiHistorii(){
   const cesta = '/rest/v1/vyplaty_historie?rok=eq.' + ROK +
-    '&select=id,clen_id,jmeno,kod_tymu,formular,domluva,faktura,castka_kc,zaplaceno,poznamka,loni_kc,loni_popis,ucet,kontakt_jak,kontakt_datum,vyreseno_kdy,clenove_tymu(jmeno,kod_tymu,email,telefon,cislo_uctu)' +
+    '&select=id,clen_id,jmeno,kod_tymu,formular_typ,domluva,faktura,castka_kc,zaplaceno,poznamka,loni_kc,loni_popis,ucet,kontakt_jak,kontakt_datum,vyreseno_kdy,clenove_tymu(jmeno,kod_tymu,email,telefon,cislo_uctu)' +
     '&order=vyreseno_kdy.desc';
   const odp = await dotaz(cesta);
   if(!odp.ok) throw new Error('Historii se nepodařilo načíst (' + odp.status + ').');
@@ -2840,7 +2845,7 @@ async function nacti(){
   hlaska('hlaska', '', '');
   try {
     const cesta = '/rest/v1/vyplaty?rok=eq.' + ROK +
-      '&select=id,clen_id,jmeno,kod_tymu,formular,domluva,faktura,castka_kc,zaplaceno,poznamka,loni_kc,loni_popis,ucet,kontakt_jak,kontakt_datum,clenove_tymu(jmeno,kod_tymu,email,telefon,cislo_uctu)';
+      '&select=id,clen_id,jmeno,kod_tymu,formular_typ,domluva,faktura,castka_kc,zaplaceno,poznamka,loni_kc,loni_popis,ucet,kontakt_jak,kontakt_datum,clenove_tymu(jmeno,kod_tymu,email,telefon,cislo_uctu)';
     const odp = await dotaz(cesta);
     if(!odp.ok) throw new Error('Databáze odpověděla ' + odp.status + '. Zkuste Načíst znovu, nebo se přihlaste znovu.');
     const d = await odp.json();
@@ -2859,8 +2864,7 @@ async function uloz(radek, pole, hodnota, checkbox){
   // formulář a domluva se vylučují — když zaškrtnu jedno, druhé se odškrtne; faktura je na nich nezávislá
   const telo = {};
   telo[pole] = hodnota;
-  if(hodnota && pole === 'formular') telo.domluva = false;
-  if(hodnota && pole === 'domluva') telo.formular = false;
+  if(hodnota && pole === 'domluva') telo.formular_typ = null;
 
   const puvodni = {};
   Object.keys(telo).forEach(k => { puvodni[k] = radek[k]; radek[k] = telo[k]; });
@@ -2879,6 +2883,30 @@ async function uloz(radek, pole, hodnota, checkbox){
     ukazatel('');
     hlaska('hlaska', String(e.message || e) + ' Změna se nezapsala.', 'chyba');
     vykresli();
+  }
+}
+
+/* Formulář a domluva se vylučují — když vyberu formulář, domluva se odškrtne. */
+async function ulozFormular(radek, hodnota, pole){
+  const puvodniTyp = radek.formular_typ, puvodniDom = radek.domluva;
+  const telo = {formular_typ: hodnota};
+  if(hodnota) telo.domluva = false;
+  radek.formular_typ = hodnota || '';
+  if(hodnota) radek.domluva = false;
+  ukazatel('Ukládám…');
+  try {
+    const odp = await dotaz('/rest/v1/vyplaty?id=eq.' + radek.id, {
+      method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(telo)
+    });
+    if(!odp.ok) throw new Error('Uložení se nepovedlo (' + odp.status + ').');
+    ukazatel('Uloženo ' + new Date().toLocaleTimeString('cs-CZ'));
+    hlaska('hlaska', '', '');
+    vykresli();
+  } catch(e){
+    radek.formular_typ = puvodniTyp; radek.domluva = puvodniDom;
+    if(pole) pole.value = puvodniTyp;
+    ukazatel('');
+    hlaska('hlaska', String(e.message || e) + ' Změna se nezapsala.', 'chyba');
   }
 }
 
@@ -3029,7 +3057,8 @@ function sedi(hodnota, volba){ return !volba || (volba === 'ano' ? !!hodnota : !
 /* Filtry nad sloupci. Prázdná volba znamená „vše", u kontaktu navíc „—" = nikoho
    jsme zatím nekontaktovali. Platí i v pohledu na historii. */
 function projdeSloupci(r, sl){
-  if(!sedi(r.formular, sl.formular)) return false;
+  if(sl.formular === 'ne' && r.formular_typ) return false;
+  if(sl.formular && sl.formular !== 'ne' && r.formular_typ !== sl.formular) return false;
   if(!sedi(r.domluva, sl.domluva)) return false;
   if(!sedi(r.faktura, sl.faktura)) return false;
   if(!sedi(r.zaplaceno, sl.zaplaceno)) return false;
@@ -3090,7 +3119,8 @@ function vykresli(){
           (drobne.length ? '<div class="pozn">' + esc(drobne.join(' · ')) + '</div>' : '') + loniHtml +
           '<div><button class="sek pozntlac' + (maPozn ? ' plna' : '') + '" data-pozn="1">' +
           (maPozn ? '✎ poznámka' : '+ poznámka') + '</button></div></td>' +
-        '<td class="stav" data-popis="formulář"><input type="checkbox" data-pole="formular"' + (r.formular ? ' checked' : '') + '></td>' +
+        '<td class="stav" data-popis="formulář"><select class="formtyp" data-formtyp="1">' + FORMULARE.map(fm =>
+          '<option value="' + fm[0] + '"' + (r.formular_typ === fm[0] ? ' selected' : '') + '>' + esc(fm[1]) + '</option>').join('') + '</select></td>' +
         '<td class="stav" data-popis="domluva"><input type="checkbox" data-pole="domluva"' + (r.domluva ? ' checked' : '') + '></td>' +
         '<td class="stav" data-popis="faktura"><input type="checkbox" data-pole="faktura"' + (r.faktura ? ' checked' : '') + '></td>' +
         '<td class="stav" data-popis="částka Kč"><input type="text" inputmode="decimal" class="kc" data-kc="1" value="' + esc(r.castka_kc) + '" placeholder="Kč"></td>' +
@@ -3104,6 +3134,9 @@ function vykresli(){
       tr.querySelectorAll('input[type=checkbox][data-pole]').forEach(chb => {
         chb.addEventListener('change', () => uloz(r, chb.dataset.pole, chb.checked, chb));
       });
+      const poleForm = tr.querySelector('select[data-formtyp]');
+      poleForm.addEventListener('change', () => ulozFormular(r, poleForm.value || null, poleForm));
+
       const chbVyres = tr.querySelector('input[data-vyreseno]');
       chbVyres.addEventListener('change', () => {
         if(chbVyres.checked) doHistorie(r, chbVyres);
@@ -3194,7 +3227,7 @@ async function vykresliHistorii(q, sl){
       '<td class="kdo"><span class="kod">' + esc(r.kod) + '</span>' + esc(r.jmeno) +
         (r.kdy ? '<div class="pozn">vyřešeno ' + esc(r.kdy) + '</div>' : '') +
         (r.poznamka ? '<div class="pozn">' + esc(r.poznamka) + '</div>' : '') + '</td>' +
-      '<td class="stav" data-popis="formulář">' + znacka(r.formular) + '</td>' +
+      '<td class="stav" data-popis="formulář">' + esc(nazevFormulare(r.formular_typ)).replace('—','') + '</td>' +
       '<td class="stav" data-popis="domluva">' + znacka(r.domluva) + '</td>' +
       '<td class="stav" data-popis="faktura">' + znacka(r.faktura) + '</td>' +
       '<td class="stav" data-popis="částka Kč">' + (c === null ? '' : kc(c)) + '</td>' +
@@ -3214,7 +3247,7 @@ async function vykresliHistorii(q, sl){
 function pocty(){
   let f = 0, d = 0, fa = 0, z = 0, sCastkou = 0, nic = 0, suma = 0, sumaZapl = 0;
   radky.forEach(r => {
-    if(r.formular) f++;
+    if(r.formular_typ) f++;
     if(r.domluva) d++;
     if(r.faktura) fa++;
     if(r.zaplaceno) z++;
@@ -3294,7 +3327,7 @@ function csv(){
   const l = [['Skupina','Kod','Jmeno','Formular','Domluva','Faktura','Castka','Loni HB25','Zaplaceno','Ucet','Kontakt jak','Datum kontaktu','Poznamka'].join(';')];
   SKUPINY.forEach(sk => {
     radky.filter(r => r.kat === sk[0]).forEach(r => {
-      l.push([sk[1], r.kod, r.jmeno, r.formular?'ano':'', r.domluva?'ano':'', r.faktura?'ano':'', r.castka_kc || '', r.loni_kc === null ? '' : r.loni_kc, r.zaplaceno?'ano':'', r.ucet || '', r.kontakt_jak || '', r.kontakt_datum || '', r.poznamka || '']
+      l.push([sk[1], r.kod, r.jmeno, nazevFormulare(r.formular_typ), r.domluva?'ano':'', r.faktura?'ano':'', r.castka_kc || '', r.loni_kc === null ? '' : r.loni_kc, r.zaplaceno?'ano':'', r.ucet || '', r.kontakt_jak || '', r.kontakt_datum || '', r.poznamka || '']
         .map(x => '"' + String(x == null ? '' : x).replace(/"/g,'""') + '"').join(';'));
     });
   });
@@ -3309,7 +3342,9 @@ function kopiruj(){
     if(!lide.length) return;
     t.push(sk[1].toUpperCase());
     lide.forEach(r => {
-      const zn = ZASKRTAVATKA.filter(c => r[c[0]]).map(c => c[1]);
+      const zn = [];
+      if(r.formular_typ) zn.push('formulář ' + nazevFormulare(r.formular_typ));
+      ZASKRTAVATKA.filter(c => r[c[0]]).forEach(c => zn.push(c[1]));
       const c = cisloNeboNull(r.castka_kc);
       if(c !== null) zn.push(kc(c));
       if(r.kontakt_jak) zn.push('kontakt ' + r.kontakt_jak + (r.kontakt_datum ? ' ' + r.kontakt_datum : ''));

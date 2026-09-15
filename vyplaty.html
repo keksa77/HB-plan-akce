@@ -2449,7 +2449,8 @@ var qrcode = function() {
     faktura je na nich nezávislá. Nahoře jsou tři zprávy na WhatsApp — <strong>WA-formulář</strong>, <strong>WA-předávky</strong> a
     <strong>WA-jiná zpráva</strong>; každá se dá upravit i zkopírovat a ukládá se zvlášť.
     <strong>Vyřešeno</strong> odstěhuje řádek do historie, ať v tabulce zůstane jen to, co se ještě řeší — nic se nemaže
-    a vrátit zpět jde hned nebo kdykoli přes filtr <em>historie</em>. Pod nadpisy formulář, domluva a faktura je filtr.
+    a vrátit zpět jde hned nebo kdykoli přes filtr <em>historie</em>. Pod nadpisy formulář, domluva, faktura, kontakt jak, zaplaceno a vyřešeno je filtr —
+    dají se kombinovat. Filtr u vyřešeno přepne tabulku na historii.
     Žlutě je u jména <strong>loňská částka z výpisů HB25</strong> — tlačítkem „použít" ji přenesete do letošní.
   </div>
 
@@ -2526,7 +2527,11 @@ var qrcode = function() {
             <th data-popis="formulář"><select id="fFormular"><option value="">vše</option><option value="ano">✓ ano</option><option value="ne">✗ ne</option></select></th>
             <th data-popis="domluva"><select id="fDomluva"><option value="">vše</option><option value="ano">✓ ano</option><option value="ne">✗ ne</option></select></th>
             <th data-popis="faktura"><select id="fFaktura"><option value="">vše</option><option value="ano">✓ ano</option><option value="ne">✗ ne</option></select></th>
-            <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+            <th></th><th></th><th></th>
+            <th data-popis="kontakt jak"><select id="fKontakt"></select></th>
+            <th></th>
+            <th data-popis="zaplaceno"><select id="fZaplaceno"><option value="">vše</option><option value="ano">✓ ano</option><option value="ne">✗ ne</option></select></th>
+            <th data-popis="vyřešeno"><select id="fVyreseno"><option value="">rozdělané</option><option value="ano">✓ v historii</option></select></th>
           </tr>
         </thead>
         <tbody id="telo"></tbody>
@@ -3021,16 +3026,32 @@ function ukazQr(r){
 // ---- výpis
 function sedi(hodnota, volba){ return !volba || (volba === 'ano' ? !!hodnota : !hodnota); }
 
+/* Filtry nad sloupci. Prázdná volba znamená „vše", u kontaktu navíc „—" = nikoho
+   jsme zatím nekontaktovali. Platí i v pohledu na historii. */
+function projdeSloupci(r, sl){
+  if(!sedi(r.formular, sl.formular)) return false;
+  if(!sedi(r.domluva, sl.domluva)) return false;
+  if(!sedi(r.faktura, sl.faktura)) return false;
+  if(!sedi(r.zaplaceno, sl.zaplaceno)) return false;
+  if(sl.kontakt === '—' && r.kontakt_jak) return false;
+  if(sl.kontakt && sl.kontakt !== '—' && r.kontakt_jak !== sl.kontakt) return false;
+  return true;
+}
+
 function vykresli(){
   const q = el('hledat').value.trim().toLowerCase();
   const f = el('filtr').value;
-  const fF = el('fFormular').value, fD = el('fDomluva').value, fA = el('fFaktura').value;
-  [['fFormular', fF], ['fDomluva', fD], ['fFaktura', fA]].forEach(([id, v]) =>
-    el(id).classList.toggle('aktivni', !!v));
+  const sl = {
+    formular: el('fFormular').value, domluva: el('fDomluva').value, faktura: el('fFaktura').value,
+    kontakt: el('fKontakt').value, zaplaceno: el('fZaplaceno').value, vyreseno: el('fVyreseno').value
+  };
+  [['fFormular', sl.formular], ['fDomluva', sl.domluva], ['fFaktura', sl.faktura],
+   ['fKontakt', sl.kontakt], ['fZaplaceno', sl.zaplaceno], ['fVyreseno', sl.vyreseno]]
+    .forEach(([id, v]) => el(id).classList.toggle('aktivni', !!v));
   const telo = el('telo');
   telo.innerHTML = '';
 
-  if(f === 'historie'){ vykresliHistorii(q, fF, fD, fA); pocty(); return; }
+  if(f === 'historie' || sl.vyreseno === 'ano'){ vykresliHistorii(q, sl); pocty(); return; }
 
   SKUPINY.forEach(sk => {
     const lide = radky.filter(r => r.kat === sk[0]).filter(r => {
@@ -3042,7 +3063,7 @@ function vykresli(){
       if(f === 'nedotceno' && neco(r)) return false;
       if(f === 'bezcastky' && cisloNeboNull(r.castka_kc) !== null) return false;
       if(f === 'bezkontaktu' && r.kontakt_jak) return false;
-      if(!sedi(r.formular, fF) || !sedi(r.domluva, fD) || !sedi(r.faktura, fA)) return false;
+      if(!projdeSloupci(r, sl)) return false;
       return true;
     }).sort((a, b) => a.kod.localeCompare(b.kod, 'cs') || a.jmeno.localeCompare(b.jmeno, 'cs'));
     if(!lide.length) return;
@@ -3141,17 +3162,17 @@ function vykresli(){
   pocty();
 }
 
-async function vykresliHistorii(q, fF, fD, fA){
+async function vykresliHistorii(q, sl){
   const telo = el('telo');
   if(!historieNactena){
     telo.innerHTML = '<tr><td colspan="11">Načítám historii…</td></tr>';
     try { await nactiHistorii(); }
     catch(e){ telo.innerHTML = ''; hlaska('hlaska', String(e.message || e), 'chyba'); return; }
-    if(el('filtr').value !== 'historie') return;   // mezitím se přepnulo jinam
+    if(el('filtr').value !== 'historie' && el('fVyreseno').value !== 'ano') return;   // mezitím se přepnulo jinam
   }
   const lide = historie.filter(r => {
     if(q && !((r.jmeno + ' ' + r.kod).toLowerCase().includes(q))) return false;
-    return sedi(r.formular, fF) && sedi(r.domluva, fD) && sedi(r.faktura, fA);
+    return projdeSloupci(r, sl);
   });
   telo.innerHTML = '';
   if(!lide.length){
@@ -3319,7 +3340,8 @@ el('btnObnovit').addEventListener('click', nacti);
 el('btnOdhlasit').addEventListener('click', odhlasit);
 el('hledat').addEventListener('input', vykresli);
 el('filtr').addEventListener('change', vykresli);
-['fFormular','fDomluva','fFaktura'].forEach(id => el(id).addEventListener('change', vykresli));
+['fFormular','fDomluva','fFaktura','fKontakt','fZaplaceno','fVyreseno']
+  .forEach(id => el(id).addEventListener('change', vykresli));
 el('btnUlozitVse').addEventListener('click', ulozitVse);
 /* Každých pět minut se podíváme, jestli přihlášení nedobíhá, a včas ho obnovíme.
    Bez toho stránka otevřená přes hodinu přestane ukládat. */
@@ -3332,6 +3354,8 @@ setInterval(async () => {
 
 window.addEventListener('resize', dorovnejLepeni);
 dorovnejLepeni();
+el('fKontakt').innerHTML = '<option value="">vše</option><option value="—">✗ bez kontaktu</option>' +
+  KONTAKTY.filter(k => k).map(k => '<option value="' + k + '">' + esc(k) + '</option>').join('');
 el('rokZnacka').textContent = ROK;
 function doSchranky(txt, kam){
   const hotovoKopie = () => {

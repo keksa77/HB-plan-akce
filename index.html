@@ -1340,10 +1340,14 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
           <span class="popisek" id="souhrnObleceni" style="flex:1;min-width:220px"></span>
         </div>
         <div class="obal-tab"><table class="tab" id="tabZbozi"></table></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          <button class="tl" title="Přidá další kus zboží do vybraného typu." onclick="pridej('zbozi')">+ Přidat zboží</button>
-          <button class="tl" title="Přidá další typ zboží, například čepice nebo ponožky." onclick="pridej('zboziTyp')">+ Přidat typ</button>
-        </div>
+        <button class="tl" style="margin-top:10px" title="Přidá další kus zboží do vybraného typu." onclick="pridej('zbozi')">+ Přidat zboží</button>
+        <p class="popisek" id="varovaniObleceni" style="margin-top:10px"></p>
+
+        <h3 style="margin:22px 0 6px;font-size:15px">Typy zboží</h3>
+        <p class="popisek">Kód je vnitřní označení, na které se zboží odkazuje — musí být
+          jedinečný a bez mezer. Název je to, co se ukazuje ve filtru.</p>
+        <div class="obal-tab"><table class="tab" id="tabZboziTypy"></table></div>
+        <button class="tl" style="margin-top:10px" title="Přidá další typ zboží, například čepice nebo ponožky." onclick="pridej('zboziTyp')">+ Přidat typ</button>
       </div>
     </div>
 
@@ -2210,7 +2214,7 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.89p";
+const VERZE = "v5.90p";
 const BUILD = "2026-09-16T23:32+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
@@ -9018,6 +9022,13 @@ function kresliTricka(){
 const DUVODY_POHYBU = ['vyroba','nakup','prodej_stanek','vydej_objednavka',
                        'vydej_pomocnici','vraceni','inventura','oprava'];
 
+function volnyKodTypu(zaklad){
+  const obsazene = new Set(D.zboziTypy.map(x => x.kod));
+  if(!obsazene.has(zaklad)) return zaklad;
+  for(let i = 2; i < 200; i++){ if(!obsazene.has(zaklad + i)) return zaklad + i; }
+  return zaklad + Date.now();
+}
+
 function volnyKodZbozi(zaklad){
   const obsazene = new Set(D.zbozi.map(x => x.kod));
   if(!obsazene.has(zaklad)) return zaklad;
@@ -9106,8 +9117,62 @@ function kresliObleceni(){
     + ', <b>'+D.zboziVarianty.length+'</b> ' + sklonuj(D.zboziVarianty.length,'velikost','velikosti','velikostí')
     + ', skladem <b>'+celkemSklad+'</b> ks';
 
+  kresliZboziTypy();
   kresliVarianty();
   kresliPohyby();
+  zkontrolujObleceni();
+}
+
+function kresliZboziTypy(){
+  const puvodni = D.zboziTypy.map(t => t.kod);
+  tabulka('#tabZboziTypy', [
+    {nadpis:"Kód", pole:"kod", sirka:"150px"},
+    {nadpis:"Název", pole:"nazev", sirka:"220px"},
+    {nadpis:"Značka", pole:"znacka", sirka:"180px"},
+    {nadpis:"Pořadí", pole:"poradi", typ:"number", sirka:"90px", trida:"stred"}
+  ], D.zboziTypy, () => {
+    /* Když se kód typu přejmenuje, musí ho zboží následovat. Jinak by řádky
+       ukazovaly na typ, který už neexistuje, a databáze by je odmítla. */
+    D.zboziTypy.forEach((t, i) => {
+      const stary = puvodni[i];
+      if(stary && stary !== t.kod){
+        D.zbozi.forEach(z => { if(z.typ_kod === stary) z.typ_kod = t.kod; });
+      }
+    });
+    kresliObleceni();
+  }, true, false);
+}
+
+/* Dvě věci, které databáze odmítne, a stojí za to je ukázat dřív, než se
+   uživatel pokusí uložit: dva stejné kódy a odkaz na neexistující typ. */
+function zkontrolujObleceni(){
+  const el = $('#varovaniObleceni');
+  if(!el) return;
+  const potize = [];
+
+  const vidane = {};
+  D.zboziTypy.forEach(t => { vidane[t.kod] = (vidane[t.kod] || 0) + 1; });
+  const dvojiTypy = Object.keys(vidane).filter(k => vidane[k] > 1);
+  if(dvojiTypy.length) potize.push('dva typy se stejným kódem: ' + dvojiTypy.join(', '));
+
+  const vidaneZ = {};
+  D.zbozi.forEach(z => { vidaneZ[z.kod] = (vidaneZ[z.kod] || 0) + 1; });
+  const dvojiZbozi = Object.keys(vidaneZ).filter(k => vidaneZ[k] > 1);
+  if(dvojiZbozi.length) potize.push('dvoje zboží se stejným kódem: ' + dvojiZbozi.join(', '));
+
+  const kodyTypu = new Set(D.zboziTypy.map(t => t.kod));
+  const sirotci = D.zbozi.filter(z => !kodyTypu.has(z.typ_kod)).map(z => z.nazev || z.kod);
+  if(sirotci.length) potize.push('zboží ukazuje na neexistující typ: ' + sirotci.join(', '));
+
+  const kodyZbozi = new Set(D.zbozi.map(z => z.kod));
+  const sirotciV = D.zboziVarianty.filter(v => !kodyZbozi.has(v.zbozi_kod)).length;
+  if(sirotciV) potize.push(sirotciV + ' velikostí ukazuje na neexistující zboží');
+
+  el.innerHTML = potize.length
+    ? '<b style="color:var(--vinova)">Takhle se to neuloží:</b> ' + esc(potize.join('; '))
+      + '. Oprav to v tabulkách níž, ať jde uložit i zbytek plánu.'
+    : '';
+  return potize.length;
 }
 
 // Které zboží má rozepsané velikosti — vybírá se nad tabulkou, ať se
@@ -9494,7 +9559,10 @@ function pridej(co){
     D.nocMista.push(novy); kam = 'nocleh'; kresliNocMista();
   }
   if(co==='zboziTyp'){
-    novy = {kod:"NOVY", nazev:"Nový typ", znacka:"", poradi:(D.zboziTypy.length+1)*10, aktivni:"ano"};
+    // Kód musí být jedinečný hned při založení. Dva řádky se stejným kódem
+    // shodí celé ukládání — databáze upsert se stejným klíčem dvakrát neumí.
+    novy = {kod: volnyKodTypu("novy"), nazev:"Nový typ", znacka:"",
+            poradi:(D.zboziTypy.length+1)*10, aktivni:"ano"};
     D.zboziTypy.push(novy); kam = 'typ zboží'; kresliObleceni();
   }
   if(co==='zbozi'){

@@ -1321,7 +1321,59 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
   <!-- 9. TRIČKA -->
   <section class="sekce" id="s-tricka">
     <div class="karta">
-      <h2>Vstupy ročníku</h2>
+      <h2>Sortiment — co se prodává a rozdává</h2>
+      <div class="telo">
+        <p class="popisek">Typ zboží je hlavní rozlišení a zároveň filtr. Trička jsou
+          ročníková, každý rok jiná; merch ročník nemá a jede dál. Nový typ stačí
+          přidat řádkem, nic se kvůli tomu neprogramuje.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+          <div style="min-width:200px">
+            <label class="popisek" style="display:block;margin-bottom:3px">Typ zboží</label>
+            <select id="filtrTypZbozi" onchange="kresliObleceni()"
+              style="width:100%;padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit"></select>
+          </div>
+          <div style="min-width:200px">
+            <label class="popisek" style="display:block;margin-bottom:3px">Ročník</label>
+            <select id="filtrRokZbozi" onchange="kresliObleceni()"
+              style="width:100%;padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit"></select>
+          </div>
+          <span class="popisek" id="souhrnObleceni" style="flex:1;min-width:220px"></span>
+        </div>
+        <div class="obal-tab"><table class="tab" id="tabZbozi"></table></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="tl" title="Přidá další kus zboží do vybraného typu." onclick="pridej('zbozi')">+ Přidat zboží</button>
+          <button class="tl" title="Přidá další typ zboží, například čepice nebo ponožky." onclick="pridej('zboziTyp')">+ Přidat typ</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Velikosti a sklad</h2>
+      <div class="telo">
+        <p class="popisek">Sklad se vede po velikostech, protože „máme trička" není
+          informace — informace je „máme jedenáct pánských S". Stav se nepřepisuje,
+          skládá se z pohybů; proto je u každého čísla vidět, čím vzniklo.</p>
+        <div id="vyberZbozi" style="margin-bottom:10px"></div>
+        <div class="obal-tab"><table class="tab" id="tabVarianty"></table></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="tl" title="Přidá další velikost k vybranému zboží." onclick="pridej('varianta')">+ Přidat velikost</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Pohyby skladu — tabulka sklad_pohyby</h2>
+      <div class="telo">
+        <p class="popisek">Kladné číslo naskladňuje, záporné odepisuje. Prodej na stánku
+          se odepisuje souhrnně na konci akce, výdej pomocníkům má vlastní důvod,
+          ať se to nemíchá dohromady.</p>
+        <div class="obal-tab"><table class="tab" id="tabPohyby"></table></div>
+        <button class="tl" style="margin-top:10px" title="Přidá další pohyb na skladě." onclick="pridej('pohyb')">+ Přidat pohyb</button>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Objednávka triček u dodavatele — vstupy ročníku</h2>
       <div class="telo">
         <p class="popisek">Odhad pole se počítá z počtu zaplacených týmů, ne z rozepsaných
           soupisek — ty bývají v půlce srpna vyplněné sotva z třetiny.</p>
@@ -1837,6 +1889,12 @@ const D = {
   velikosti: [],
   objednavky: [],
 
+  // --- sortiment oblečení a sklad (od 16. 9. 2026) ---
+  zboziTypy: [],
+  zbozi: [],
+  zboziVarianty: [],
+  skladPohyby: [],
+
   // --- přístupy k webu ---
   urovne: [
     {kod:"SPRAVCE", nazev:"Správce",       popis:"Vidí a mění všechno včetně přístupů a kontaktů.", poradi:1},
@@ -2139,7 +2197,7 @@ const OBLASTI = [
   {kod:"nastaveni",      nazev:"Nastavení",                  sekce:["s-nastaveni"]},
   {kod:"noclehy_adresy", nazev:"Noclehy — místa",            sekce:["s-noclehy-mista"]},
   {kod:"noclehy_lide",   nazev:"Noclehy — lidé",             sekce:["s-noclehy-lide"]},
-  {kod:"tricka",         nazev:"Trička a objednávky",        sekce:["s-tricka"]},
+  {kod:"tricka",         nazev:"Oblečení, sklad a objednávky", sekce:["s-tricka"]},
   {kod:"pristupy",       nazev:"Přístupy k webu",            sekce:["s-pristupy"]},
   {kod:"fotky",          nazev:"Fotoarchiv",                 sekce:["s-fotky"]}
 ];
@@ -2152,8 +2210,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.88p";
-const BUILD = "2026-09-04T18:35+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.89p";
+const BUILD = "2026-09-16T23:32+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -2347,7 +2405,7 @@ const ZALOZKY = [
   {id:"s-clenove",       nazev:"Členové grup",       napoveda:"Lidé v grupách a jejich kontakty."},
   {id:"s-predavky",      nazev:"Předávky",           napoveda:"Místa předávek, souřadnice, vzdálenosti a časy mezi nimi."},
   {id:"s-noclehy-mista", nazev:"Noclehy — místa",    napoveda:"Ubytování, kapacity a stav rezervací."},
-  {id:"s-tricka",        nazev:"Trička",             napoveda:"Odhad potřeby triček podle velikostí, sklad a objednávky po vlnách."},
+  {id:"s-tricka",        nazev:"Oblečení",           napoveda:"Sortiment po typech zboží — trička i merch ATEX, velikosti, sklad a objednávky u dodavatele po vlnách."},
   {id:"s-pristupy",      nazev:"Přístupy",           napoveda:"Tři úrovně přístupu k webu, co která smí, a seznam uživatelů."},
   {id:"s-nastaveni",     nazev:"Nastavení",          napoveda:"Aktivní ročník, datum závodu a další nastavení plánovače."},
   {id:"s-fotky",         nazev:"Fotoarchiv",         napoveda:"Fotky ze všech ročníků s hodnocením a nápady na popisky. Jen ke čtení, načítá se po ročnících."},
@@ -8948,7 +9006,181 @@ function kresliTricka(){
     + (Math.abs(soucet-100)>1 ? '<b style="color:var(--vinova)">Součet odhadovaných podílů je '+soucet.toFixed(1)+' %, ne 100 %.</b>' : '');
 
   kresliObjednavky();
+  kresliObleceni();
 }
+
+
+/* ---------- 9b. oblečení: sortiment, velikosti, sklad ----------
+   Rozšíření dosavadní záložky Trička na celý sortiment — *16. 9. 2026 (v5.89)*.
+   Katalog stojí vedle plánování objednávek u Bartůňkové, nenahrazuje ho:
+   objednávky po vlnách řeší potřebu ročníku, tohle řeší, co leží v krabici. */
+
+const DUVODY_POHYBU = ['vyroba','nakup','prodej_stanek','vydej_objednavka',
+                       'vydej_pomocnici','vraceni','inventura','oprava'];
+
+function volnyKodZbozi(zaklad){
+  const obsazene = new Set(D.zbozi.map(x => x.kod));
+  if(!obsazene.has(zaklad)) return zaklad;
+  for(let i = 2; i < 200; i++){ if(!obsazene.has(zaklad + '-' + i)) return zaklad + '-' + i; }
+  return zaklad + '-' + Date.now();
+}
+
+// Stav skladu je součet pohybů, ne uložené číslo.
+function skladVarianty(kod){
+  return D.skladPohyby.reduce((a, p) => a + (p.varianta_kod === kod ? (+p.zmena || 0) : 0), 0);
+}
+
+function zbozdiKVideni(){
+  const typ = $('#filtrTypZbozi') ? $('#filtrTypZbozi').value : '';
+  const rok = $('#filtrRokZbozi') ? $('#filtrRokZbozi').value : '';
+  return D.zbozi
+    .filter(z => !typ || z.typ_kod === typ)
+    .filter(z => !rok || (rok === '(bez ročníku)' ? !z.rok : z.rok === rok))
+    .slice()
+    .sort((a,b) => (a.poradi||100) - (b.poradi||100) || String(a.nazev).localeCompare(String(b.nazev),'cs'));
+}
+
+function naplnFiltryZbozi(){
+  const fT = $('#filtrTypZbozi'), fR = $('#filtrRokZbozi');
+  if(!fT || !fR) return;
+  const typ = fT.value, rok = fR.value;
+  fT.innerHTML = '<option value="">všechny typy</option>'
+    + D.zboziTypy.slice().sort((a,b)=>(a.poradi||100)-(b.poradi||100))
+        .map(t => '<option value="'+esc(t.kod)+'">'+esc(t.nazev)+'</option>').join('');
+  const roky = [...new Set(D.zbozi.map(z => z.rok || '(bez ročníku)'))].sort();
+  fR.innerHTML = '<option value="">všechny ročníky</option>'
+    + roky.map(r => '<option value="'+esc(r)+'">'+esc(r)+'</option>').join('');
+  fT.value = typ; fR.value = rok;
+}
+
+function kresliObleceni(){
+  naplnFiltryZbozi();
+
+  // --- zboží ---
+  const zbozi = zbozdiKVideni();
+  const typNazev = k => (D.zboziTypy.find(t => t.kod === k) || {}).nazev || k || '';
+  const t = $('#tabZbozi');
+  if(t){
+    let h = '<thead><tr>'
+      + '<th style="width:150px"'+nap('Typ')+'>Typ</th>'
+      + '<th style="width:90px"'+nap('Ročník')+'>Ročník</th>'
+      + '<th'+nap('Název')+'>Název</th>'
+      + '<th style="width:150px"'+nap('Dodavatel')+'>Dodavatel</th>'
+      + '<th style="width:100px"'+nap('Prodejní cena')+'>Prodej Kč</th>'
+      + '<th style="width:100px"'+nap('Nákupní cena')+'>Nákup Kč</th>'
+      + '<th style="width:90px"'+nap('Velikostí')+'>Velikostí</th>'
+      + '<th style="width:90px"'+nap('Skladem')+'>Skladem</th></tr></thead><tbody>';
+    zbozi.forEach(z => {
+      const va = D.zboziVarianty.filter(v => v.zbozi_kod === z.kod);
+      const sklad = va.reduce((a,v) => a + skladVarianty(v.kod), 0);
+      const i = D.zbozi.indexOf(z);
+      h += '<tr>'
+        + '<td><select data-i="'+i+'" data-p="typ_kod">'
+          + D.zboziTypy.map(x => '<option value="'+esc(x.kod)+'"'+(x.kod===z.typ_kod?' selected':'')+'>'+esc(x.nazev)+'</option>').join('')
+          + '</select></td>'
+        + '<td><input type="text" data-i="'+i+'" data-p="rok" value="'+esc(z.rok||'')+'" placeholder="bez ročníku"></td>'
+        + '<td><input type="text" data-i="'+i+'" data-p="nazev" value="'+esc(z.nazev||'')+'"></td>'
+        + '<td><input type="text" data-i="'+i+'" data-p="dodavatel" value="'+esc(z.dodavatel||'')+'"></td>'
+        + '<td class="stred"><input type="number" step="1" data-i="'+i+'" data-p="cena_kc" value="'+(z.cena_kc==null?'':z.cena_kc)+'"></td>'
+        + '<td class="stred"><input type="number" step="1" data-i="'+i+'" data-p="cena_nakup_kc" value="'+(z.cena_nakup_kc==null?'':z.cena_nakup_kc)+'"></td>'
+        + '<td class="stred" style="padding:7px;font-size:13px">'+va.length+'</td>'
+        + '<td class="stred" style="padding:7px;font-size:13px;font-weight:800">'+sklad+'</td></tr>';
+    });
+    if(!zbozi.length) h += '<tr><td colspan="8" class="stred" style="padding:14px;color:var(--pisek)">Pro tenhle filtr tu nic není.</td></tr>';
+    t.innerHTML = h + '</tbody>';
+    t.querySelectorAll('input,select').forEach(el => {
+      el.onchange = () => {
+        const r = D.zbozi[+el.dataset.i], p = el.dataset.p;
+        r[p] = (el.type === 'number') ? (el.value === '' ? null : (+el.value||0)) : el.value;
+        zrevidovano(r); kresliObleceni();
+      };
+    });
+  }
+
+  const celkemSklad = D.zboziVarianty.reduce((a,v) => a + skladVarianty(v.kod), 0);
+  const sv = $('#souhrnObleceni');
+  // „2 druhů zboží" se nečte hezky; skloňování podle počtu je pár znaků navíc.
+  const sklonuj = (n, jeden, dva, vic) => n === 1 ? jeden : (n >= 2 && n <= 4 ? dva : vic);
+  if(sv) sv.innerHTML = '<b>'+D.zbozi.length+'</b> ' + sklonuj(D.zbozi.length,'druh','druhy','druhů')
+    + ' zboží v <b>'+D.zboziTypy.length+'</b> ' + sklonuj(D.zboziTypy.length,'typu','typech','typech')
+    + ', <b>'+D.zboziVarianty.length+'</b> ' + sklonuj(D.zboziVarianty.length,'velikost','velikosti','velikostí')
+    + ', skladem <b>'+celkemSklad+'</b> ks';
+
+  kresliVarianty();
+  kresliPohyby();
+}
+
+// Které zboží má rozepsané velikosti — vybírá se nad tabulkou, ať se
+// nemusí rolovat přes všechny druhy najednou.
+function kresliVarianty(){
+  const obal = $('#vyberZbozi');
+  const tab = $('#tabVarianty');
+  if(!obal || !tab) return;
+  const zbozi = zbozdiKVideni();
+  if(!zbozi.length){ obal.innerHTML = ''; tab.innerHTML = ''; return; }
+  if(!vybraneZbozi || !zbozi.some(z => z.kod === vybraneZbozi)) vybraneZbozi = zbozi[0].kod;
+
+  obal.innerHTML = '<label class="popisek" style="display:block;margin-bottom:3px">Zboží</label>'
+    + '<select id="vyberZbozíSel" style="min-width:280px;padding:7px 9px;border:1px solid var(--linka);border-radius:8px;font:inherit">'
+    + zbozi.map(z => '<option value="'+esc(z.kod)+'"'+(z.kod===vybraneZbozi?' selected':'')+'>'
+        + esc(z.nazev) + (z.rok ? ' — ' + esc(z.rok) : '') + '</option>').join('')
+    + '</select>';
+  obal.querySelector('select').onchange = e => { vybraneZbozi = e.target.value; kresliVarianty(); };
+
+  const va = D.zboziVarianty.filter(v => v.zbozi_kod === vybraneZbozi);
+  /* Velikosti se nesmí řadit abecedně — XL by předběhlo XXL i S. Pořadí je
+     dané seznamem, stejně jako v číselníku velikostí v databázi. */
+  const PORADI_VELIKOSTI = ['XS','S','M','L','XL','XXL','XXXL','4XL','jedna velikost'];
+  const poradiVel = v => {
+    const i = PORADI_VELIKOSTI.indexOf(v.velikost_kod);
+    return i < 0 ? 99 : i;
+  };
+  va.sort((a,b) => String(a.rada).localeCompare(String(b.rada),'cs') || poradiVel(a) - poradiVel(b));
+
+  let h = '<thead><tr>'
+    + '<th style="width:120px"'+nap('Řada')+'>Řada</th>'
+    + '<th style="width:110px"'+nap('Velikost')+'>Velikost</th>'
+    + '<th style="width:130px"'+nap('Barva')+'>Barva</th>'
+    + '<th style="width:110px"'+nap('Skladem')+'>Skladem</th>'
+    + '<th'+nap('Kód')+'>Kód</th></tr></thead><tbody>';
+  let celkem = 0;
+  va.forEach(v => {
+    const sk = skladVarianty(v.kod); celkem += sk;
+    const i = D.zboziVarianty.indexOf(v);
+    h += '<tr>'
+      + '<td><input type="text" data-i="'+i+'" data-p="rada" value="'+esc(v.rada||'')+'"></td>'
+      + '<td><input type="text" data-i="'+i+'" data-p="velikost_kod" value="'+esc(v.velikost_kod||'')+'"></td>'
+      + '<td><input type="text" data-i="'+i+'" data-p="barva" value="'+esc(v.barva||'')+'" placeholder="neřeší se"></td>'
+      + '<td class="stred" style="padding:7px;font-size:13px;font-weight:800;color:'
+        + (sk > 0 ? 'var(--olive)' : 'var(--pisek)') + '">' + sk + '</td>'
+      + '<td style="padding:7px;font-size:11.5px;color:var(--pisek)">'+esc(v.kod||'')+'</td></tr>';
+  });
+  if(!va.length) h += '<tr><td colspan="5" class="stred" style="padding:14px;color:var(--pisek)">Tohle zboží zatím nemá rozepsané velikosti.</td></tr>';
+  else h += '<tr style="background:#F3EFE6;font-weight:800"><td colspan="3" style="padding:8px">Celkem</td>'
+          + '<td class="stred">'+celkem+'</td><td></td></tr>';
+  tab.innerHTML = h + '</tbody>';
+  tab.querySelectorAll('input').forEach(el => {
+    el.onchange = () => {
+      const r = D.zboziVarianty[+el.dataset.i];
+      r[el.dataset.p] = el.value;
+      zrevidovano(r); kresliObleceni();
+    };
+  });
+}
+
+function kresliPohyby(){
+  const varianty = D.zboziVarianty.slice().sort((a,b) => String(a.kod).localeCompare(String(b.kod),'cs'));
+  tabulka('#tabPohyby', [
+    {nadpis:"Zboží a velikost", pole:"varianta_kod", typ:"select",
+     moznosti: varianty.map(v => v.kod), sirka:"300px"},
+    {nadpis:"Datum", pole:"datum", typ:"date", sirka:"140px"},
+    {nadpis:"Změna", pole:"zmena", typ:"number", sirka:"90px", trida:"stred"},
+    {nadpis:"Důvod", pole:"duvod", typ:"select", moznosti:DUVODY_POHYBU, sirka:"160px"},
+    {nadpis:"Ročník", pole:"rok", typ:"select", moznosti:ROKY, sirka:"100px"},
+    {nadpis:"Poznámka", pole:"poznamka"}
+  ], D.skladPohyby, () => kresliObleceni(), true, false);
+}
+let vybraneZbozi = '';
 
 function kresliObjednavky(){
   tabulka('#tabObjednavky', [
@@ -9260,6 +9492,34 @@ function pridej(co){
     novy = {kod:"NOVÉ",nazev:"",adresa:"",mapa_url:"",kapacita:0,pokoje:"",kontakt:"",
             telefon:"",cena:"",platba:"",rezervace:"",poznamka:""};
     D.nocMista.push(novy); kam = 'nocleh'; kresliNocMista();
+  }
+  if(co==='zboziTyp'){
+    novy = {kod:"NOVY", nazev:"Nový typ", znacka:"", poradi:(D.zboziTypy.length+1)*10, aktivni:"ano"};
+    D.zboziTypy.push(novy); kam = 'typ zboží'; kresliObleceni();
+  }
+  if(co==='zbozi'){
+    const typ = ($('#filtrTypZbozi') && $('#filtrTypZbozi').value) || (D.zboziTypy[0] && D.zboziTypy[0].kod) || 'tricko';
+    novy = {kod: volnyKodZbozi(typ + '-nove'), typ_kod: typ, rok:"", nazev:"", popis:"",
+            barva:"", model:"", dodavatel:"", cena_kc:null, cena_nakup_kc:null,
+            poradi:(D.zbozi.length+1)*10, aktivni:"ano"};
+    D.zbozi.push(novy); kam = 'zboží'; kresliObleceni();
+  }
+  if(co==='varianta'){
+    if(!vybraneZbozi){ hlaska('Nejdřív vyberte zboží, ke kterému velikost patří.'); return; }
+    const zb = D.zbozi.find(z => z.kod === vybraneZbozi) || {};
+    novy = {kod: vybraneZbozi + '-unisex-nova-' + Date.now(), zbozi_kod: vybraneZbozi,
+            rada:"unisex", velikost_kod:"M", strih:"unisex", barva:"",
+            cena_kc:null, cena_nakup_kc:null, aktivni:"ano"};
+    D.zboziVarianty.push(novy);
+    kam = 'velikost u zboží ' + (zb.nazev || vybraneZbozi);
+    kresliObleceni();
+  }
+  if(co==='pohyb'){
+    const prvni = D.zboziVarianty[0];
+    novy = {kod:'p' + Date.now(), varianta_kod: prvni ? prvni.kod : '',
+            datum: new Date().toISOString().slice(0,10), zmena:0, duvod:'vyroba',
+            rok: D.nastaveni.aktivni_rok, poznamka:""};
+    D.skladPohyby.push(novy); kam = 'pohyb na skladě'; kresliObleceni();
   }
   if(co==='objednavka'){
     novy = {rok:D.nastaveni.aktivni_rok,vlna:1,datum:"",pocet:0,poznamka:""};
@@ -9605,6 +9865,38 @@ const MAPA = {
     tabulka:'tricka_objednavky', klic:['rok','vlna'], konflikt:['rok','vlna'], rok:'radek',
     vzdyUkladat:true,
     pole:{rok:'rok', vlna:'vlna', datum:'datum', pocet:'pocet', poznamka:'poznamka'}
+  },
+  zboziTypy: {
+    tabulka:'zbozi_typy', klic:['kod'], konflikt:['kod'], rok:false, vzdyUkladat:true,
+    pole:{kod:'kod', nazev:'nazev', znacka:'znacka', poradi:'poradi', aktivni:'aktivni'},
+    naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano'}),
+    naDb: r => ({...r, aktivni: r.aktivni !== 'ne'})
+  },
+  zbozi: {
+    // Ročníkem se nefiltruje schválně: trička jsou ročníková, merch není,
+    // a zbytky loňska musí být vidět, i když se plánuje další ročník.
+    tabulka:'zbozi', klic:['kod'], konflikt:['kod'], rok:false, vzdyUkladat:true,
+    pole:{kod:'kod', typ_kod:'typ_kod', rok:'rok', nazev:'nazev', popis:'popis',
+          barva:'barva', model:'model', dodavatel:'dodavatel',
+          cena_kc:'cena_kc', cena_nakup_kc:'cena_nakup_kc',
+          poradi:'poradi', aktivni:'aktivni'},
+    naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano'}),
+    naDb: r => ({...r, aktivni: r.aktivni !== 'ne'})
+  },
+  zboziVarianty: {
+    tabulka:'zbozi_varianty', klic:['kod'], konflikt:['kod'], rok:false, vzdyUkladat:true,
+    pole:{kod:'kod', zbozi_kod:'zbozi_kod', rada:'rada', velikost_kod:'velikost_kod',
+          strih:'strih', barva:'barva', cena_kc:'cena_kc', cena_nakup_kc:'cena_nakup_kc',
+          aktivni:'aktivni'},
+    naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano'}),
+    naDb: r => ({...r, aktivni: r.aktivni !== 'ne'})
+  },
+  skladPohyby: {
+    // Kniha pohybů. Nic se nepřepisuje, jen přibývá řádek — proto je vidět,
+    // čím se stav změnil, a proto se ročník drží na řádku, ne na filtru.
+    tabulka:'sklad_pohyby', klic:['kod'], konflikt:['kod'], rok:'radek', vzdyUkladat:true,
+    pole:{kod:'kod', varianta_kod:'varianta_kod', datum:'datum', zmena:'zmena',
+          duvod:'duvod', rok:'rok', poznamka:'poznamka'}
   },
   uzivatele: {
     tabulka:'uzivatele', klic:['uid'], konflikt:['uid'], rok:false, jen:['_heslo'],
@@ -10182,7 +10474,8 @@ const NAZVY_POLI = {
 const nazevPole = js => NAZVY_POLI[js] || js;
 const NAZVY_SAD = {tymy:'Grupy', clenove:'Členové grup', ukoly:'Úkoly',
   predavky:'Předávky', nocMista:'Noclehy — místa', nocLide:'Noclehy — lidé',
-  todo:'To-do', velikosti:'Trička', objednavky:'Objednávky triček', uzivatele:'Přístupy'};
+  todo:'To-do', velikosti:'Trička', objednavky:'Objednávky triček', uzivatele:'Přístupy',
+  zboziTypy:'Typy zboží', zbozi:'Zboží', zboziVarianty:'Velikosti zboží', skladPohyby:'Pohyby skladu'};
 const popisRadku = r => String(r.kod || r.jmeno || r.nazev || r.text || r.cislo || '?');
 
 async function zkontrolujPrepsani(rok){

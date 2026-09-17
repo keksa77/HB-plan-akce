@@ -2243,8 +2243,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.92p";
-const BUILD = "2026-09-17T13:53+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.93p";
+const BUILD = "2026-09-17T15:57+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -9456,7 +9456,11 @@ function kresliPohyby(){
     {nadpis:"Datum", pole:"datum", typ:"date", sirka:"140px"},
     {nadpis:"Změna", pole:"zmena", typ:"number", sirka:"90px", trida:"stred"},
     {nadpis:"Důvod", pole:"duvod", typ:"select", moznosti:DUVODY_POHYBU, sirka:"160px"},
-    {nadpis:"Ročník", pole:"rok", typ:"select", moznosti:ROKY, sirka:"100px"},
+    /* Ročník je nepovinný — taška s logem ani merch ATEX k ročníku nepatří,
+       vážou se na něj jen trička. Prázdná volba je proto první v nabídce.
+       *Doplněno 17. 9. 2026 (v5.93).* */
+    {nadpis:"Ročník", pole:"rok", typ:"select",
+     moznosti: [{v:'', t:'— bez ročníku —'}].concat(ROKY), sirka:"130px"},
     {nadpis:"Poznámka", pole:"poznamka"}
   ], D.skladPohyby, () => kresliObleceni(), true, false);
 }
@@ -9812,9 +9816,12 @@ function pridej(co){
        *Opraveno 17. 9. 2026 (v5.92), předtím tu byla nula.* */
     const pro = D.zboziVarianty.filter(v => v.zbozi_kod === vybraneZbozi && v.aktivni !== 'ne');
     const prvni = pro[0] || D.zboziVarianty.find(v => v.aktivni !== 'ne') || D.zboziVarianty[0];
+    /* Ročník se bere od zboží, ne z nastavení — u stálého sortimentu zůstane
+       prázdný, u ročníkových triček se předvyplní tím správným. */
+    const zbPro = D.zbozi.find(z => z.kod === (prvni ? prvni.zbozi_kod : '')) || {};
     novy = {kod:'p' + Date.now(), varianta_kod: prvni ? prvni.kod : '',
             datum: new Date().toISOString().slice(0,10), zmena:1, duvod:'vyroba',
-            rok: D.nastaveni.aktivni_rok, poznamka:""};
+            rok: zbPro.rok || '', poznamka:""};
     D.skladPohyby.push(novy); kam = 'pohyb na skladě'; kresliObleceni();
   }
   if(co==='objednavka'){
@@ -10219,7 +10226,8 @@ const MAPA = {
   skladPohyby: {
     // Kniha pohybů. Nic se nepřepisuje, jen přibývá řádek — proto je vidět,
     // čím se stav změnil, a proto se ročník drží na řádku, ne na filtru.
-    tabulka:'sklad_pohyby', klic:['kod'], konflikt:['kod'], rok:'radek', vzdyUkladat:true,
+    tabulka:'sklad_pohyby', klic:['kod'], konflikt:['kod'], rok:'radek',
+    rokNepovinny:true, vzdyUkladat:true,
     pole:{kod:'kod', varianta_kod:'varianta_kod', datum:'datum', zmena:'zmena',
           duvod:'duvod', rok:'rok', poznamka:'poznamka'}
   },
@@ -10410,7 +10418,12 @@ function doDb(sada, r, rok){
     v[m.pole[js]] = (h === undefined) ? null : h;
   });
   if(m.rok === true) v.rok = rok;
-  else if(m.rok === 'radek') v.rok = r.rok || rok;
+  /* U sady s rokNepovinny znamená prázdno opravdu „bez ročníku" a uloží se jako
+     prázdná hodnota. Jinde se prázdno bere jako „nevyplněno" a doplní se aktivní
+     ročník — jinak by řádky beze zbytku spadly mimo plánovaný rok.
+     *Rozlišeno 17. 9. 2026 (v5.93), předtím se prázdno vždy přepsalo ročníkem.* */
+  else if(m.rok === 'radek')
+    v.rok = (m.rokNepovinny && (r.rok === '' || r.rok === null)) ? null : (r.rok || rok);
   return m.naDb ? m.naDb(v) : v;
 }
 

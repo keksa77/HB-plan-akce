@@ -2243,8 +2243,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.91p";
-const BUILD = "2026-09-17T01:10+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.92p";
+const BUILD = "2026-09-17T13:53+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -9320,6 +9320,16 @@ function zkontrolujObleceni(){
   const sirotciV = D.zboziVarianty.filter(v => !kodyZbozi.has(v.zbozi_kod)).length;
   if(sirotciV) potize.push(sirotciV + ' velikostí ukazuje na neexistující zboží');
 
+  /* Pohyb s nulovou změnou databáze odmítne (kontrola sklad_pohyby_zmena_nenulova)
+     a spadne s ním celá sada. Lepší je říct to dřív, než se uloží. */
+  const nuly = D.skladPohyby.filter(p => !(+p.zmena)).length;
+  if(nuly) potize.push(nuly + ' ' + (nuly === 1 ? 'pohyb skladu má' : 'pohybů skladu má')
+    + ' nulovou změnu — kladné číslo naskladňuje, záporné odepisuje, nula nedává smysl');
+
+  const kodyVariant = new Set(D.zboziVarianty.map(v => v.kod));
+  const sirotciP = D.skladPohyby.filter(p => !kodyVariant.has(p.varianta_kod)).length;
+  if(sirotciP) potize.push(sirotciP + ' pohybů skladu ukazuje na neexistující velikost');
+
   el.innerHTML = potize.length
     ? '<b style="color:var(--vinova)">Takhle se to neuloží:</b> ' + esc(potize.join('; '))
       + '. Oprav to v tabulkách níž, ať jde uložit i zbytek plánu.'
@@ -9797,9 +9807,13 @@ function pridej(co){
     D.zbozi.push(novy); vybraneZbozi = novy.kod; kam = 'zboží'; kresliObleceni();
   }
   if(co==='pohyb'){
-    const prvni = D.zboziVarianty[0];
+    /* Změna nesmí být nula — databáze má kontrolu sklad_pohyby_zmena_nenulova
+       a nulový řádek by shodil ukládání celé sady. Zakládá se proto na jedničce.
+       *Opraveno 17. 9. 2026 (v5.92), předtím tu byla nula.* */
+    const pro = D.zboziVarianty.filter(v => v.zbozi_kod === vybraneZbozi && v.aktivni !== 'ne');
+    const prvni = pro[0] || D.zboziVarianty.find(v => v.aktivni !== 'ne') || D.zboziVarianty[0];
     novy = {kod:'p' + Date.now(), varianta_kod: prvni ? prvni.kod : '',
-            datum: new Date().toISOString().slice(0,10), zmena:0, duvod:'vyroba',
+            datum: new Date().toISOString().slice(0,10), zmena:1, duvod:'vyroba',
             rok: D.nastaveni.aktivni_rok, poznamka:""};
     D.skladPohyby.push(novy); kam = 'pohyb na skladě'; kresliObleceni();
   }

@@ -2243,8 +2243,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.93p";
-const BUILD = "2026-09-17T15:57+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.94p";
+const BUILD = "2026-09-18T10:04+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -9448,21 +9448,91 @@ function kresliVarianty(){
   });
 }
 
+/* Která velikost patří ke kterému zboží. Dřív tu byl jediný seznam vnitřních
+   kódů typu „atex-stale-10-dámská-L", ze kterého se nedalo poznat, co to je.
+   Nově se vybírá nejdřív zboží a teprve pak jeho velikost.
+   *Přepsáno 18. 9. 2026 (v5.94).* */
+function variantyZbozi(zbKod){
+  return D.zboziVarianty
+    .filter(v => v.zbozi_kod === zbKod && v.aktivni !== 'ne')
+    .slice()
+    .sort((a,b) => poradiStrihu(a.rada) - poradiStrihu(b.rada)
+                || poradiVelikosti(a.velikost_kod) - poradiVelikosti(b.velikost_kod));
+}
+
+// „pánská M" se čte líp než kód; u jedné velikosti by střih byl navíc.
+function popisVarianty(v){
+  if(!v) return '';
+  if(v.velikost_kod === 'jedna velikost') return 'jedna velikost';
+  return (v.rada ? v.rada + ' ' : '') + (v.velikost_kod || '');
+}
+
+function popisZbozi(z){
+  if(!z) return '';
+  return (z.nazev || z.kod) + (z.rok ? ' — ' + z.rok : '');
+}
+
 function kresliPohyby(){
-  const varianty = D.zboziVarianty.slice().sort((a,b) => String(a.kod).localeCompare(String(b.kod),'cs'));
+  const zbozi = D.zbozi.slice()
+    .sort((a,b) => (a.poradi||100) - (b.poradi||100)
+                || String(a.nazev).localeCompare(String(b.nazev),'cs'));
+  const varPodleKodu = {};
+  D.zboziVarianty.forEach(v => { varPodleKodu[v.kod] = v; });
+
+  // ke které položce pohyb patří; u nového řádku ještě nemusí být vyplněno
+  const zbozKodPohybu = p => (varPodleKodu[p.varianta_kod] || {}).zbozi_kod || '';
+
   tabulka('#tabPohyby', [
-    {nadpis:"Zboží a velikost", pole:"varianta_kod", typ:"select",
-     moznosti: varianty.map(v => v.kod), sirka:"300px"},
+    {nadpis:"Zboží", sirka:"230px", html: (r, i) =>
+      '<select class="pohZb" data-i="'+i+'"><option value=""></option>'
+      + zbozi.map(z => '<option value="'+esc(z.kod)+'"'
+          + (z.kod === zbozKodPohybu(r) ? ' selected' : '') + '>'
+          + esc(popisZbozi(z)) + '</option>').join('')
+      + '</select>'},
+    {nadpis:"Velikost", sirka:"160px", html: (r, i) => {
+      const va = variantyZbozi(zbozKodPohybu(r));
+      if(!va.length) return '<span class="popisek">vyberte zboží</span>';
+      return '<select class="pohVel" data-i="'+i+'">'
+        + va.map(v => '<option value="'+esc(v.kod)+'"'
+            + (v.kod === r.varianta_kod ? ' selected' : '') + '>'
+            + esc(popisVarianty(v)) + '</option>').join('')
+        + '</select>';
+    }},
+    {nadpis:"Skladem", sirka:"90px", trida:"stred", html: (r) => {
+      const sk = skladVarianty(r.varianta_kod);
+      return '<span style="font-weight:800;color:'
+        + (sk > 0 ? 'var(--olive)' : 'var(--pisek)') + '">' + sk + '</span>';
+    }},
     {nadpis:"Datum", pole:"datum", typ:"date", sirka:"140px"},
     {nadpis:"Změna", pole:"zmena", typ:"number", sirka:"90px", trida:"stred"},
     {nadpis:"Důvod", pole:"duvod", typ:"select", moznosti:DUVODY_POHYBU, sirka:"160px"},
-    /* Ročník je nepovinný — taška s logem ani merch ATEX k ročníku nepatří,
+    /* Ročník je nepovinný — taška s logem ani sortiment ATEX k ročníku nepatří,
        vážou se na něj jen trička. Prázdná volba je proto první v nabídce.
        *Doplněno 17. 9. 2026 (v5.93).* */
     {nadpis:"Ročník", pole:"rok", typ:"select",
      moznosti: [{v:'', t:'— bez ročníku —'}].concat(ROKY), sirka:"130px"},
     {nadpis:"Poznámka", pole:"poznamka"}
   ], D.skladPohyby, () => kresliObleceni(), true, false);
+
+  const t = $('#tabPohyby');
+  if(!t) return;
+  /* Po přepnutí zboží se velikost nastaví na první, kterou to zboží má —
+     jinak by řádek ukazoval na velikost od jiného kusu. */
+  t.querySelectorAll('select.pohZb').forEach(el => {
+    el.onchange = () => {
+      const r = D.skladPohyby[+el.dataset.i];
+      const prvni = variantyZbozi(el.value)[0];
+      r.varianta_kod = prvni ? prvni.kod : '';
+      zrevidovano(r); kresliObleceni();
+    };
+  });
+  t.querySelectorAll('select.pohVel').forEach(el => {
+    el.onchange = () => {
+      const r = D.skladPohyby[+el.dataset.i];
+      r.varianta_kod = el.value;
+      zrevidovano(r); kresliObleceni();
+    };
+  });
 }
 let vybraneZbozi = '';
 let vybranaRada = '';

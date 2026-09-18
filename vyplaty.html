@@ -2449,7 +2449,7 @@ var qrcode = function() {
 <body>
 <div class="wrap">
   <h1>HB26 — postup u pomocníků <a href="./" title="Zpátky do plánovače Hory Bory">&#8592; plánovač</a>
-    <span class="verze" title="Verze a datum sestavení téhle stránky. Když se neshoduje s tím, co čekáte, máte otevřenou starou kopii.">v1.1 · 18. 9. 2026 · QR s poznámkou pro plátce</span></h1>
+    <span class="verze" title="Verze a datum sestavení téhle stránky. Když se neshoduje s tím, co čekáte, máte otevřenou starou kopii.">v1.2 · 18. 9. 2026 · QR: MSG + X-ID</span></h1>
   <div class="intro">
     Všechno se ukládá do databáze (Supabase, tabulka <code>vyplaty</code>, navázaná na členy grup) — otevřete to kdekoli,
     přihlásíte se stejným účtem jako do plánovače a vidíte ten samý stav. <strong>Zaškrtávátka se ukládají hned.</strong>
@@ -3117,27 +3117,32 @@ function naIban(ucet){
   const kontrola = String(98 - zbytek).padStart(2, '0');
   return 'CZ' + kontrola + zaklad;
 }
-/* Text, který jde do QR. `MSG` je zpráva pro příjemce, `X-SELF` je poznámka,
-   kterou v bance uvidí plátce — obojí stejný text. X-SELF má podle standardu
-   SPD 1.0 strop 30 znaků, takže u dlouhých jmen je zkrácený.
-   *Doplněno 18. 9. 2026 — dřív se poznámka pro plátce negenerovala.* */
+/* Text, který jde do QR. `MSG` je zpráva pro příjemce — to je jediné pole,
+   které banky spolehlivě vypíšou. `X-ID` je podle standardu ČBA „identifikátor
+   platby na straně příkazce", tedy to nejbližší poznámce pro plátce; některé
+   banky ho ukážou, jiné ho zahodí, Fio ho ignoruje.
+   *Opraveno 18. 9. 2026: dřív tu bylo pole X-SELF, které ve standardu vůbec
+   není — proto se v žádné bance neprojevilo.* */
 function zpravaKPlatbe(r){
   return 'Hory Bory 2026 - ' + r.jmeno + ', Díky!';
 }
-const MEZ_MSG = 60, MEZ_SELF = 30;      // meze podle SPD 1.0
+const MEZ_MSG = 60, MEZ_SELF = 20;      // meze podle standardu ČBA: MSG 60, X-ID 20
 const textDoQr = (zprava, mez) => bezDiakritiky(zprava).replace(/\*/g, ' ')
   .trim().slice(0, mez).replace(/[\s,;.\-]+$/, '').trim();
 
 /* Poznámka pro plátce má stejné znění jako zpráva pro příjemce. Když se do
-   třiceti znaků nevejde, useklo by se příjmení — a právě podle něj se platba
+   dvaceti znaků nevejde, useklo by se příjmení — a právě podle něj se platba
    ve výpisu hledá. V tom případě se vynechá úvod „Hory Bory 2026" a zbyde
    „HB26 + jméno". */
 function poznamkaProMe(zprava){
   const cela = textDoQr(zprava, MEZ_SELF);
   const plna = textDoQr(zprava, MEZ_MSG);
   if(cela === plna) return cela;
-  return textDoQr(plna.replace(/^Hory Bory (\d{4}) - /, (m, r) => 'HB' + r.slice(2) + ' '),
-                  MEZ_SELF);
+  // zkrácený tvar „HB26 + jméno": bez zdvořilostního konce a bez useknutého slova
+  const kratky = plna.replace(/^Hory Bory (\d{4}) - /, (m, r) => 'HB' + r.slice(2) + ' ')
+                     .replace(/,\s*Diky!?\s*$/i, '').trim();
+  if(kratky.length <= MEZ_SELF) return kratky;
+  return kratky.slice(0, MEZ_SELF).replace(/\s+\S*$/, '').trim();
 }
 
 function spd(iban, castka, zprava){
@@ -3145,7 +3150,7 @@ function spd(iban, castka, zprava){
   const msg = textDoQr(zprava, MEZ_MSG);
   if(msg) casti.push('MSG:' + msg);
   const moje = poznamkaProMe(zprava);
-  if(moje) casti.push('X-SELF:' + moje);
+  if(moje) casti.push('X-ID:' + moje);
   return casti.join('*');
 }
 function zavriQr(){
@@ -3175,7 +3180,7 @@ function ukazQr(r){
     vnitrek += '<div class="platba">' + kc(castka) + '</div>' +
                '<div class="detail">' + esc(r.ucet) + '<br>' + esc(iban) +
                '<br><span class="zprava">„' + esc(textDoQr(zprava, MEZ_MSG)) + '"</span>' +
-               '<br><span class="zprava">poznámka pro mě: „'
+               '<br><span class="zprava">X-ID (poznámka pro plátce, Fio ji nečte): „'
                  + esc(poznamkaProMe(zprava)) + '"</span></div>' +
                q.createImgTag(6, 8) +
                '<div class="upoz">Načtěte v bankovní aplikaci. Kód nikde neukládám, zavřením zmizí.</div>';

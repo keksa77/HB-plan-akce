@@ -58,6 +58,7 @@
   input[type=checkbox].zapl{accent-color:var(--ok)}
   input.kc{width:100%;max-width:78px;text-align:right;padding:4px 6px;font:inherit;font-size:13px;border:1px solid var(--line);border-radius:4px}
   input.kc:focus{outline:2px solid var(--hb);outline-offset:-1px}
+  h1 .verze{float:right;font-size:12px;font-weight:400;opacity:.75;padding-top:5px}
   .ucetbunka{display:flex;gap:5px;align-items:center}
   input.ucet{flex:1;min-width:0;font:inherit;font-size:12.5px;padding:4px 6px;border:1px solid var(--line);border-radius:4px}
   button.wa{flex:0 0 auto;padding:3px 6px;font-size:11px;font-weight:700;border-radius:4px;border:1px solid var(--line);
@@ -2447,7 +2448,8 @@ var qrcode = function() {
 </head>
 <body>
 <div class="wrap">
-  <h1>HB26 — postup u pomocníků <a href="./" title="Zpátky do plánovače Hory Bory">&#8592; plánovač</a></h1>
+  <h1>HB26 — postup u pomocníků <a href="./" title="Zpátky do plánovače Hory Bory">&#8592; plánovač</a>
+    <span class="verze" title="Verze a datum sestavení téhle stránky. Když se neshoduje s tím, co čekáte, máte otevřenou starou kopii.">v1.1 · 18. 9. 2026 · QR s poznámkou pro plátce</span></h1>
   <div class="intro">
     Všechno se ukládá do databáze (Supabase, tabulka <code>vyplaty</code>, navázaná na členy grup) — otevřete to kdekoli,
     přihlásíte se stejným účtem jako do plánovače a vidíte ten samý stav. <strong>Zaškrtávátka se ukládají hned.</strong>

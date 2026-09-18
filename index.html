@@ -2243,8 +2243,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.94p";
-const BUILD = "2026-09-18T10:04+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.95p";
+const BUILD = "2026-09-18T10:36+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -9161,7 +9161,19 @@ function kresliObleceni(){
     t.querySelectorAll('input,select').forEach(el => {
       el.onchange = () => {
         const r = D.zbozi[+el.dataset.i], p = el.dataset.p;
+        const stary = r[p];
         r[p] = (el.type === 'number') ? (el.value === '' ? null : (+el.value||0)) : el.value;
+        /* Kód nového zboží se odvozuje z druhu. Když se druh hned po založení
+           změní, musí se kód přizpůsobit — jinak vznikne „tricko-nove" u tašky,
+           jak se stalo 17. 9. 2026. Přejmenovává se jen u dosud neuloženého
+           řádku a jen tehdy, když kód pořád vypadá jako ten automatický.
+           *Opraveno 18. 9. 2026 (v5.95).* */
+        if(p === 'druh_kod' && r._nove && stary
+           && new RegExp('^' + stary + '-nove(-\\d+)?$').test(r.kod)){
+          const staryKod = r.kod;
+          r.kod = volnyKodZbozi(r.druh_kod + '-nove');
+          D.zboziVarianty.forEach(v => { if(v.zbozi_kod === staryKod) v.zbozi_kod = r.kod; });
+        }
         zrevidovano(r); kresliObleceni();
       };
     });

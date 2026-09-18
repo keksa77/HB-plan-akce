@@ -2243,8 +2243,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.95p";
-const BUILD = "2026-09-18T10:36+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.96p";
+const BUILD = "2026-09-18T10:51+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -9139,7 +9139,8 @@ function kresliObleceni(){
       + '<th style="width:95px"'+nap('Prodejní cena')+'>Prodej Kč</th>'
       + '<th style="width:95px"'+nap('Nákupní cena')+'>Nákup Kč</th>'
       + '<th style="width:85px"'+nap('Kolik velikostí se pořizuje')+'>Velikostí</th>'
-      + '<th style="width:85px"'+nap('Skladem')+'>Skladem</th></tr></thead><tbody>';
+      + '<th style="width:85px"'+nap('Skladem')+'>Skladem</th>'
+      + '<th style="width:34px"></th></tr></thead><tbody>';
     zbozi.forEach(z => {
       const va = D.zboziVarianty.filter(v => v.zbozi_kod === z.kod && v.aktivni !== 'ne');
       const sklad = D.zboziVarianty.filter(v => v.zbozi_kod === z.kod)
@@ -9154,10 +9155,45 @@ function kresliObleceni(){
         + '<td class="stred"><input type="number" step="1" data-i="'+i+'" data-p="cena_kc" value="'+(z.cena_kc==null?'':z.cena_kc)+'"></td>'
         + '<td class="stred"><input type="number" step="1" data-i="'+i+'" data-p="cena_nakup_kc" value="'+(z.cena_nakup_kc==null?'':z.cena_nakup_kc)+'"></td>'
         + '<td class="stred" style="padding:7px;font-size:13px">'+va.length+'</td>'
-        + '<td class="stred" style="padding:7px;font-size:13px;font-weight:800">'+sklad+'</td></tr>';
+        + '<td class="stred" style="padding:7px;font-size:13px;font-weight:800">'+sklad+'</td>'
+        + '<td class="smaz"><button class="smazX" data-smaz="'+esc(z.kod)+'"'
+          + ' title="Smaže tenhle kus zboží i jeho velikosti. Zboží, na kterém visí sklad, se jen přestane nabízet.">×</button></td></tr>';
     });
-    if(!zbozi.length) h += '<tr><td colspan="9" class="stred" style="padding:14px;color:var(--pisek)">Pro tenhle filtr tu nic není.</td></tr>';
+    if(!zbozi.length) h += '<tr><td colspan="10" class="stred" style="padding:14px;color:var(--pisek)">Pro tenhle filtr tu nic není.</td></tr>';
     t.innerHTML = h + '</tbody>';
+    /* Mazání zboží. Kus, na kterém visí pohyb skladu nebo objednávka, se
+       nesmaže — přišli bychom o historii, ze které se stav skladu skládá.
+       Takový se jen přestane nabízet, stejně jako odškrtnutá velikost.
+       *Doplněno 18. 9. 2026 (v5.96); do té doby nešlo zboží smazat vůbec.* */
+    t.querySelectorAll('button[data-smaz]').forEach(b => {
+      b.onclick = () => {
+        const kod = b.dataset.smaz;
+        const z = D.zbozi.find(x => x.kod === kod);
+        if(!z) return;
+        const va = D.zboziVarianty.filter(v => v.zbozi_kod === kod);
+        const pohybu = D.skladPohyby.filter(p => va.some(v => v.kod === p.varianta_kod)).length;
+        const nazev = z.nazev || kod;
+        if(pohybu){
+          if(!confirm('Na zboží „' + nazev + '" visí ' + pohybu + ' pohyb'
+            + (pohybu === 1 ? '' : (pohybu < 5 ? 'y' : 'ů')) + ' skladu, takže ho nesmažu —'
+            + ' přišli bychom o historii.\n\nMám ho místo toho přestat nabízet?')) return;
+          z.aktivni = 'ne'; zrevidovano(z);
+          va.forEach(v => { v.aktivni = 'ne'; zrevidovano(v); });
+          hlaska('Zboží „' + nazev + '" se přestalo nabízet. Sklad i historie zůstávají.');
+        }else{
+          if(!confirm('Smazat zboží „' + nazev + '" i s ' + va.length + ' velikostmi?'
+            + '\n\nVrátit se to nedá.')) return;
+          D.zbozi.splice(D.zbozi.indexOf(z), 1);
+          for(let i = D.zboziVarianty.length - 1; i >= 0; i--){
+            if(D.zboziVarianty[i].zbozi_kod === kod) D.zboziVarianty.splice(i, 1);
+          }
+          if(vybraneZbozi === kod) vybraneZbozi = '';
+          hlaska('Zboží „' + nazev + '" smazáno. Uloží se při uložení plánu.');
+        }
+        oznacZmenu(); kresliObleceni();
+      };
+    });
+
     t.querySelectorAll('input,select').forEach(el => {
       el.onchange = () => {
         const r = D.zbozi[+el.dataset.i], p = el.dataset.p;
@@ -9328,6 +9364,17 @@ function zkontrolujObleceni(){
   const bezDruhu = D.zbozi.filter(z => !z.druh_kod).map(z => z.nazev || z.kod);
   if(bezDruhu.length) potize.push('zboží bez druhu: ' + bezDruhu.join(', '));
 
+  /* Dvoje zboží se stejným názvem od téhož výrobce databáze přijme — kódy má
+     různé — ale je to skoro vždycky omyl. Typicky když se uloží stránka, která
+     má načtená stará data; přesně tak vzniklo 18. 9. 2026 devět duplicit. */
+  const videnyNazev = {};
+  D.zbozi.forEach(z => {
+    const k = [z.nazev, z.druh_kod, z.vyrobce_kod, z.rok || ''].join('|');
+    (videnyNazev[k] = videnyNazev[k] || []).push(z.kod);
+  });
+  const dvojiNazvy = Object.keys(videnyNazev).filter(k => videnyNazev[k].length > 1)
+    .map(k => k.split('|')[0] + ' (' + videnyNazev[k].join(', ') + ')');
+
   const kodyZbozi = new Set(D.zbozi.map(z => z.kod));
   const sirotciV = D.zboziVarianty.filter(v => !kodyZbozi.has(v.zbozi_kod)).length;
   if(sirotciV) potize.push(sirotciV + ' velikostí ukazuje na neexistující zboží');
@@ -9342,10 +9389,19 @@ function zkontrolujObleceni(){
   const sirotciP = D.skladPohyby.filter(p => !kodyVariant.has(p.varianta_kod)).length;
   if(sirotciP) potize.push(sirotciP + ' pohybů skladu ukazuje na neexistující velikost');
 
-  el.innerHTML = potize.length
-    ? '<b style="color:var(--vinova)">Takhle se to neuloží:</b> ' + esc(potize.join('; '))
-      + '. Oprav to v tabulkách níž, ať jde uložit i zbytek plánu.'
-    : '';
+  /* Dvě různé věci. „Potíže" databáze odmítne a shodí s nimi celé ukládání.
+     „Pozor" se uloží bez reptání, ale skoro vždycky je to omyl — nemá se to
+     tvářit stejně naléhavě, jinak si uživatel zvykne obojí přehlížet. */
+  el.innerHTML = (potize.length
+      ? '<b style="color:var(--vinova)">Takhle se to neuloží:</b> ' + esc(potize.join('; '))
+        + '. Oprav to v tabulkách níž, ať jde uložit i zbytek plánu.'
+      : '')
+    + (dvojiNazvy.length
+      ? (potize.length ? '<br>' : '')
+        + '<b style="color:var(--okr, #b07a1a)">Pozor:</b> dvakrát totéž zboží — '
+        + esc(dvojiNazvy.join('; '))
+        + '. Uložit to půjde, ale bývá to duplicita; křížkem vpravo smažete tu přebytečnou.'
+      : '');
   return potize.length;
 }
 

@@ -1406,6 +1406,49 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
     </div>
 
     <div class="karta">
+      <h2>Objednávkové formuláře</h2>
+      <div class="telo">
+        <p class="popisek">Odkaz na tabulku Google a datum, kdy se formulář zavírá.
+          Načtení tabulky si řekněte — projdu ji, převedu na objednávky a doplním,
+          kdy a kolik řádků se načetlo. Objednávka, která přijde po termínu, se
+          načte taky, jen se označí. Formulářů může běžet víc naráz.</p>
+        <div class="obal-tab"><table class="tab" id="tabFormulare"></table></div>
+        <button class="tl" style="margin-top:10px" title="Přidá další objednávkový formulář." onclick="pridej('formular')">+ Přidat formulář</button>
+
+        <h3 style="margin:22px 0 6px;font-size:15px">Překlad sloupců</h3>
+        <p class="popisek">Čím se sloupec ve formuláři přeloží na velikost v katalogu.
+          Vyplní se při prvním načtení; co nepůjde spárovat podle názvu, zůstane
+          prázdné a je vidět — neuhodnutá velikost by se poznala až při výdeji.</p>
+        <div class="obal-tab"><table class="tab" id="tabSloupce"></table></div>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Poptávka proti skladu</h2>
+      <div class="telo">
+        <p class="popisek">Co lidé chtějí, co na to máme a co zbývá pořídit. Sklad se
+          nikomu nepřiděluje automaticky — tohle jsou jen čísla, rozhodnutí je na vás.</p>
+        <div id="souhrnPoptavky" class="popisek" style="margin-bottom:10px"></div>
+        <div class="obal-tab"><table class="tab" id="tabPoptavka"></table></div>
+      </div>
+    </div>
+
+    <div class="karta">
+      <h2>Objednávky dodavatelům</h2>
+      <div class="telo">
+        <p class="popisek">Z toho, co chybí, se udělá jedna objednávka na každého výrobce —
+          přesně na chybějící kusy, bez rezervy. Tlačítko návrh přepíše, ručně
+          upravené počty se tím ztratí.</p>
+        <div class="obal-tab"><table class="tab" id="tabDodObjednavky"></table></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="tl hlavni" title="Spočítá, co chybí, a rozdělí to po výrobcích." onclick="navrhniObjednavkyDodavatelum()">Vytvořit z chybějícího</button>
+          <button class="tl" title="Přidá prázdnou objednávku dodavateli." onclick="pridej('dodObjednavka')">+ Přidat objednávku</button>
+        </div>
+        <div id="polozkyDodavatele" style="margin-top:16px"></div>
+      </div>
+    </div>
+
+    <div class="karta">
       <h2>Číselníky — druhy, výrobci, velikostní řady</h2>
       <div class="telo">
         <p class="popisek">Kód je vnitřní označení, na které se zboží odkazuje — musí být
@@ -1924,6 +1967,12 @@ const D = {
   vyrobci: [],
   rady: [],
   polozkyRady: [],
+  formulare: [],
+  formularSloupce: [],
+  obleceniObjednavky: [],
+  obleceniPolozky: [],
+  dodObjednavky: [],
+  dodPolozky: [],
   zbozi: [],
   zboziVarianty: [],
   skladPohyby: [],
@@ -2243,8 +2292,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.96p";
-const BUILD = "2026-09-18T10:51+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.97p";
+const BUILD = "2026-09-18T11:19+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -9228,8 +9277,215 @@ function kresliObleceni(){
   kresliCiselnikyZbozi();
   kresliVarianty();
   kresliPohyby();
+  kresliFormulare();
+  kresliPoptavku();
+  kresliObjednavkyDodavatelum();
   zkontrolujObleceni();
 }
+
+/* ---------- formuláře, poptávka, objednávky dodavatelům (v5.97) ---------- */
+
+function kresliFormulare(){
+  tabulka('#tabFormulare', [
+    {nadpis:"Kód", pole:"kod", sirka:"130px"},
+    {nadpis:"Název", pole:"nazev", sirka:"200px"},
+    {nadpis:"Odkaz na tabulku", pole:"url"},
+    {nadpis:"Typ", pole:"typ", typ:"select",
+     moznosti:[{v:'registrace',t:'při registraci'},{v:'po_zavode',t:'po závodě'},
+               {v:'stanek',t:'stánek'}], sirka:"140px"},
+    {nadpis:"Ročník", pole:"rok", typ:"select",
+     moznosti:[{v:'',t:'— bez ročníku —'}].concat(ROKY), sirka:"130px"},
+    {nadpis:"Uzávěrka", pole:"uzavreno_dne", typ:"date", sirka:"140px"},
+    {nadpis:"Naposledy načteno", sirka:"170px", html: r => {
+      if(!r.posledni_nacteni) return '<span class="popisek">zatím nikdy</span>';
+      const d = new Date(r.posledni_nacteni);
+      return '<span style="font-size:12.5px">' + esc(d.toLocaleString('cs'))
+        + (r.nacteno_radku != null ? ' · ' + r.nacteno_radku + ' řádků' : '') + '</span>';
+    }}
+  ], D.formulare, () => kresliObleceni(), true, false);
+
+  // překlad sloupců — plní se při načtení, tady se jen dolaďuje
+  const varianty = D.zboziVarianty.filter(v => v.aktivni !== 'ne');
+  const popisVar = v => {
+    const z = D.zbozi.find(x => x.kod === v.zbozi_kod) || {};
+    return (z.nazev || v.zbozi_kod) + ' — ' + popisVarianty(v);
+  };
+  tabulka('#tabSloupce', [
+    {nadpis:"Formulář", pole:"formular_kod", typ:"select",
+     moznosti: D.formulare.map(x => x.kod), sirka:"130px"},
+    {nadpis:"Sloupec ve formuláři", pole:"sloupec"},
+    {nadpis:"Velikost v katalogu", pole:"varianta_kod", typ:"select",
+     moznosti: [{v:'', t:'— nepřiřazeno —'}]
+       .concat(varianty.map(v => ({v: v.kod, t: popisVar(v)}))), sirka:"300px"}
+  ], D.formularSloupce, () => kresliObleceni(), true, false);
+}
+
+/* Poptávka je součet položek objednávek, které ještě nejsou vyřízené.
+   Zrušené a vydané se nepočítají — ty už nikdo nečeká. */
+function poptavkaPoVelikostech(){
+  const stavy = {};
+  D.obleceniObjednavky.forEach(o => { stavy[o.kod] = o.stav; });
+  const soucet = {};
+  D.obleceniPolozky.forEach(p => {
+    const stav = stavy[p.objednavka_kod];
+    if(stav && stav !== 'nova' && stav !== 'zaplacena') return;
+    soucet[p.varianta_kod] = (soucet[p.varianta_kod] || 0) + (+p.pocet || 0);
+  });
+  return soucet;
+}
+
+function kresliPoptavku(){
+  const t = $('#tabPoptavka'); if(!t) return;
+  const poptavka = poptavkaPoVelikostech();
+  const radky = [];
+  D.zboziVarianty.forEach(v => {
+    const chce = poptavka[v.kod] || 0;
+    const ma = skladVarianty(v.kod);
+    if(!chce && !ma) return;                   // co nikdo nechce a nemáme, jen plete
+    const z = D.zbozi.find(x => x.kod === v.zbozi_kod) || {};
+    radky.push({zbozi: z.nazev || v.zbozi_kod, vyrobce: nazevVyrobce(z.vyrobce_kod),
+                popis: popisVarianty(v), chce, ma, chybi: Math.max(0, chce - ma),
+                kod: v.kod, poradi: z.poradi || 100});
+  });
+  radky.sort((a,b) => b.chybi - a.chybi || a.poradi - b.poradi
+                   || a.zbozi.localeCompare(b.zbozi,'cs'));
+
+  let h = '<thead><tr>'
+    + '<th'+nap('Zboží')+'>Zboží</th>'
+    + '<th style="width:150px"'+nap('Výrobce')+'>Výrobce</th>'
+    + '<th style="width:140px"'+nap('Velikost')+'>Velikost</th>'
+    + '<th style="width:100px"'+nap('Kolik lidé chtějí')+'>Poptáváno</th>'
+    + '<th style="width:100px"'+nap('Kolik je skladem')+'>Skladem</th>'
+    + '<th style="width:110px"'+nap('Kolik zbývá pořídit')+'>Chybí</th></tr></thead><tbody>';
+  radky.forEach(r => {
+    h += '<tr>'
+      + '<td style="padding:7px;font-size:13px">'+esc(r.zbozi)+'</td>'
+      + '<td style="padding:7px;font-size:13px">'+esc(r.vyrobce)+'</td>'
+      + '<td style="padding:7px;font-size:13px;font-weight:700">'+esc(r.popis)+'</td>'
+      + '<td class="stred" style="padding:7px;font-size:13px">'+r.chce+'</td>'
+      + '<td class="stred" style="padding:7px;font-size:13px">'+r.ma+'</td>'
+      + '<td class="stred" style="padding:7px;font-size:13px;font-weight:800;color:'
+        + (r.chybi > 0 ? 'var(--vinova)' : 'var(--olive)') + '">' + r.chybi + '</td></tr>';
+  });
+  if(!radky.length) h += '<tr><td colspan="6" class="stred" style="padding:14px;color:var(--pisek)">'
+    + 'Zatím není co porovnávat — žádná objednávka ani skladová zásoba.</td></tr>';
+  t.innerHTML = h + '</tbody>';
+
+  const sv = $('#souhrnPoptavky');
+  if(sv){
+    const chce = radky.reduce((a,r) => a + r.chce, 0);
+    const chybi = radky.reduce((a,r) => a + r.chybi, 0);
+    sv.innerHTML = chce
+      ? 'Poptáváno <b>'+chce+'</b> ks, ze skladu pokryjeme <b>'+(chce - chybi)
+        +'</b>, pořídit zbývá <b>'+chybi+'</b>.'
+      : 'Zatím žádné objednávky. Až načtu formulář, objeví se tu.';
+  }
+}
+
+function kresliObjednavkyDodavatelum(){
+  tabulka('#tabDodObjednavky', [
+    {nadpis:"Kód", pole:"kod", sirka:"160px"},
+    {nadpis:"Výrobce", pole:"vyrobce_kod", typ:"select",
+     moznosti: [''].concat(D.vyrobci.map(v => v.kod)), sirka:"160px"},
+    {nadpis:"Ročník", pole:"rok", typ:"select",
+     moznosti:[{v:'',t:'— bez ročníku —'}].concat(ROKY), sirka:"130px"},
+    {nadpis:"Datum", pole:"datum", typ:"date", sirka:"140px"},
+    {nadpis:"Stav", pole:"stav", typ:"select",
+     moznosti:['navrh','odeslana','potvrzena','dodana','zrusena'], sirka:"140px"},
+    {nadpis:"Poznámka", pole:"poznamka"}
+  ], D.dodObjednavky, () => kresliObleceni(), true, false);
+
+  // položky vybrané objednávky
+  const el = $('#polozkyDodavatele'); if(!el) return;
+  if(!D.dodObjednavky.length){ el.innerHTML = ''; return; }
+  if(!vybranaDodObjednavka || !D.dodObjednavky.some(o => o.kod === vybranaDodObjednavka))
+    vybranaDodObjednavka = D.dodObjednavky[0].kod;
+
+  el.innerHTML = '<label class="popisek" style="display:block;margin-bottom:3px">Položky objednávky</label>'
+    + '<select id="vyberDodSel" style="min-width:min(300px,100%);max-width:100%;padding:7px 9px;'
+    + 'border:1px solid var(--linka);border-radius:8px;font:inherit">'
+    + D.dodObjednavky.map(o => '<option value="'+esc(o.kod)+'"'
+        + (o.kod === vybranaDodObjednavka ? ' selected' : '') + '>'
+        + esc(o.kod + ' — ' + nazevVyrobce(o.vyrobce_kod)) + '</option>').join('')
+    + '</select><div class="obal-tab" style="margin-top:10px"><table class="tab" id="tabDodPolozky"></table></div>';
+  el.querySelector('#vyberDodSel').onchange = e => {
+    vybranaDodObjednavka = e.target.value; kresliObjednavkyDodavatelum();
+  };
+
+  const moje = D.dodPolozky.filter(p => p.objednavka_kod === vybranaDodObjednavka);
+  const varianty = D.zboziVarianty.filter(v => v.aktivni !== 'ne');
+  const popisVar = v => {
+    const z = D.zbozi.find(x => x.kod === v.zbozi_kod) || {};
+    return (z.nazev || v.zbozi_kod) + ' — ' + popisVarianty(v);
+  };
+  let celkem = 0;
+  moje.forEach(p => { celkem += (+p.pocet || 0); });
+  tabulka('#tabDodPolozky', [
+    {nadpis:"Zboží a velikost", pole:"varianta_kod", typ:"select",
+     moznosti: [{v:'', t:'—'}].concat(varianty.map(v => ({v: v.kod, t: popisVar(v)}))),
+     sirka:"330px"},
+    {nadpis:"Kusů", pole:"pocet", typ:"number", sirka:"100px", trida:"stred"},
+    {nadpis:"Poznámka", pole:"poznamka"}
+  ], moje, () => kresliObleceni(), true, false, D.dodPolozky);
+  const tp = $('#tabDodPolozky');
+  if(tp && moje.length) tp.insertAdjacentHTML('beforeend',
+    '<tfoot><tr style="background:#F3EFE6;font-weight:800">'
+    + '<td style="padding:8px">Celkem</td><td class="stred">' + celkem + '</td>'
+    + '<td colspan="3"></td></tr></tfoot>');
+}
+
+/* Z chybějícího udělá jednu objednávku na výrobce. Návrh se přepisuje celý —
+   míchat ručně upravené počty s novým výpočtem by znamenalo, že se nedá říct,
+   odkud které číslo je. */
+function navrhniObjednavkyDodavatelum(){
+  const poptavka = poptavkaPoVelikostech();
+  const chybiPoVyrobci = {};
+  D.zboziVarianty.forEach(v => {
+    const chybi = Math.max(0, (poptavka[v.kod] || 0) - skladVarianty(v.kod));
+    if(!chybi) return;
+    const z = D.zbozi.find(x => x.kod === v.zbozi_kod) || {};
+    const vyr = z.vyrobce_kod || '';
+    (chybiPoVyrobci[vyr] = chybiPoVyrobci[vyr] || []).push({varianta_kod: v.kod, pocet: chybi});
+  });
+  const vyrobci = Object.keys(chybiPoVyrobci);
+  if(!vyrobci.length){ hlaska('Nic nechybí — všechno pokryje sklad.'); return; }
+
+  const rok = D.nastaveni.aktivni_rok || '';
+  const navrhy = D.dodObjednavky.filter(o => o.stav === 'navrh').map(o => o.kod);
+  if(navrhy.length && !confirm('Přepsat ' + navrhy.length + ' rozpracovaný'
+      + (navrhy.length === 1 ? ' návrh' : 'ch návrhů') + ' objednávek?'
+      + '\n\nOdeslaných a potvrzených se to netýká.')) return;
+
+  // staré návrhy pryč i s položkami, ať nevznikne směs starého a nového
+  navrhy.forEach(kod => {
+    for(let i = D.dodPolozky.length - 1; i >= 0; i--)
+      if(D.dodPolozky[i].objednavka_kod === kod) D.dodPolozky.splice(i, 1);
+    const j = D.dodObjednavky.findIndex(o => o.kod === kod);
+    if(j >= 0) D.dodObjednavky.splice(j, 1);
+  });
+
+  const dnes = new Date().toISOString().slice(0,10);
+  let kusu = 0;
+  vyrobci.forEach(vyr => {
+    const kod = 'obj-' + (vyr || 'bez-vyrobce') + '-' + dnes.replace(/-/g,'');
+    D.dodObjednavky.push({kod, vyrobce_kod: vyr, rok, datum: dnes, stav: 'navrh',
+                          poznamka: 'Návrh z poptávky, ' + new Date().toLocaleString('cs')});
+    chibiRadky(chybiPoVyrobci[vyr], kod);
+    chybiPoVyrobci[vyr].forEach(p => { kusu += p.pocet; });
+  });
+  vybranaDodObjednavka = D.dodObjednavky[0].kod;
+  oznacZmenu(); kresliObleceni();
+  hlaska('Návrh hotov: ' + kusu + ' ks ve ' + vyrobci.length
+    + (vyrobci.length === 1 ? ' objednávce.' : ' objednávkách.'));
+}
+
+function chibiRadky(seznam, objKod){
+  seznam.forEach((p, i) => {
+    D.dodPolozky.push({kod: objKod + '-' + (i + 1), objednavka_kod: objKod,
+                       varianta_kod: p.varianta_kod, pocet: p.pocet, poznamka: ''});
+  });
+}
+let vybranaDodObjednavka = '';
 
 /* Když se kód číselníku přejmenuje, musí ho zboží následovat. Jinak by řádky
    ukazovaly na hodnotu, která už neexistuje, a databáze by je odmítla. */
@@ -9948,6 +10204,20 @@ function pridej(co){
             poradi:(D.zbozi.length+1)*10, aktivni:"ano"};
     D.zbozi.push(novy); vybraneZbozi = novy.kod; kam = 'zboží'; kresliObleceni();
   }
+  if(co==='formular'){
+    novy = {kod: volnyKodCiselniku('formulare', 'formular'), nazev:'Nový formulář',
+            url:'', rok: D.nastaveni.aktivni_rok, typ:'po_zavode',
+            uzavreno_dne:'', poznamka:'', aktivni:'ano'};
+    D.formulare.push(novy); kam = 'objednávkový formulář'; kresliObleceni();
+  }
+  if(co==='dodObjednavka'){
+    const vyr = (D.vyrobci[0] || {}).kod || '';
+    novy = {kod: volnyKodCiselniku('dodObjednavky', 'obj-' + (vyr || 'nova')),
+            vyrobce_kod: vyr, rok: D.nastaveni.aktivni_rok,
+            datum: new Date().toISOString().slice(0,10), stav:'navrh', poznamka:''};
+    D.dodObjednavky.push(novy); vybranaDodObjednavka = novy.kod;
+    kam = 'objednávka dodavateli'; kresliObleceni();
+  }
   if(co==='pohyb'){
     /* Změna nesmí být nula — databáze má kontrolu sklad_pohyby_zmena_nenulova
        a nulový řádek by shodil ukládání celé sady. Zakládá se proto na jedničce.
@@ -10368,6 +10638,51 @@ const MAPA = {
     rokNepovinny:true, vzdyUkladat:true,
     pole:{kod:'kod', varianta_kod:'varianta_kod', datum:'datum', zmena:'zmena',
           duvod:'duvod', rok:'rok', poznamka:'poznamka'}
+  },
+  /* Objednávkové formuláře a to, co z nich plyne — *18. 9. 2026 (v5.97)*.
+     Objednávky účastníků se sem jen načítají, needitují; plánovač z nich
+     počítá poptávku a proti skladu ukazuje, co chybí. */
+  formulare: {
+    tabulka:'obleceni_formulare', klic:['kod'], konflikt:['kod'], rok:false, vzdyUkladat:true,
+    pole:{kod:'kod', nazev:'nazev', url:'url', rok:'rok', typ:'typ',
+          uzavreno_dne:'uzavreno_dne', posledni_nacteni:'posledni_nacteni',
+          nacteno_radku:'nacteno_radku', poznamka:'poznamka', aktivni:'aktivni'},
+    naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano'}),
+    /* Kdy a kolik řádků se načetlo zapisuje ten, kdo tabulku načetl — plánovač
+       to jen ukazuje. Kdyby to posílal zpátky, stačilo by otevřít stránku se
+       starými daty a razítko by zmizelo. */
+    naDb: r => { const v = {...r, aktivni: r.aktivni !== 'ne'};
+                 delete v.posledni_nacteni; delete v.nacteno_radku; return v; }
+  },
+  formularSloupce: {
+    tabulka:'formular_sloupce', klic:['formular_kod','sloupec'],
+    konflikt:['formular_kod','sloupec'], rok:false, vzdyUkladat:true,
+    pole:{formular_kod:'formular_kod', sloupec:'sloupec', varianta_kod:'varianta_kod',
+          poradi:'poradi', aktivni:'aktivni'},
+    naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano'}),
+    naDb: r => ({...r, aktivni: r.aktivni !== 'ne'})
+  },
+  obleceniObjednavky: {
+    tabulka:'obleceni_objednavky', klic:['kod'], konflikt:['kod'], rok:false, jenCist:true,
+    pole:{kod:'kod', rok:'rok', typ:'typ', formular_kod:'formular_kod',
+          tym_cislo:'tym_cislo', tym_nazev:'tym_nazev', jmeno:'jmeno', email:'email',
+          stav:'stav', po_terminu:'po_terminu', poznamka:'poznamka'}
+  },
+  obleceniPolozky: {
+    tabulka:'obleceni_polozky', klic:['kod'], konflikt:['kod'], rok:false, jenCist:true,
+    pole:{kod:'kod', objednavka_kod:'objednavka_kod', varianta_kod:'varianta_kod',
+          pocet:'pocet', cena_kc:'cena_kc'}
+  },
+  dodObjednavky: {
+    tabulka:'objednavky_dodavateli', klic:['kod'], konflikt:['kod'], rok:false, vzdyUkladat:true,
+    pole:{kod:'kod', vyrobce_kod:'vyrobce_kod', rok:'rok', datum:'datum',
+          stav:'stav', poznamka:'poznamka'}
+  },
+  dodPolozky: {
+    tabulka:'objednavky_dodavateli_polozky', klic:['kod'], konflikt:['kod'],
+    rok:false, vzdyUkladat:true,
+    pole:{kod:'kod', objednavka_kod:'objednavka_kod', varianta_kod:'varianta_kod',
+          pocet:'pocet', poznamka:'poznamka'}
   },
   uzivatele: {
     tabulka:'uzivatele', klic:['uid'], konflikt:['uid'], rok:false, jen:['_heslo'],
@@ -10952,7 +11267,10 @@ const NAZVY_SAD = {tymy:'Grupy', clenove:'Členové grup', ukoly:'Úkoly',
   predavky:'Předávky', nocMista:'Noclehy — místa', nocLide:'Noclehy — lidé',
   todo:'To-do', velikosti:'Trička', objednavky:'Objednávky triček', uzivatele:'Přístupy',
   druhy:'Druhy zboží', vyrobci:'Výrobci', rady:'Velikostní řady', polozkyRady:'Velikosti v řadách',
-  zbozi:'Zboží', zboziVarianty:'Velikosti zboží', skladPohyby:'Pohyby skladu'};
+  zbozi:'Zboží', zboziVarianty:'Velikosti zboží', skladPohyby:'Pohyby skladu',
+  formulare:'Objednávkové formuláře', formularSloupce:'Překlad sloupců formuláře',
+  obleceniObjednavky:'Objednávky účastníků', obleceniPolozky:'Položky objednávek',
+  dodObjednavky:'Objednávky dodavatelům', dodPolozky:'Položky objednávek dodavatelům'};
 const popisRadku = r => String(r.kod || r.jmeno || r.nazev || r.text || r.cislo || '?');
 
 async function zkontrolujPrepsani(rok){
@@ -11062,6 +11380,11 @@ async function ulozDoDatabaze(volby){
     // zůstalo zapečené ze souboru (nebo se nenačetlo kvůli chybě), by se
     // zápisem mohlo do databáze dostat v ořezané nebo loňské podobě.
     if(!m.vzdyUkladat && zDatabaze.indexOf(sada) < 0){ preskoceno.push(sada); continue; }
+    /* Sada jen ke čtení. Objednávky účastníků se do plánovače načítají, ale
+       vznikají jinde — ve formuláři — a plánovač je nemá čím opravit. Kdyby je
+       zapisoval, stačilo by otevřít stránku se starými daty a přepsal by je.
+       *Zavedeno 18. 9. 2026 (v5.97).* */
+    if(m.jenCist){ preskoceno.push(sada); continue; }
     // m.filtr odsává řádky, které do databáze nepatří (dopočítané úkoly). Mazání
     // je tím nedotčené: co se nikdy neuložilo, není ani mezi viděnými klíči.
     const radky = (D[sada] || []).filter(m.filtr || (()=>true));

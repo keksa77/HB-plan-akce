@@ -3115,16 +3115,35 @@ function naIban(ucet){
   const kontrola = String(98 - zbytek).padStart(2, '0');
   return 'CZ' + kontrola + zaklad;
 }
-/* Text, který jde do QR jako zpráva pro příjemce. Český standard SPD 1.0 má
-   jen tohle jedno pole na text — banky ho vypisují do „zprávy pro příjemce"
-   a většina ho nabídne i jako vlastní poznámku k platbě. */
+/* Text, který jde do QR. `MSG` je zpráva pro příjemce, `X-SELF` je poznámka,
+   kterou v bance uvidí plátce — obojí stejný text. X-SELF má podle standardu
+   SPD 1.0 strop 30 znaků, takže u dlouhých jmen je zkrácený.
+   *Doplněno 18. 9. 2026 — dřív se poznámka pro plátce negenerovala.* */
 function zpravaKPlatbe(r){
   return 'Hory Bory 2026 - ' + r.jmeno + ', Díky!';
 }
+const MEZ_MSG = 60, MEZ_SELF = 30;      // meze podle SPD 1.0
+const textDoQr = (zprava, mez) => bezDiakritiky(zprava).replace(/\*/g, ' ')
+  .trim().slice(0, mez).replace(/[\s,;.\-]+$/, '').trim();
+
+/* Poznámka pro plátce má stejné znění jako zpráva pro příjemce. Když se do
+   třiceti znaků nevejde, useklo by se příjmení — a právě podle něj se platba
+   ve výpisu hledá. V tom případě se vynechá úvod „Hory Bory 2026" a zbyde
+   „HB26 + jméno". */
+function poznamkaProMe(zprava){
+  const cela = textDoQr(zprava, MEZ_SELF);
+  const plna = textDoQr(zprava, MEZ_MSG);
+  if(cela === plna) return cela;
+  return textDoQr(plna.replace(/^Hory Bory (\d{4}) - /, (m, r) => 'HB' + r.slice(2) + ' '),
+                  MEZ_SELF);
+}
+
 function spd(iban, castka, zprava){
   const casti = ['SPD*1.0', 'ACC:' + iban, 'AM:' + Number(castka).toFixed(2), 'CC:CZK'];
-  const msg = bezDiakritiky(zprava).replace(/\*/g, ' ').slice(0, 60).trim();
+  const msg = textDoQr(zprava, MEZ_MSG);
   if(msg) casti.push('MSG:' + msg);
+  const moje = poznamkaProMe(zprava);
+  if(moje) casti.push('X-SELF:' + moje);
   return casti.join('*');
 }
 function zavriQr(){
@@ -3153,7 +3172,9 @@ function ukazQr(r){
     q.make();
     vnitrek += '<div class="platba">' + kc(castka) + '</div>' +
                '<div class="detail">' + esc(r.ucet) + '<br>' + esc(iban) +
-               '<br><span class="zprava">„' + esc(bezDiakritiky(zprava)) + '"</span></div>' +
+               '<br><span class="zprava">„' + esc(textDoQr(zprava, MEZ_MSG)) + '"</span>' +
+               '<br><span class="zprava">poznámka pro mě: „'
+                 + esc(poznamkaProMe(zprava)) + '"</span></div>' +
                q.createImgTag(6, 8) +
                '<div class="upoz">Načtěte v bankovní aplikaci. Kód nikde neukládám, zavřením zmizí.</div>';
   }

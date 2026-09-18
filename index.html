@@ -2292,8 +2292,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.97p";
-const BUILD = "2026-09-18T11:19+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.98p";
+const BUILD = "2026-09-18T12:18+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -9116,6 +9116,9 @@ function volnyKodCiselniku(sada, zaklad){
 
 // Stav skladu je součet pohybů, ne uložené číslo.
 function skladVarianty(kod){
+  // Bez vybrané velikosti není co sčítat; jinak by se pohyby s prázdným
+  // zbožím sečetly mezi sebou a ukazovaly stav u řádku, který žádný nemá.
+  if(!kod) return 0;
   return D.skladPohyby.reduce((a, p) => a + (p.varianta_kod === kod ? (+p.zmena || 0) : 0), 0);
 }
 
@@ -9642,8 +9645,11 @@ function zkontrolujObleceni(){
     + ' nulovou změnu — kladné číslo naskladňuje, záporné odepisuje, nula nedává smysl');
 
   const kodyVariant = new Set(D.zboziVarianty.map(v => v.kod));
-  const sirotciP = D.skladPohyby.filter(p => !kodyVariant.has(p.varianta_kod)).length;
+  const sirotciP = D.skladPohyby.filter(p => p.varianta_kod && !kodyVariant.has(p.varianta_kod)).length;
   if(sirotciP) potize.push(sirotciP + ' pohybů skladu ukazuje na neexistující velikost');
+  /* Nevyplněné zboží u pohybu databáze spolkne — sloupec smí být prázdný — ale
+     takový pohyb nic neskladní a nikde se neprojeví. Patří to mezi upozornění. */
+  const bezZbozi = D.skladPohyby.filter(p => !p.varianta_kod).length;
 
   /* Dvě různé věci. „Potíže" databáze odmítne a shodí s nimi celé ukládání.
      „Pozor" se uloží bez reptání, ale skoro vždycky je to omyl — nemá se to
@@ -9657,6 +9663,12 @@ function zkontrolujObleceni(){
         + '<b style="color:var(--okr, #b07a1a)">Pozor:</b> dvakrát totéž zboží — '
         + esc(dvojiNazvy.join('; '))
         + '. Uložit to půjde, ale bývá to duplicita; křížkem vpravo smažete tu přebytečnou.'
+      : '')
+    + (bezZbozi
+      ? ((potize.length || dvojiNazvy.length) ? '<br>' : '')
+        + '<b style="color:var(--okr, #b07a1a)">Pozor:</b> ' + bezZbozi
+        + (bezZbozi === 1 ? ' pohyb skladu nemá' : ' pohybů skladu nemá')
+        + ' vybrané zboží — uloží se, ale nic neskladní.'
       : '');
   return potize.length;
 }
@@ -9847,6 +9859,10 @@ function kresliPohyby(){
       const r = D.skladPohyby[+el.dataset.i];
       const prvni = variantyZbozi(el.value)[0];
       r.varianta_kod = prvni ? prvni.kod : '';
+      /* Ročník se doplní od zboží, ale jen u řádku, kde ještě žádný není —
+         ručně nastavený ročník se nepřepisuje. */
+      const zb = D.zbozi.find(z => z.kod === el.value);
+      if(zb && !r.rok) r.rok = zb.rok || '';
       zrevidovano(r); kresliObleceni();
     };
   });
@@ -10224,12 +10240,13 @@ function pridej(co){
        *Opraveno 17. 9. 2026 (v5.92), předtím tu byla nula.* */
     const pro = D.zboziVarianty.filter(v => v.zbozi_kod === vybraneZbozi && v.aktivni !== 'ne');
     const prvni = pro[0] || D.zboziVarianty.find(v => v.aktivni !== 'ne') || D.zboziVarianty[0];
-    /* Ročník se bere od zboží, ne z nastavení — u stálého sortimentu zůstane
-       prázdný, u ročníkových triček se předvyplní tím správným. */
-    const zbPro = D.zbozi.find(z => z.kod === (prvni ? prvni.zbozi_kod : '')) || {};
-    novy = {kod:'p' + Date.now(), varianta_kod: prvni ? prvni.kod : '',
+    /* Zboží se nepředvyplňuje. Předvyplněné svádělo k tomu nechat, co naskočilo,
+       a zapsat pohyb na kus, který s tím nemá nic společného. Prázdné pole si
+       o výběr řekne samo. *Změněno 18. 9. 2026 (v5.98) na přání Keksy.*
+       Ročník se pak doplní od zboží, jakmile se vybere. */
+    novy = {kod:'p' + Date.now(), varianta_kod: '',
             datum: new Date().toISOString().slice(0,10), zmena:1, duvod:'vyroba',
-            rok: zbPro.rok || '', poznamka:""};
+            rok: '', poznamka:""};
     D.skladPohyby.push(novy); kam = 'pohyb na skladě'; kresliObleceni();
   }
   if(co==='objednavka'){

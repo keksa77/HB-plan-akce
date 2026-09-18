@@ -1409,16 +1409,19 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
       <h2>Objednávkové formuláře</h2>
       <div class="telo">
         <p class="popisek">Odkaz na tabulku Google a datum, kdy se formulář zavírá.
-          Načtení tabulky si řekněte — projdu ji, převedu na objednávky a doplním,
-          kdy a kolik řádků se načetlo. Objednávka, která přijde po termínu, se
-          načte taky, jen se označí. Formulářů může běžet víc naráz.</p>
+          Odpovědi do databáze posílá skript, který běží u té tabulky — sama tabulka
+          je soukromá a prohlížeč do ní nevidí. Tlačítkem <b>Načíst</b> se čekající
+          řádky přeloží na objednávky podle překladu sloupců níž. Objednávka, která
+          přijde po termínu, se načte taky, jen se označí. Formulářů může běžet víc naráz.</p>
         <div class="obal-tab"><table class="tab" id="tabFormulare"></table></div>
         <button class="tl" style="margin-top:10px" title="Přidá další objednávkový formulář." onclick="pridej('formular')">+ Přidat formulář</button>
 
         <h3 style="margin:22px 0 6px;font-size:15px">Překlad sloupců</h3>
-        <p class="popisek">Čím se sloupec ve formuláři přeloží na velikost v katalogu.
-          Vyplní se při prvním načtení; co nepůjde spárovat podle názvu, zůstane
-          prázdné a je vidět — neuhodnutá velikost by se poznala až při výdeji.</p>
+        <p class="popisek">Co který sloupec formuláře znamená. U objednaného zboží
+          stačí vybrat zboží a velikost; střih se vezme ze sloupce, kde si ho člověk
+          volí („vyberte střih"). Když má zboží jen jeden střih — merino je unisex —
+          vezme se ten, i kdyby si člověk vybral dámské. Poslední sloupec je pro
+          případy, kdy se to skládat nemá a velikost v katalogu určíte natvrdo.</p>
         <div class="obal-tab"><table class="tab" id="tabSloupce"></table></div>
       </div>
     </div>
@@ -1969,6 +1972,7 @@ const D = {
   polozkyRady: [],
   formulare: [],
   formularSloupce: [],
+  formularRadky: [],
   obleceniObjednavky: [],
   obleceniPolozky: [],
   dodObjednavky: [],
@@ -2292,8 +2296,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.98p";
-const BUILD = "2026-09-18T12:18+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.99p";
+const BUILD = "2026-09-18T14:40+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -9289,17 +9293,33 @@ function kresliObleceni(){
 /* ---------- formuláře, poptávka, objednávky dodavatelům (v5.97) ---------- */
 
 function kresliFormulare(){
+  const ceka = kod => D.formularRadky.filter(r => r.formular_kod === kod && !r.zpracovano).length;
+  const sklonRadky = n => n === 1 ? 'řádek čeká' : (n >= 2 && n <= 4 ? 'řádky čekají' : 'řádků čeká');
+
   tabulka('#tabFormulare', [
-    {nadpis:"Kód", pole:"kod", sirka:"130px"},
-    {nadpis:"Název", pole:"nazev", sirka:"200px"},
+    {nadpis:"Kód", pole:"kod", sirka:"110px"},
+    {nadpis:"Název", pole:"nazev", sirka:"180px"},
     {nadpis:"Odkaz na tabulku", pole:"url"},
     {nadpis:"Typ", pole:"typ", typ:"select",
      moznosti:[{v:'registrace',t:'při registraci'},{v:'po_zavode',t:'po závodě'},
-               {v:'stanek',t:'stánek'}], sirka:"140px"},
+               {v:'stanek',t:'stánek'}], sirka:"130px"},
     {nadpis:"Ročník", pole:"rok", typ:"select",
-     moznosti:[{v:'',t:'— bez ročníku —'}].concat(ROKY), sirka:"130px"},
-    {nadpis:"Uzávěrka", pole:"uzavreno_dne", typ:"date", sirka:"140px"},
-    {nadpis:"Naposledy načteno", sirka:"170px", html: r => {
+     moznosti:[{v:'',t:'— bez ročníku —'}].concat(ROKY), sirka:"120px"},
+    {nadpis:"Uzávěrka", pole:"uzavreno_dne", typ:"date", sirka:"130px"},
+    {nadpis:"Čeká a načtení", sirka:"210px", html: r => {
+      const n = ceka(r.kod);
+      const stav = n
+        ? '<b style="color:var(--vinova)">' + n + '</b> ' + sklonRadky(n)
+        : '<span class="popisek">nic nečeká</span>';
+      const tl = '<button class="tl" style="padding:4px 10px;font-size:12.5px;margin-left:8px"'
+        + ' onclick="nactiFormular(\'' + esc(r.kod) + '\')"'
+        + ' title="Přeloží čekající řádky na objednávky podle překladu sloupců.">Načíst</button>'
+        + '<button class="tl" style="padding:4px 8px;font-size:12.5px;margin-left:4px"'
+        + ' onclick="znovuNacistFormular(\'' + esc(r.kod) + '\')"'
+        + ' title="Vrátí už načtené řádky zpátky do fronty — po opravě překladu sloupců.">↺</button>';
+      return stav + tl;
+    }},
+    {nadpis:"Naposledy načteno", sirka:"165px", html: r => {
       if(!r.posledni_nacteni) return '<span class="popisek">zatím nikdy</span>';
       const d = new Date(r.posledni_nacteni);
       return '<span style="font-size:12.5px">' + esc(d.toLocaleString('cs'))
@@ -9307,20 +9327,240 @@ function kresliFormulare(){
     }}
   ], D.formulare, () => kresliObleceni(), true, false);
 
-  // překlad sloupců — plní se při načtení, tady se jen dolaďuje
+  /* Překlad sloupců. Jeden sloupec formuláře = jeden řádek tady. U objednaného
+     zboží se velikost v katalogu skládá ze zboží, velikosti a střihu — a střih
+     bývá v jiném sloupci formuláře („vyberte střih"), proto se na něj jen
+     odkazuje. Ručně vybraná velikost v katalogu má přednost před tím vším. */
   const varianty = D.zboziVarianty.filter(v => v.aktivni !== 'ne');
   const popisVar = v => {
     const z = D.zbozi.find(x => x.kod === v.zbozi_kod) || {};
     return (z.nazev || v.zbozi_kod) + ' — ' + popisVarianty(v);
   };
+  const strihoveSloupce = f => D.formularSloupce
+    .filter(s => s.formular_kod === f && s.role === 'strih')
+    .map(s => ({v: s.sloupec, t: s.sloupec}));
+
+  const radkySloupcu = D.formularSloupce.slice().sort((a,b) =>
+    String(a.formular_kod).localeCompare(String(b.formular_kod), 'cs')
+    || (a.poradi || 0) - (b.poradi || 0)
+    || String(a.sloupec).localeCompare(String(b.sloupec), 'cs'));
+
   tabulka('#tabSloupce', [
     {nadpis:"Formulář", pole:"formular_kod", typ:"select",
-     moznosti: D.formulare.map(x => x.kod), sirka:"130px"},
+     moznosti: D.formulare.map(x => x.kod), sirka:"110px"},
     {nadpis:"Sloupec ve formuláři", pole:"sloupec"},
-    {nadpis:"Velikost v katalogu", pole:"varianta_kod", typ:"select",
-     moznosti: [{v:'', t:'— nepřiřazeno —'}]
-       .concat(varianty.map(v => ({v: v.kod, t: popisVar(v)}))), sirka:"300px"}
-  ], D.formularSloupce, () => kresliObleceni(), true, false);
+    {nadpis:"Co to je", pole:"role", typ:"select", sirka:"150px",
+     moznosti:[{v:'polozka',t:'objednané zboží'}, {v:'strih',t:'volba střihu'},
+               {v:'jmeno',t:'jméno'}, {v:'email',t:'e-mail'}, {v:'tym',t:'tým'},
+               {v:'telefon',t:'telefon'}, {v:'misto',t:'výdejní místo'},
+               {v:'cas',t:'čas odeslání'}, {v:'poznamka',t:'poznámka'},
+               {v:'ignorovat',t:'nepoužívat'}]},
+    {nadpis:"Zboží", pole:"zbozi_kod", typ:"select", sirka:"190px",
+     moznosti: r => [{v:'', t:'—'}].concat(
+       D.zbozi.map(z => ({v: z.kod, t: z.nazev || z.kod})))},
+    {nadpis:"Velikost", pole:"velikost_kod", typ:"select", sirka:"120px",
+     moznosti: r => [{v:'', t:'—'}].concat(velikostiZbozi(r.zbozi_kod))},
+    {nadpis:"Střih ze sloupce", pole:"strih_ze_sloupce", typ:"select", sirka:"210px",
+     moznosti: r => [{v:'', t:'— neřeší se —'}].concat(strihoveSloupce(r.formular_kod))},
+    {nadpis:"Natvrdo velikost v katalogu", pole:"varianta_kod", typ:"select", sirka:"250px",
+     moznosti: [{v:'', t:'— složí se ze zboží a velikosti —'}]
+       .concat(varianty.map(v => ({v: v.kod, t: popisVar(v)})))}
+  ], radkySloupcu, () => kresliObleceni(), true, false, D.formularSloupce);
+}
+
+/* Velikosti, které dané zboží opravdu má. Pořadí je dané, ne abecední —
+   po XL nepatří XS. */
+function velikostiZbozi(zboziKod){
+  const v = [...new Set(D.zboziVarianty
+    .filter(x => x.zbozi_kod === zboziKod).map(x => x.velikost_kod))];
+  v.sort((a,b) => PORADI_VELIKOSTI.indexOf(a) - PORADI_VELIKOSTI.indexOf(b));
+  return v.length ? v : PORADI_VELIKOSTI.slice();
+}
+
+/* ---------- načtení objednávek z formuláře — *v5.99p, 18. 9. 2026* ----------
+
+   Tabulku Google prohlížeč nečte a číst nebude. Jsou v ní jména, e-maily,
+   telefony a výdejní místa; vystavit tabulku veřejně kvůli jednomu tlačítku by
+   znamenalo vystavit i je. Řádky proto do databáze posílá skript, který běží
+   u samotné tabulky, a tlačítko „Načíst" je jen přeloží na objednávky podle
+   tabulky Překlad sloupců. Co ještě přeložené není, je u formuláře vidět jako
+   počet čekajících řádků.                                                    */
+
+const STRIHY_Z_TEXTU = [['pán','pánská'], ['pan','pánská'], ['muž','pánská'],
+  ['muz','pánská'], ['dám','dámská'], ['dam','dámská'], ['žen','dámská'],
+  ['zen','dámská'], ['uni','unisex']];
+
+function strihZTextu(txt){
+  const s = String(txt == null ? '' : txt).toLowerCase();
+  for(const dvojice of STRIHY_Z_TEXTU) if(s.indexOf(dvojice[0]) >= 0) return dvojice[1];
+  return '';
+}
+
+/* „1 ks", „2", „ano" — do formuláře lidé píšou, co je napadne. */
+function pocetZTextu(txt){
+  const s = String(txt == null ? '' : txt).trim();
+  if(!s) return 0;
+  const c = s.match(/\d+/);
+  if(c) return +c[0];
+  return /^(ano|x|✓|✔)$/i.test(s) ? 1 : 0;
+}
+
+/* Časová značka z Google formuláře: „15.9.2026 21:22:42" → „2026-09-15". */
+function datumZFormulare(txt){
+  const m = String(txt || '').match(/(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/);
+  if(!m) return '';
+  return m[3] + '-' + String(+m[2]).padStart(2,'0') + '-' + String(+m[1]).padStart(2,'0');
+}
+
+/* Velikost v katalogu ze zboží, velikosti a přání střihu. Merino má jen
+   unisex, i když si lidé ve formuláři vybírají „šedé dámské" — proto se
+   jediná možná velikost vezme i tehdy, když se střih netrefí. Dvě možnosti
+   a netrefený střih znamenají „nevím", ne náhodný výběr. */
+function najdiVariantu(zboziKod, velikost, strihChteny){
+  const vse = D.zboziVarianty.filter(v => v.zbozi_kod === zboziKod && v.aktivni !== 'ne'
+    && String(v.velikost_kod || '') === String(velikost || ''));
+  if(!vse.length) return null;
+  if(strihChteny){
+    const presne = vse.find(v => v.strih === strihChteny);
+    if(presne) return presne;
+  }
+  return vse.length === 1 ? vse[0] : null;
+}
+
+const chybiText = seznam => seznam.join(', ');
+
+function nactiFormular(kod){
+  const f = D.formulare.find(x => x.kod === kod);
+  if(!f){ hlaska('Formulář nenajdu.'); return; }
+
+  const sl = D.formularSloupce.filter(s => s.formular_kod === kod && s.aktivni !== 'ne');
+  if(!sl.length){
+    alert('Formulář „' + (f.nazev || kod) + '" nemá vyplněný překlad sloupců,\n'
+        + 'takže nevím, co který sloupec znamená.\n\n'
+        + 'Doplňte ho v tabulce Překlad sloupců pod formuláři.');
+    return;
+  }
+  const cekajici = D.formularRadky
+    .filter(r => r.formular_kod === kod && !r.zpracovano)
+    .sort((a,b) => (a.radek || 0) - (b.radek || 0));
+  if(!cekajici.length){
+    hlaska('U formuláře „' + (f.nazev || kod) + '" nečeká žádný nový řádek.');
+    return;
+  }
+
+  const prvni = role => { const x = sl.find(s => s.role === role); return x ? x.sloupec : ''; };
+  const slJmeno = prvni('jmeno'), slEmail = prvni('email'), slTym = prvni('tym'),
+        slTel = prvni('telefon'), slMisto = prvni('misto'), slCas = prvni('cas');
+  const polozkove = sl.filter(s => s.role === 'polozka');
+  const strihove = sl.filter(s => s.role === 'strih');
+  const rok = f.rok || D.nastaveni.aktivni_rok || '';
+
+  const nesparovane = [];
+  let objednavek = 0, kusu = 0, prazdnych = 0;
+
+  cekajici.forEach(r => {
+    const d = r.data || {};
+    const hod = s => (s && d[s] != null) ? String(d[s]).trim() : '';
+    const kodObj = r.kod;
+    const chybi = [];
+    const polozky = [];
+
+    polozkove.forEach(s => {
+      const pocet = pocetZTextu(d[s.sloupec]);
+      if(!pocet) return;
+      let vk = s.varianta_kod || '';
+      if(!vk){
+        const strih = s.strih || strihZTextu(hod(s.strih_ze_sloupce));
+        const v = najdiVariantu(s.zbozi_kod, s.velikost_kod, strih);
+        if(v) vk = v.kod;
+      }
+      if(!vk){
+        chybi.push(s.sloupec + ' (' + pocet + ' ks)');
+        nesparovane.push((hod(slJmeno) || r.kod) + ' — ' + s.sloupec);
+        return;
+      }
+      polozky.push({kod: kodObj + '-' + vk, objednavka_kod: kodObj,
+                    varianta_kod: vk, pocet: pocet, cena_kc: null, _nove: true});
+    });
+
+    if(!polozky.length && !chybi.length){
+      prazdnych++;
+      r.poznamka = 'řádek bez objednaného zboží';
+      r.zpracovano = new Date().toISOString();
+      zrevidovano(r);
+      return;
+    }
+
+    // volby střihu a barvy se do katalogu nevejdou, ale objednávce u dodavatele
+    // chybět nesmí — jdou proto do poznámky objednávky
+    const volby = strihove.map(s => s.sloupec.replace(/\s*—.*$/, '') + ': ' + hod(s.sloupec))
+      .filter(x => !/: $/.test(x));
+
+    const den = datumZFormulare(hod(slCas) || r.cas_znacka);
+    const objednavka = {
+      kod: kodObj, rok: rok, typ: f.typ || 'po_zavode', formular_kod: kod,
+      tym_cislo: null, tym_nazev: hod(slTym), jmeno: hod(slJmeno), email: hod(slEmail),
+      telefon: hod(slTel), misto_doruceni: hod(slMisto), radek_kod: r.kod,
+      stav: 'nova', po_terminu: !!(f.uzavreno_dne && den && den > f.uzavreno_dne),
+      poznamka: volby.concat(chybi.length ? ['NESPÁROVÁNO: ' + chybiText(chybi)] : []).join(' · '),
+      _nove: true
+    };
+
+    // stejná objednávka tu už být může — formulář se dá načíst znovu
+    const stara = D.obleceniObjednavky.findIndex(o => o.kod === kodObj);
+    if(stara >= 0) D.obleceniObjednavky.splice(stara, 1);
+    for(let i = D.obleceniPolozky.length - 1; i >= 0; i--)
+      if(D.obleceniPolozky[i].objednavka_kod === kodObj) D.obleceniPolozky.splice(i, 1);
+
+    D.obleceniObjednavky.push(objednavka);
+    polozky.forEach(p => D.obleceniPolozky.push(p));
+    objednavek++;
+    kusu += polozky.reduce((a, p) => a + p.pocet, 0);
+
+    /* Řádek, u kterého něco nesedlo, zůstává ve frontě. Objednávka z něj
+       vznikne taky — ať je vidět aspoň to, co přeložit šlo — ale po opravě
+       překladu sloupců se dá načíst znovu a přepíše se celá. */
+    if(chybi.length){
+      r.poznamka = 'nepřeloženo: ' + chybiText(chybi);
+    } else {
+      r.poznamka = null;
+      r.zpracovano = new Date().toISOString();
+      r.objednavka_kod = kodObj;
+    }
+    zrevidovano(r);
+  });
+
+  f.posledni_nacteni = new Date().toISOString();
+  f.nacteno_radku = cekajici.length;
+  zrevidovano(f);
+  oznacZmenu();
+  kresliObleceni();
+
+  hlaska('Načteno ' + cekajici.length + ' řádků: ' + objednavek + ' objednávek, '
+    + kusu + ' kusů zboží'
+    + (prazdnych ? ', ' + prazdnych + ' bez zboží' : '')
+    + (nesparovane.length ? ', ' + nesparovane.length + ' nepřeloženo' : '')
+    + '. Uloží se při uložení plánu.');
+
+  if(nesparovane.length){
+    alert('Tohle se nepodařilo přeložit na velikost v katalogu:\n\n'
+      + nesparovane.slice(0, 20).join('\n')
+      + (nesparovane.length > 20 ? '\n… a další' : '')
+      + '\n\nDoplňte překlad sloupců (zboží, velikost, střih) a načtěte znovu — '
+      + 'tyhle řádky zůstaly ve frontě.');
+  }
+}
+
+/* Vrátí už načtené řádky zpátky do fronty. Objednávky, které z nich vznikly,
+   zůstávají — při dalším načtení se přepíšou celé, takže se nezdvojí. */
+function znovuNacistFormular(kod){
+  const hotove = D.formularRadky.filter(r => r.formular_kod === kod && r.zpracovano);
+  if(!hotove.length){ hlaska('Není co vracet, všechny řádky čekají.'); return; }
+  if(!confirm('Vrátit ' + hotove.length + ' už načtených řádků zpátky do fronty?\n\n'
+    + 'Objednávky, které z nich vznikly, zůstanou. Při dalším načtení se přepíšou.')) return;
+  hotove.forEach(r => { r.zpracovano = null; zrevidovano(r); });
+  oznacZmenu(); kresliObleceni();
+  hlaska(hotove.length + ' řádků čeká na nové načtení.');
 }
 
 /* Poptávka je součet položek objednávek, které ještě nejsou vyřízené.
@@ -10665,28 +10905,40 @@ const MAPA = {
           uzavreno_dne:'uzavreno_dne', posledni_nacteni:'posledni_nacteni',
           nacteno_radku:'nacteno_radku', poznamka:'poznamka', aktivni:'aktivni'},
     naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano'}),
-    /* Kdy a kolik řádků se načetlo zapisuje ten, kdo tabulku načetl — plánovač
-       to jen ukazuje. Kdyby to posílal zpátky, stačilo by otevřít stránku se
-       starými daty a razítko by zmizelo. */
-    naDb: r => { const v = {...r, aktivni: r.aktivni !== 'ne'};
-                 delete v.posledni_nacteni; delete v.nacteno_radku; return v; }
+    /* Razítko „naposledy načteno" píše od v5.99p sám plánovač — načítá totiž
+       tlačítkem v téhle stránce. Dřív ho psal ten, kdo tabulku načetl ručně,
+       a plánovač ho schválně neposílal zpátky. */
+    naDb: r => ({...r, aktivni: r.aktivni !== 'ne'})
   },
   formularSloupce: {
     tabulka:'formular_sloupce', klic:['formular_kod','sloupec'],
     konflikt:['formular_kod','sloupec'], rok:false, vzdyUkladat:true,
-    pole:{formular_kod:'formular_kod', sloupec:'sloupec', varianta_kod:'varianta_kod',
+    pole:{formular_kod:'formular_kod', sloupec:'sloupec', role:'role',
+          zbozi_kod:'zbozi_kod', velikost_kod:'velikost_kod', strih:'strih',
+          strih_ze_sloupce:'strih_ze_sloupce', varianta_kod:'varianta_kod',
           poradi:'poradi', aktivni:'aktivni'},
     naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano'}),
     naDb: r => ({...r, aktivni: r.aktivni !== 'ne'})
   },
+  /* Řádky, které do databáze poslal skript od formuláře. Plánovač je čte
+     a překládá na objednávky; zpátky zapisuje jen razítko „zpracováno" a kód
+     objednávky, ať je vidět, co už prošlo. Samotná odpověď (`data`) se
+     nepřepisuje — ta patří tomu, kdo ji poslal. */
+  formularRadky: {
+    tabulka:'formular_radky', klic:['kod'], konflikt:['kod'], rok:false, vzdyUkladat:true,
+    pole:{kod:'kod', formular_kod:'formular_kod', radek:'radek', cas_znacka:'cas_znacka',
+          data:'data', zpracovano:'zpracovano', objednavka_kod:'objednavka_kod',
+          poznamka:'poznamka'}
+  },
   obleceniObjednavky: {
-    tabulka:'obleceni_objednavky', klic:['kod'], konflikt:['kod'], rok:false, jenCist:true,
+    tabulka:'obleceni_objednavky', klic:['kod'], konflikt:['kod'], rok:false, vzdyUkladat:true,
     pole:{kod:'kod', rok:'rok', typ:'typ', formular_kod:'formular_kod',
           tym_cislo:'tym_cislo', tym_nazev:'tym_nazev', jmeno:'jmeno', email:'email',
+          telefon:'telefon', misto_doruceni:'misto_doruceni', radek_kod:'radek_kod',
           stav:'stav', po_terminu:'po_terminu', poznamka:'poznamka'}
   },
   obleceniPolozky: {
-    tabulka:'obleceni_polozky', klic:['kod'], konflikt:['kod'], rok:false, jenCist:true,
+    tabulka:'obleceni_polozky', klic:['kod'], konflikt:['kod'], rok:false, vzdyUkladat:true,
     pole:{kod:'kod', objednavka_kod:'objednavka_kod', varianta_kod:'varianta_kod',
           pocet:'pocet', cena_kc:'cena_kc'}
   },

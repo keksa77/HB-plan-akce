@@ -1448,6 +1448,14 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
           <button class="tl" title="Přidá prázdnou objednávku dodavateli." onclick="pridej('dodObjednavka')">+ Přidat objednávku</button>
         </div>
         <div id="polozkyDodavatele" style="margin-top:16px"></div>
+
+        <h3 style="margin:22px 0 6px;font-size:15px">Kdo co objednal</h3>
+        <p class="popisek">Poslední kontrola před odesláním výrobci: u každé velikosti
+          je vidět, kdo si ji objednal a kolik kusů, co z toho pokryje sklad a kolik
+          se doopravdy objednává. Počítají se jen objednávky ve stavu nová a zaplacená —
+          vydané a zrušené ne.</p>
+        <div class="obal-tab"><table class="tab" id="tabKdoCo"></table></div>
+        <p class="popisek" id="varovaniKdoCo" style="margin-top:8px"></p>
       </div>
     </div>
 
@@ -2296,8 +2304,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.99p";
-const BUILD = "2026-09-18T14:40+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.100p";
+const BUILD = "2026-09-19T11:55+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -9675,6 +9683,96 @@ function kresliObjednavkyDodavatelum(){
     '<tfoot><tr style="background:#F3EFE6;font-weight:800">'
     + '<td style="padding:8px">Celkem</td><td class="stred">' + celkem + '</td>'
     + '<td colspan="3"></td></tr></tfoot>');
+
+  kresliKdoCo();
+}
+
+/* Rozpis objednávky dodavateli po lidech — *v5.100p, 19. 9. 2026*.
+
+   Objednávka výrobci je součet, a v součtu se překlep pozná těžko. Tahle
+   tabulka ho rozebere zpátky: u každé velikosti je vidět, z čích objednávek
+   plyne. Sloupec „Objednává se" se porovná s výpočtem (chtějí minus sklad) a
+   když nesedí, řádek se označí — buď je počet ručně upravený, což je v pořádku
+   a mělo by to být vidět, nebo se mezitím změnil sklad a návrh je starý. */
+function kdoChceVariantu(variantaKod){
+  const podleKodu = {};
+  D.obleceniObjednavky.forEach(o => { podleKodu[o.kod] = o; });
+  const lide = [];
+  D.obleceniPolozky.forEach(p => {
+    if(p.varianta_kod !== variantaKod) return;
+    const o = podleKodu[p.objednavka_kod];
+    if(!o) return;
+    if(o.stav && o.stav !== 'nova' && o.stav !== 'zaplacena') return;
+    lide.push({jmeno: o.jmeno || o.email || p.objednavka_kod,
+               tym: o.tym_nazev || '', stav: o.stav || 'nova',
+               pocet: +p.pocet || 0});
+  });
+  lide.sort((a, b) => a.jmeno.localeCompare(b.jmeno, 'cs'));
+  return lide;
+}
+
+function kresliKdoCo(){
+  const t = $('#tabKdoCo'); if(!t) return;
+  const varovani = $('#varovaniKdoCo');
+  const polozky = D.dodPolozky.filter(p => p.objednavka_kod === vybranaDodObjednavka);
+  if(!polozky.length){
+    t.innerHTML = '<tbody><tr><td class="stred" style="padding:14px;color:var(--pisek)">'
+      + 'Vybraná objednávka zatím nemá položky.</td></tr></tbody>';
+    if(varovani) varovani.innerHTML = '';
+    return;
+  }
+
+  let h = '<thead><tr>'
+    + '<th'+nap('Zboží a velikost')+'>Zboží a velikost</th>'
+    + '<th style="width:95px"'+nap('Kolik lidé chtějí')+'>Chtějí</th>'
+    + '<th style="width:95px"'+nap('Kolik z toho je skladem')+'>Skladem</th>'
+    + '<th style="width:110px"'+nap('Kolik je v objednávce výrobci')+'>Objednává se</th>'
+    + '<th'+nap('Z čích objednávek to plyne')+'>Kdo si to objednal</th></tr></thead><tbody>';
+
+  const nesedi = [];
+  polozky.forEach(p => {
+    const v = D.zboziVarianty.find(x => x.kod === p.varianta_kod);
+    const z = v ? (D.zbozi.find(x => x.kod === v.zbozi_kod) || {}) : {};
+    const popis = v ? ((z.nazev || v.zbozi_kod) + ' — ' + popisVarianty(v))
+                    : (p.varianta_kod || '— bez zboží —');
+    const lide = kdoChceVariantu(p.varianta_kod);
+    const chteji = lide.reduce((a, x) => a + x.pocet, 0);
+    const sklad = skladVarianty(p.varianta_kod);
+    const objednano = +p.pocet || 0;
+    const vypocet = Math.max(0, chteji - sklad);
+    if(objednano !== vypocet) nesedi.push(popis + ' (výpočet ' + vypocet
+                                          + ', v objednávce ' + objednano + ')');
+
+    const jmena = lide.length
+      ? lide.map(x => '<span style="display:inline-block;margin:0 10px 3px 0">'
+          + esc(x.jmeno) + (x.tym ? ' <span class="popisek">(' + esc(x.tym) + ')</span>' : '')
+          + ' <b>' + x.pocet + '×</b></span>').join('')
+      : '<span class="popisek">nikdo — kusy navíc, ne z objednávek</span>';
+
+    h += '<tr>'
+      + '<td style="padding:7px;font-size:13px;font-weight:700">' + esc(popis) + '</td>'
+      + '<td class="stred" style="padding:7px;font-size:13px">' + chteji + '</td>'
+      + '<td class="stred" style="padding:7px;font-size:13px">' + sklad + '</td>'
+      + '<td class="stred" style="padding:7px;font-size:13px;font-weight:800;color:'
+        + (objednano === vypocet ? 'var(--tmava)' : 'var(--vinova)') + '">' + objednano
+        + (objednano === vypocet ? '' : ' ⚠') + '</td>'
+      + '<td style="padding:7px;font-size:13px">' + jmena + '</td></tr>';
+  });
+
+  const celkemKusu = polozky.reduce((a, p) => a + (+p.pocet || 0), 0);
+  h += '</tbody><tfoot><tr style="background:#F3EFE6;font-weight:800">'
+    + '<td style="padding:8px">Celkem</td><td colspan="2"></td>'
+    + '<td class="stred">' + celkemKusu + '</td><td></td></tr></tfoot>';
+  t.innerHTML = h;
+
+  if(varovani){
+    varovani.innerHTML = nesedi.length
+      ? '<b style="color:var(--vinova)">Pozor:</b> u ' + nesedi.length
+        + (nesedi.length === 1 ? ' velikosti' : ' velikostí')
+        + ' nesedí počet na výpočet „chtějí minus sklad" — ' + esc(nesedi.join('; '))
+        + '. Buď je počet upravený ručně, nebo se od návrhu změnil sklad.'
+      : 'Všechny počty sedí na výpočet „chtějí minus sklad".';
+  }
 }
 
 /* Z chybějícího udělá jednu objednávku na výrobce. Návrh se přepisuje celý —

@@ -1362,6 +1362,14 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
         <div id="vyberZbozi" style="margin-bottom:10px"></div>
         <div id="vyberVelikosti" style="margin-bottom:12px"></div>
         <div class="obal-tab"><table class="tab" id="tabVarianty"></table></div>
+
+        <h3 style="margin:22px 0 6px;font-size:15px">Katalogová čísla dodavatele</h3>
+        <p class="popisek">Pod čím zboží vede dodavatel. Každý střih má vlastní číslo —
+          ATEX <code>at852.01</code> pánský proti <code>at852w.01</code> dámskému —, velikost
+          ho nemění. Číslo jde do objednávky, aby ji dodavatel nemusel luštit z popisu.</p>
+        <div class="obal-tab"><table class="tab" id="tabKodyDodavatele"></table></div>
+        <button class="tl" style="margin-top:10px" title="Přidá další katalogové číslo."
+                onclick="pridej('kodDodavatele')">+ Přidat číslo</button>
       </div>
     </div>
 
@@ -1999,6 +2007,7 @@ const D = {
   dodPolozky: [],
   zbozi: [],
   zboziVarianty: [],
+  kodyDodavatele: [],
   skladPohyby: [],
 
   // --- přístupy k webu ---
@@ -2316,8 +2325,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.101p";
-const BUILD = "2026-09-19T15:20+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.102p";
+const BUILD = "2026-09-19T17:05+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -9303,6 +9312,7 @@ function kresliObleceni(){
 
   kresliCiselnikyZbozi();
   kresliVarianty();
+  kresliKodyDodavatele();
   kresliPohyby();
   kresliFormulare();
   kresliObjednavkyUcastniku();
@@ -9481,6 +9491,30 @@ function zajistiVariantu(zboziKod, velikost, strih, barva){
   if(D.zboziVarianty.some(v => v.kod === nova.kod)) return null;
   D.zboziVarianty.push(nova);
   return nova;
+}
+
+function kresliKodyDodavatele(){
+  const radky = D.kodyDodavatele.slice().sort((a, b) =>
+    String(a.zbozi_kod).localeCompare(String(b.zbozi_kod), 'cs')
+    || PORADI_STRIHU.indexOf(a.strih) - PORADI_STRIHU.indexOf(b.strih));
+  tabulka('#tabKodyDodavatele', [
+    {nadpis:"Zboží", pole:"zbozi_kod", typ:"select", sirka:"210px",
+     moznosti: [{v:'', t:'—'}].concat(D.zbozi.map(z => ({v: z.kod, t: z.nazev || z.kod})))},
+    {nadpis:"Střih", pole:"strih", typ:"select", sirka:"120px",
+     moznosti: [{v:'', t:'—'}].concat(PORADI_STRIHU)},
+    {nadpis:"Katalogové číslo", pole:"kod", sirka:"140px"},
+    {nadpis:"Název u dodavatele", pole:"nazev_u_dodavatele"},
+    {nadpis:"Poznámka", pole:"poznamka", sirka:"180px"}
+  ], radky, () => kresliObleceni(), true, false, D.kodyDodavatele);
+}
+
+/* Katalogové číslo, pod kterým zboží vede dodavatel. Bez něj se objednávka
+   posílá slovním popisem a dodavatel si ji musí dohledat sám. */
+function kodDodavatele(variantaKod){
+  const v = D.zboziVarianty.find(x => x.kod === variantaKod);
+  if(!v) return '';
+  const k = D.kodyDodavatele.find(x => x.zbozi_kod === v.zbozi_kod && x.strih === v.strih);
+  return k ? (k.kod || '') : '';
 }
 
 /* Cena jedné velikosti: co je u velikosti, jinak co je u zboží. */
@@ -9932,6 +9966,7 @@ function kresliKdoCo(){
   }
 
   let h = '<thead><tr>'
+    + '<th style="width:95px"'+nap('Katalogové číslo u dodavatele')+'>Kat. č.</th>'
     + '<th'+nap('Zboží a velikost')+'>Zboží a velikost</th>'
     + '<th style="width:95px"'+nap('Kolik lidé chtějí')+'>Chtějí</th>'
     + '<th style="width:95px"'+nap('Kolik z toho je skladem')+'>Skladem</th>'
@@ -9958,7 +9993,10 @@ function kresliKdoCo(){
           + ' <b>' + x.pocet + '×</b></span>').join('')
       : '<span class="popisek">nikdo — kusy navíc, ne z objednávek</span>';
 
+    const katC = kodDodavatele(p.varianta_kod);
     h += '<tr>'
+      + '<td style="padding:7px;font-size:13px;font-family:ui-monospace,Consolas,monospace">'
+        + (katC ? esc(katC) : '<span class="popisek">—</span>') + '</td>'
       + '<td style="padding:7px;font-size:13px;font-weight:700">' + esc(popis) + '</td>'
       + '<td class="stred" style="padding:7px;font-size:13px">' + chteji + '</td>'
       + '<td class="stred" style="padding:7px;font-size:13px">' + sklad + '</td>'
@@ -9970,7 +10008,7 @@ function kresliKdoCo(){
 
   const celkemKusu = polozky.reduce((a, p) => a + (+p.pocet || 0), 0);
   h += '</tbody><tfoot><tr style="background:#F3EFE6;font-weight:800">'
-    + '<td style="padding:8px">Celkem</td><td colspan="2"></td>'
+    + '<td colspan="2" style="padding:8px">Celkem</td><td colspan="2"></td>'
     + '<td class="stred">' + celkemKusu + '</td><td></td></tr></tfoot>';
   t.innerHTML = h;
 
@@ -10799,6 +10837,10 @@ function pridej(co){
             poradi:(D.zbozi.length+1)*10, aktivni:"ano"};
     D.zbozi.push(novy); vybraneZbozi = novy.kod; kam = 'zboží'; kresliObleceni();
   }
+  if(co==='kodDodavatele'){
+    novy = {zbozi_kod:'', strih:'pánská', kod:'', nazev_u_dodavatele:'', poznamka:''};
+    D.kodyDodavatele.push(novy); kam = 'katalogové číslo dodavatele'; kresliObleceni();
+  }
   if(co==='formular'){
     novy = {kod: volnyKodCiselniku('formulare', 'formular'), nazev:'Nový formulář',
             url:'', rok: D.nastaveni.aktivni_rok, typ:'po_zavode',
@@ -11226,6 +11268,16 @@ const MAPA = {
           aktivni:'aktivni'},
     naJs: r => ({...r, aktivni: r.aktivni === false ? 'ne' : 'ano'}),
     naDb: r => ({...r, aktivni: r.aktivni !== 'ne'})
+  },
+  /* Katalogové číslo dodavatele. ATEX má at852.01 pánský a at852w.01 dámský,
+     MALFINI 157 a 158 — číslo tedy nepatří ke zboží (to je pro oba střihy
+     jedno) ani k velikosti (ta ho nemění), ale k dvojici zboží + střih.
+     *Zavedeno 19. 9. 2026 (v5.102p).* */
+  kodyDodavatele: {
+    tabulka:'kody_dodavatele', klic:['zbozi_kod','strih'],
+    konflikt:['zbozi_kod','strih'], rok:false, vzdyUkladat:true,
+    pole:{zbozi_kod:'zbozi_kod', strih:'strih', kod:'kod',
+          nazev_u_dodavatele:'nazev_u_dodavatele', poznamka:'poznamka'}
   },
   skladPohyby: {
     // Kniha pohybů. Nic se nepřepisuje, jen přibývá řádek — proto je vidět,
@@ -11880,7 +11932,8 @@ const NAZVY_SAD = {tymy:'Grupy', clenove:'Členové grup', ukoly:'Úkoly',
   zbozi:'Zboží', zboziVarianty:'Velikosti zboží', skladPohyby:'Pohyby skladu',
   formulare:'Objednávkové formuláře', formularSloupce:'Překlad sloupců formuláře',
   obleceniObjednavky:'Objednávky účastníků', obleceniPolozky:'Položky objednávek',
-  dodObjednavky:'Objednávky dodavatelům', dodPolozky:'Položky objednávek dodavatelům'};
+  dodObjednavky:'Objednávky dodavatelům', dodPolozky:'Položky objednávek dodavatelům',
+  kodyDodavatele:'Katalogová čísla dodavatelů'};
 const popisRadku = r => String(r.kod || r.jmeno || r.nazev || r.text || r.cislo || '?');
 
 async function zkontrolujPrepsani(rok){

@@ -1472,8 +1472,9 @@ body.mobil .chybovka{left:8px;right:8px;transform:none;max-width:none;bottom:8px
         <h3 style="margin:22px 0 6px;font-size:15px">Kdo co objednal</h3>
         <p class="popisek">Poslední kontrola před odesláním výrobci: u každé velikosti
           je vidět, kdo si ji objednal a kolik kusů, co z toho pokryje sklad a kolik
-          se doopravdy objednává. Počítají se jen objednávky ve stavu nová a zaplacená —
-          vydané a zrušené ne.</p>
+          se doopravdy objednává. Počítají se jen objednávky ve stavu nová — vydané
+          už člověk má, zrušené nechce. Zaplacení na tom nic nemění, zaplacenou
+          objednávku je pořád potřeba pořídit.</p>
         <div class="obal-tab"><table class="tab" id="tabKdoCo"></table></div>
         <p class="popisek" id="varovaniKdoCo" style="margin-top:8px"></p>
       </div>
@@ -2325,8 +2326,8 @@ const smiPsat = () => Object.keys(D.prava[platnaUroven()] || {})
                         .some(o => D.prava[platnaUroven()][o] === "zápis");
 
 // Verzi zvedáme ručně při každé změně, čas buildu doplňuje sanitize_public.py.
-const VERZE = "v5.102p";
-const BUILD = "2026-09-19T17:05+02:00";                              // vyplní se ve veřejném buildu
+const VERZE = "v5.103p";
+const BUILD = "2026-09-19T19:45+02:00";                              // vyplní se ve veřejném buildu
 
 const VEREJNA = true;    // veřejná verze pro GitHub Pages = true
 // Záložky, které se ve veřejném buildu nenabízejí vůbec. Plní to sanitize_public.py.
@@ -9621,7 +9622,7 @@ function nactiFormular(kod){
       kod: kodObj, rok: rok, typ: f.typ || 'po_zavode', formular_kod: kod,
       tym_cislo: null, tym_nazev: hod(slTym), jmeno: hod(slJmeno), email: hod(slEmail),
       telefon: hod(slTel), misto_doruceni: hod(slMisto), radek_kod: r.kod,
-      vs: vsProRadek(f, r), stav: 'nova',
+      vs: vsProRadek(f, r), stav: 'nova', zaplaceno: 'ne', zaplaceno_dne: null,
       po_terminu: !!(f.uzavreno_dne && den && den > f.uzavreno_dne),
       poznamka: volby.join(' · '), _nove: true
     };
@@ -9731,11 +9732,14 @@ function kresliObjednavkyUcastniku(){
     + '<th style="width:52px"' + nap('Kusů celkem') + '>Ks</th>'
     + '<th style="width:82px"' + nap('Cena podle ceníku, bez dopravného') + '>Kč</th>'
     + '<th style="width:82px"' + nap('Variabilní symbol') + '>VS</th>'
-    + '<th style="width:110px"' + nap('Stav objednávky') + '>Stav</th></tr></thead><tbody>';
+    + '<th style="width:96px"' + nap('Dorazila platba?') + '>Zaplaceno</th>'
+    + '<th style="width:104px"' + nap('Kam objednávka došla') + '>Stav</th></tr></thead><tbody>';
 
   let kusuCelkem = 0, kcCelkem = 0;
-  const STAVY = [{v:'nova',t:'nová'}, {v:'zaplacena',t:'zaplacená'},
-                 {v:'vydana',t:'vydaná'}, {v:'zrusena',t:'zrušená'}];
+  /* Zaplacení je vlastní údaj, ne stav — vydaná objednávka může a nemusí být
+     zaplacená a obojí je potřeba vidět zvlášť. *Rozděleno 19. 9. 2026.* */
+  const STAVY = [{v:'nova',t:'nová'}, {v:'vydana',t:'vydaná'}, {v:'zrusena',t:'zrušená'}];
+  const jeZaplaceno = o => o.zaplaceno === 'ano' || o.zaplaceno === true;
 
   objednavky.forEach((o, i) => {
     const polozky = D.obleceniPolozky.filter(p => p.objednavka_kod === o.kod);
@@ -9768,6 +9772,12 @@ function kresliObjednavkyUcastniku(){
       + '<td class="stred" style="padding:7px;font-size:13px">' + ks + '</td>'
       + '<td class="stred" style="padding:7px;font-size:13px">' + (kc ? kcTxt(kc) : '—') + '</td>'
       + '<td class="stred" style="padding:7px;font-size:13px">' + esc(o.vs || '—') + '</td>'
+      + '<td class="stred" style="padding:5px 7px">'
+        + '<input type="checkbox" data-zapl="' + i + '"' + (jeZaplaceno(o) ? ' checked' : '')
+        + ' onclick="event.stopPropagation()" title="Dorazila platba na účet.">'
+        + (o.zaplaceno_dne ? '<div class="popisek" style="font-size:11.5px">'
+            + esc(String(o.zaplaceno_dne).split('-').reverse().join('. ')) + '</div>' : '')
+        + '</td>'
       + '<td style="padding:5px 7px"><select data-stav="' + i + '" onclick="event.stopPropagation()">'
         + STAVY.map(s => '<option value="' + s.v + '"'
             + ((o.stav || 'nova') === s.v ? ' selected' : '') + '>' + s.t + '</option>').join('')
@@ -9776,6 +9786,7 @@ function kresliObjednavkyUcastniku(){
     h += '<tr class="objDetail" data-detail="' + i + '" hidden>'
       + '<td colspan="7" style="padding:8px 12px;background:#FAF7F1;font-size:13px">'
       + [['E-mail', o.email], ['Telefon', o.telefon], ['Tým', o.tym_nazev],
+         ['Zaplaceno dne', o.zaplaceno_dne],
          ['Výdejní místo', o.misto_doruceni], ['Poznámka', o.poznamka],
          ['Řádek formuláře', o.radek_kod]]
         .filter(x => x[1]).map(x => '<span style="display:inline-block;margin:0 18px 4px 0">'
@@ -9786,7 +9797,7 @@ function kresliObjednavkyUcastniku(){
   h += '</tbody><tfoot><tr style="background:#F3EFE6;font-weight:800">'
     + '<td colspan="3" style="padding:8px">Celkem (bez zrušených)</td>'
     + '<td class="stred">' + kusuCelkem + '</td>'
-    + '<td class="stred">' + kcTxt(kcCelkem) + '</td><td colspan="2"></td></tr></tfoot>';
+    + '<td class="stred">' + kcTxt(kcCelkem) + '</td><td colspan="3"></td></tr></tfoot>';
   t.innerHTML = h;
 
   t.querySelectorAll('tr.objRadek').forEach(tr => {
@@ -9802,11 +9813,28 @@ function kresliObjednavkyUcastniku(){
       oznacZmenu(); kresliObleceni();
     };
   });
+  /* Zaškrtnutí zapíše i datum — u platby je „kdy" půlka informace a dopisovat
+     ho ručně by nikdo nedělal. Odškrtnutí ho zase smaže, ať nezůstane viset. */
+  t.querySelectorAll('input[data-zapl]').forEach(el => {
+    el.onchange = () => {
+      const o = objednavky[+el.dataset.zapl];
+      o.zaplaceno = el.checked ? 'ano' : 'ne';
+      o.zaplaceno_dne = el.checked ? new Date().toISOString().slice(0, 10) : null;
+      zrevidovano(o);
+      oznacZmenu(); kresliObleceni();
+    };
+  });
 
   if(souhrn){
     const ceka = D.formularRadky.filter(r => !r.zpracovano).length;
+    const zapl = objednavky.filter(o => jeZaplaceno(o) && o.stav !== 'zrusena');
+    const zaplKc = zapl.reduce((a, o) => a + D.obleceniPolozky
+      .filter(p => p.objednavka_kod === o.kod)
+      .reduce((b, p) => b + (+p.pocet || 0) * cenaVarianty(p.varianta_kod), 0), 0);
     souhrn.innerHTML = '<b>' + objednavky.length + '</b> objednávek, <b>' + kusuCelkem
-      + '</b> kusů, <b>' + kcTxt(kcCelkem) + '</b> podle ceníku (bez dopravného).'
+      + '</b> kusů, <b>' + kcTxt(kcCelkem) + '</b> podle ceníku (bez dopravného). '
+      + 'Zaplaceno <b>' + zapl.length + '</b> za <b>' + kcTxt(zaplKc) + '</b>, '
+      + 'čeká se na <b>' + kcTxt(kcCelkem - zaplKc) + '</b>.'
       + (ceka ? ' Ve frontě čeká ještě <b>' + ceka + '</b> řádků formuláře.' : '');
   }
 }
@@ -9817,9 +9845,13 @@ function poptavkaPoVelikostech(){
   const stavy = {};
   D.obleceniObjednavky.forEach(o => { stavy[o.kod] = o.stav; });
   const soucet = {};
+  /* Do poptávky patří objednávky, které někdo ještě čeká — tedy nové.
+     Vydané už člověk má, zrušené nechce. Zaplacení je vedle toho vlastní
+     údaj a poptávku nemění: zaplacená objednávka se pořád musí pořídit.
+     *Upraveno 19. 9. 2026 (v5.103p), kdy „zaplacena" přestala být stavem.* */
   D.obleceniPolozky.forEach(p => {
     const stav = stavy[p.objednavka_kod];
-    if(stav && stav !== 'nova' && stav !== 'zaplacena') return;
+    if(stav && stav !== 'nova') return;
     soucet[p.varianta_kod] = (soucet[p.varianta_kod] || 0) + (+p.pocet || 0);
   });
   return soucet;
@@ -9945,7 +9977,7 @@ function kdoChceVariantu(variantaKod){
     if(p.varianta_kod !== variantaKod) return;
     const o = podleKodu[p.objednavka_kod];
     if(!o) return;
-    if(o.stav && o.stav !== 'nova' && o.stav !== 'zaplacena') return;
+    if(o.stav && o.stav !== 'nova') return;
     lide.push({jmeno: o.jmeno || o.email || p.objednavka_kod,
                tym: o.tym_nazev || '', stav: o.stav || 'nova',
                pocet: +p.pocet || 0});
@@ -11328,7 +11360,10 @@ const MAPA = {
     pole:{kod:'kod', rok:'rok', typ:'typ', formular_kod:'formular_kod',
           tym_cislo:'tym_cislo', tym_nazev:'tym_nazev', jmeno:'jmeno', email:'email',
           telefon:'telefon', misto_doruceni:'misto_doruceni', radek_kod:'radek_kod',
-          vs:'vs', stav:'stav', po_terminu:'po_terminu', poznamka:'poznamka'}
+          vs:'vs', stav:'stav', zaplaceno:'zaplaceno', zaplaceno_dne:'zaplaceno_dne',
+          po_terminu:'po_terminu', poznamka:'poznamka'},
+    naJs: r => ({...r, zaplaceno: r.zaplaceno ? 'ano' : 'ne'}),
+    naDb: r => ({...r, zaplaceno: r.zaplaceno === 'ano' || r.zaplaceno === true})
   },
   obleceniPolozky: {
     tabulka:'obleceni_polozky', klic:['kod'], konflikt:['kod'], rok:false, vzdyUkladat:true,
